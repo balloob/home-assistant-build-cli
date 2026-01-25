@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/grandcat/zeroconf"
@@ -77,8 +78,11 @@ func DiscoverServers(timeout time.Duration) ([]DiscoveredServer, error) {
 
 // parseServiceEntry converts a zeroconf entry to a DiscoveredServer
 func parseServiceEntry(entry *zeroconf.ServiceEntry) DiscoveredServer {
+	// Unescape the instance name (mDNS escapes spaces as "\ ")
+	name := strings.ReplaceAll(entry.Instance, `\ `, " ")
+
 	server := DiscoveredServer{
-		Name: entry.Instance,
+		Name: name,
 		Host: entry.HostName,
 		Port: entry.Port,
 		IPv4: entry.AddrIPv4,
