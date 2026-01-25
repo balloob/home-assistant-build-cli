@@ -12,7 +12,7 @@ PROJECT_DIR="$(dirname "$TEST_DIR")"
 HAB="$PROJECT_DIR/hab"
 
 # Test token from empty-hass
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIyZWZkZGJjZmY0MzQ0NGRlYmUyMDhkNDUzZGU1MjAxIiwiaWF0IjoxNzY5MjgyOTI2LCJleHAiOjIwODQ2NDI5MjZ9.ZYSmLdcv5EfGCXrwO2Nd6bxHrxxU-7ieuE0ySwurU9A"
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIyZWZkZGJjZmY0MzQ0NGRlYmUyMDhkNDUyM2RlNTIwMSIsImlhdCI6MTc2OTI4MjkyNiwiZXhwIjoyMDg0NjQyOTI2fQ.ZYSmLdcv5EfGCXrwO2Nd6bxHrxxU-7ieuE0ySwurU9A"
 URL="http://localhost:8124"
 
 # Colors for output
