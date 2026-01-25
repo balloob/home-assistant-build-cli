@@ -73,12 +73,12 @@ func getURLWithDiscovery() (string, error) {
 	// Display discovered servers
 	fmt.Printf("\nFound %d Home Assistant server(s):\n\n", len(servers))
 	for i, server := range servers {
-		fmt.Printf("  [%d] %s\n", i, auth.FormatServerDisplay(server))
+		fmt.Printf("  [%d] %s\n", i+1, auth.FormatServerDisplay(server))
 	}
-	fmt.Printf("  [%d] Enter URL manually\n", len(servers))
+	fmt.Printf("  [%d] Enter URL manually\n", len(servers)+1)
 
 	// Get user selection
-	fmt.Printf("\nSelect server [0-%d]: ", len(servers))
+	fmt.Printf("\nSelect server [1-%d]: ", len(servers)+1)
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return "", fmt.Errorf("failed to read selection: %w", err)
@@ -86,12 +86,12 @@ func getURLWithDiscovery() (string, error) {
 
 	selection := strings.TrimSpace(input)
 	idx, err := strconv.Atoi(selection)
-	if err != nil || idx < 0 || idx > len(servers) {
+	if err != nil || idx < 1 || idx > len(servers)+1 {
 		return "", fmt.Errorf("invalid selection: %s", selection)
 	}
 
 	// Manual entry option
-	if idx == len(servers) {
+	if idx == len(servers)+1 {
 		fmt.Print("Home Assistant URL: ")
 		input, err := reader.ReadString('\n')
 		if err != nil {
@@ -100,7 +100,7 @@ func getURLWithDiscovery() (string, error) {
 		return strings.TrimSpace(input), nil
 	}
 
-	return servers[idx].URL, nil
+	return servers[idx-1].URL, nil
 }
 
 func loginWithToken(manager *auth.Manager, textMode bool) error {
