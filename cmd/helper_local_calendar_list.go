@@ -14,8 +14,17 @@ var helperLocalCalendarListCmd = &cobra.Command{
 	RunE:  runHelperLocalCalendarList,
 }
 
+var (
+	helperLocalCalendarListCount bool
+	helperLocalCalendarListBrief bool
+	helperLocalCalendarListLimit int
+)
+
 func init() {
 	helperLocalCalendarParentCmd.AddCommand(helperLocalCalendarListCmd)
+	helperLocalCalendarListCmd.Flags().BoolVarP(&helperLocalCalendarListCount, "count", "c", false, "Return only the count of items")
+	helperLocalCalendarListCmd.Flags().BoolVarP(&helperLocalCalendarListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperLocalCalendarListCmd.Flags().IntVarP(&helperLocalCalendarListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperLocalCalendarList(cmd *cobra.Command, args []string) error {
@@ -58,6 +67,30 @@ func runHelperLocalCalendarList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperLocalCalendarListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperLocalCalendarListLimit > 0 && len(result) > helperLocalCalendarListLimit {
+		result = result[:helperLocalCalendarListLimit]
+	}
+
+	// Handle brief mode
+	if helperLocalCalendarListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

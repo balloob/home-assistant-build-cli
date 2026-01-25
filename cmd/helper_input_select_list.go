@@ -14,8 +14,17 @@ var helperInputSelectListCmd = &cobra.Command{
 	RunE:  runHelperInputSelectList,
 }
 
+var (
+	helperInputSelectListCount bool
+	helperInputSelectListBrief bool
+	helperInputSelectListLimit int
+)
+
 func init() {
 	helperInputSelectParentCmd.AddCommand(helperInputSelectListCmd)
+	helperInputSelectListCmd.Flags().BoolVarP(&helperInputSelectListCount, "count", "c", false, "Return only the count of items")
+	helperInputSelectListCmd.Flags().BoolVarP(&helperInputSelectListBrief, "brief", "b", false, "Return minimal fields (id and name only)")
+	helperInputSelectListCmd.Flags().IntVarP(&helperInputSelectListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperInputSelectList(cmd *cobra.Command, args []string) error {
@@ -37,6 +46,32 @@ func runHelperInputSelectList(cmd *cobra.Command, args []string) error {
 	helpers, err := ws.HelperList("input_select")
 	if err != nil {
 		return err
+	}
+
+	// Handle count mode
+	if helperInputSelectListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(helpers)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperInputSelectListLimit > 0 && len(helpers) > helperInputSelectListLimit {
+		helpers = helpers[:helperInputSelectListLimit]
+	}
+
+	// Handle brief mode
+	if helperInputSelectListBrief {
+		var brief []map[string]interface{}
+		for _, h := range helpers {
+			if helper, ok := h.(map[string]interface{}); ok {
+				brief = append(brief, map[string]interface{}{
+					"id":   helper["id"],
+					"name": helper["name"],
+				})
+			}
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(helpers, textMode, "")

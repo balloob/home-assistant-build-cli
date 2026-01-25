@@ -14,8 +14,17 @@ var helperStatisticsListCmd = &cobra.Command{
 	RunE:  runHelperStatisticsList,
 }
 
+var (
+	helperStatisticsListCount bool
+	helperStatisticsListBrief bool
+	helperStatisticsListLimit int
+)
+
 func init() {
 	helperStatisticsParentCmd.AddCommand(helperStatisticsListCmd)
+	helperStatisticsListCmd.Flags().BoolVarP(&helperStatisticsListCount, "count", "c", false, "Return only the count of items")
+	helperStatisticsListCmd.Flags().BoolVarP(&helperStatisticsListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperStatisticsListCmd.Flags().IntVarP(&helperStatisticsListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperStatisticsList(cmd *cobra.Command, args []string) error {
@@ -56,6 +65,30 @@ func runHelperStatisticsList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperStatisticsListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperStatisticsListLimit > 0 && len(result) > helperStatisticsListLimit {
+		result = result[:helperStatisticsListLimit]
+	}
+
+	// Handle brief mode
+	if helperStatisticsListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

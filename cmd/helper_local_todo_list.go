@@ -14,8 +14,17 @@ var helperLocalTodoListCmd = &cobra.Command{
 	RunE:  runHelperLocalTodoList,
 }
 
+var (
+	helperLocalTodoListCount bool
+	helperLocalTodoListBrief bool
+	helperLocalTodoListLimit int
+)
+
 func init() {
 	helperLocalTodoParentCmd.AddCommand(helperLocalTodoListCmd)
+	helperLocalTodoListCmd.Flags().BoolVarP(&helperLocalTodoListCount, "count", "c", false, "Return only the count of items")
+	helperLocalTodoListCmd.Flags().BoolVarP(&helperLocalTodoListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperLocalTodoListCmd.Flags().IntVarP(&helperLocalTodoListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperLocalTodoList(cmd *cobra.Command, args []string) error {
@@ -58,6 +67,30 @@ func runHelperLocalTodoList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperLocalTodoListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperLocalTodoListLimit > 0 && len(result) > helperLocalTodoListLimit {
+		result = result[:helperLocalTodoListLimit]
+	}
+
+	// Handle brief mode
+	if helperLocalTodoListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

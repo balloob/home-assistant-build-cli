@@ -15,6 +15,9 @@ var (
 	entityListFloor  string
 	entityListLabel  string
 	entityListDevice string
+	entityListCount  bool
+	entityListBrief  bool
+	entityListLimit  int
 )
 
 var entityListCmd = &cobra.Command{
@@ -31,6 +34,9 @@ func init() {
 	entityListCmd.Flags().StringVarP(&entityListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
 	entityListCmd.Flags().StringVarP(&entityListLabel, "label", "l", "", "Filter by label ID")
 	entityListCmd.Flags().StringVar(&entityListDevice, "device", "", "Filter by device ID")
+	entityListCmd.Flags().BoolVarP(&entityListCount, "count", "c", false, "Return only the count of items")
+	entityListCmd.Flags().BoolVarP(&entityListBrief, "brief", "b", false, "Return minimal fields (entity_id and name only)")
+	entityListCmd.Flags().IntVarP(&entityListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runEntityList(cmd *cobra.Command, args []string) error {
@@ -186,6 +192,30 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 			"labels":    labels,
 			"disabled":  disabled,
 		})
+	}
+
+	// Handle count mode
+	if entityListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(entities)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if entityListLimit > 0 && len(entities) > entityListLimit {
+		entities = entities[:entityListLimit]
+	}
+
+	// Handle brief mode
+	if entityListBrief {
+		var brief []map[string]interface{}
+		for _, item := range entities {
+			brief = append(brief, map[string]interface{}{
+				"entity_id": item["entity_id"],
+				"name":      item["name"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(entities, textMode, "")

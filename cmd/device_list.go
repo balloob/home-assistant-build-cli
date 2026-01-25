@@ -10,6 +10,9 @@ import (
 var (
 	deviceListArea  string
 	deviceListFloor string
+	deviceListCount bool
+	deviceListBrief bool
+	deviceListLimit int
 )
 
 var deviceListCmd = &cobra.Command{
@@ -23,6 +26,9 @@ func init() {
 	deviceCmd.AddCommand(deviceListCmd)
 	deviceListCmd.Flags().StringVarP(&deviceListArea, "area", "a", "", "Filter by area ID")
 	deviceListCmd.Flags().StringVarP(&deviceListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
+	deviceListCmd.Flags().BoolVarP(&deviceListCount, "count", "c", false, "Return only the count of items")
+	deviceListCmd.Flags().BoolVarP(&deviceListBrief, "brief", "b", false, "Return minimal fields (id and name only)")
+	deviceListCmd.Flags().IntVarP(&deviceListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runDeviceList(cmd *cobra.Command, args []string) error {
@@ -98,6 +104,30 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 			"model":        device["model"],
 			"area_id":      device["area_id"],
 		})
+	}
+
+	// Handle count mode
+	if deviceListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if deviceListLimit > 0 && len(result) > deviceListLimit {
+		result = result[:deviceListLimit]
+	}
+
+	// Handle brief mode
+	if deviceListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"id":   item["id"],
+				"name": item["name"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

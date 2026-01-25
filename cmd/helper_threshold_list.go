@@ -14,8 +14,17 @@ var helperThresholdListCmd = &cobra.Command{
 	RunE:  runHelperThresholdList,
 }
 
+var (
+	helperThresholdListCount bool
+	helperThresholdListBrief bool
+	helperThresholdListLimit int
+)
+
 func init() {
 	helperThresholdParentCmd.AddCommand(helperThresholdListCmd)
+	helperThresholdListCmd.Flags().BoolVarP(&helperThresholdListCount, "count", "c", false, "Return only the count of items")
+	helperThresholdListCmd.Flags().BoolVarP(&helperThresholdListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperThresholdListCmd.Flags().IntVarP(&helperThresholdListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperThresholdList(cmd *cobra.Command, args []string) error {
@@ -56,6 +65,30 @@ func runHelperThresholdList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperThresholdListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperThresholdListLimit > 0 && len(result) > helperThresholdListLimit {
+		result = result[:helperThresholdListLimit]
+	}
+
+	// Handle brief mode
+	if helperThresholdListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

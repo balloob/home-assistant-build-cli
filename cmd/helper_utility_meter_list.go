@@ -14,8 +14,17 @@ var helperUtilityMeterListCmd = &cobra.Command{
 	RunE:  runHelperUtilityMeterList,
 }
 
+var (
+	helperUtilityMeterListCount bool
+	helperUtilityMeterListBrief bool
+	helperUtilityMeterListLimit int
+)
+
 func init() {
 	helperUtilityMeterParentCmd.AddCommand(helperUtilityMeterListCmd)
+	helperUtilityMeterListCmd.Flags().BoolVarP(&helperUtilityMeterListCount, "count", "c", false, "Return only the count of items")
+	helperUtilityMeterListCmd.Flags().BoolVarP(&helperUtilityMeterListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperUtilityMeterListCmd.Flags().IntVarP(&helperUtilityMeterListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperUtilityMeterList(cmd *cobra.Command, args []string) error {
@@ -56,6 +65,30 @@ func runHelperUtilityMeterList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperUtilityMeterListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperUtilityMeterListLimit > 0 && len(result) > helperUtilityMeterListLimit {
+		result = result[:helperUtilityMeterListLimit]
+	}
+
+	// Handle brief mode
+	if helperUtilityMeterListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

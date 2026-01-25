@@ -14,8 +14,17 @@ var helperMinMaxListCmd = &cobra.Command{
 	RunE:  runHelperMinMaxList,
 }
 
+var (
+	helperMinMaxListCount bool
+	helperMinMaxListBrief bool
+	helperMinMaxListLimit int
+)
+
 func init() {
 	helperMinMaxParentCmd.AddCommand(helperMinMaxListCmd)
+	helperMinMaxListCmd.Flags().BoolVarP(&helperMinMaxListCount, "count", "c", false, "Return only the count of items")
+	helperMinMaxListCmd.Flags().BoolVarP(&helperMinMaxListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperMinMaxListCmd.Flags().IntVarP(&helperMinMaxListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperMinMaxList(cmd *cobra.Command, args []string) error {
@@ -56,6 +65,30 @@ func runHelperMinMaxList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperMinMaxListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperMinMaxListLimit > 0 && len(result) > helperMinMaxListLimit {
+		result = result[:helperMinMaxListLimit]
+	}
+
+	// Handle brief mode
+	if helperMinMaxListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

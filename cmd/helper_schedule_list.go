@@ -14,8 +14,17 @@ var helperScheduleListCmd = &cobra.Command{
 	RunE:  runHelperScheduleList,
 }
 
+var (
+	helperScheduleListCount bool
+	helperScheduleListBrief bool
+	helperScheduleListLimit int
+)
+
 func init() {
 	helperScheduleParentCmd.AddCommand(helperScheduleListCmd)
+	helperScheduleListCmd.Flags().BoolVarP(&helperScheduleListCount, "count", "c", false, "Return only the count of items")
+	helperScheduleListCmd.Flags().BoolVarP(&helperScheduleListBrief, "brief", "b", false, "Return minimal fields (id and name only)")
+	helperScheduleListCmd.Flags().IntVarP(&helperScheduleListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperScheduleList(cmd *cobra.Command, args []string) error {
@@ -37,6 +46,32 @@ func runHelperScheduleList(cmd *cobra.Command, args []string) error {
 	helpers, err := ws.HelperList("schedule")
 	if err != nil {
 		return err
+	}
+
+	// Handle count mode
+	if helperScheduleListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(helpers)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperScheduleListLimit > 0 && len(helpers) > helperScheduleListLimit {
+		helpers = helpers[:helperScheduleListLimit]
+	}
+
+	// Handle brief mode
+	if helperScheduleListBrief {
+		var brief []map[string]interface{}
+		for _, h := range helpers {
+			if helper, ok := h.(map[string]interface{}); ok {
+				brief = append(brief, map[string]interface{}{
+					"id":   helper["id"],
+					"name": helper["name"],
+				})
+			}
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(helpers, textMode, "")

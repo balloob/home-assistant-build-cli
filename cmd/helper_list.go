@@ -17,8 +17,17 @@ var helperListCmd = &cobra.Command{
 	RunE:  runHelperList,
 }
 
+var (
+	helperListCount bool
+	helperListBrief bool
+	helperListLimit int
+)
+
 func init() {
 	helperCmd.AddCommand(helperListCmd)
+	helperListCmd.Flags().BoolVarP(&helperListCount, "count", "c", false, "Return only the count of items")
+	helperListCmd.Flags().BoolVarP(&helperListBrief, "brief", "b", false, "Return minimal fields (entity_id and name only)")
+	helperListCmd.Flags().IntVarP(&helperListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperList(cmd *cobra.Command, args []string) error {
@@ -87,6 +96,30 @@ func runHelperList(cmd *cobra.Command, args []string) error {
 			"name":      entity["name"],
 			"type":      domain,
 		})
+	}
+
+	// Handle count mode
+	if helperListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperListLimit > 0 && len(result) > helperListLimit {
+		result = result[:helperListLimit]
+	}
+
+	// Handle brief mode
+	if helperListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entity_id": item["entity_id"],
+				"name":      item["name"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

@@ -14,8 +14,17 @@ var helperTemplateListCmd = &cobra.Command{
 	RunE:  runHelperTemplateList,
 }
 
+var (
+	helperTemplateListCount bool
+	helperTemplateListBrief bool
+	helperTemplateListLimit int
+)
+
 func init() {
 	helperTemplateParentCmd.AddCommand(helperTemplateListCmd)
+	helperTemplateListCmd.Flags().BoolVarP(&helperTemplateListCount, "count", "c", false, "Return only the count of items")
+	helperTemplateListCmd.Flags().BoolVarP(&helperTemplateListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperTemplateListCmd.Flags().IntVarP(&helperTemplateListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperTemplateList(cmd *cobra.Command, args []string) error {
@@ -58,6 +67,30 @@ func runHelperTemplateList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperTemplateListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperTemplateListLimit > 0 && len(result) > helperTemplateListLimit {
+		result = result[:helperTemplateListLimit]
+	}
+
+	// Handle brief mode
+	if helperTemplateListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

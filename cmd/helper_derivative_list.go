@@ -14,8 +14,17 @@ var helperDerivativeListCmd = &cobra.Command{
 	RunE:  runHelperDerivativeList,
 }
 
+var (
+	helperDerivativeListCount bool
+	helperDerivativeListBrief bool
+	helperDerivativeListLimit int
+)
+
 func init() {
 	helperDerivativeParentCmd.AddCommand(helperDerivativeListCmd)
+	helperDerivativeListCmd.Flags().BoolVarP(&helperDerivativeListCount, "count", "c", false, "Return only the count of items")
+	helperDerivativeListCmd.Flags().BoolVarP(&helperDerivativeListBrief, "brief", "b", false, "Return minimal fields (entry_id and title only)")
+	helperDerivativeListCmd.Flags().IntVarP(&helperDerivativeListLimit, "limit", "n", 0, "Limit results to N items")
 }
 
 func runHelperDerivativeList(cmd *cobra.Command, args []string) error {
@@ -56,6 +65,30 @@ func runHelperDerivativeList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if helperDerivativeListCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if helperDerivativeListLimit > 0 && len(result) > helperDerivativeListLimit {
+		result = result[:helperDerivativeListLimit]
+	}
+
+	// Handle brief mode
+	if helperDerivativeListBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entry_id": item["entry_id"],
+				"title":    item["title"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

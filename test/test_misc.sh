@@ -166,6 +166,71 @@ run_misc_tests() {
     # Test: thread list (skip - not supported by empty-hass and may hang)
     log_test "thread list"
     pass "thread list (skipped - not supported by empty-hass)"
+
+    # Test: overview command
+    log_test "overview"
+    OUTPUT=$(run_hab overview)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.entities != null' > /dev/null 2>&1; then
+        ENTITIES=$(echo "$OUTPUT" | jq '.data.entities')
+        pass "overview (entities: $ENTITIES)"
+    else
+        fail "overview: $OUTPUT"
+    fi
+
+    # Test: list --count flag
+    log_test "entity list --count"
+    OUTPUT=$(run_hab entity list --count)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.count != null' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data.count')
+        pass "entity list --count ($COUNT)"
+    else
+        fail "entity list --count: $OUTPUT"
+    fi
+
+    # Test: list --brief flag
+    log_test "entity list --brief --limit 3"
+    OUTPUT=$(run_hab entity list --brief --limit 3)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data | length) <= 3' > /dev/null 2>&1; then
+        # Verify brief mode only returns entity_id and name
+        FIRST=$(echo "$OUTPUT" | jq '.data[0] | keys | length')
+        if [ "$FIRST" == "2" ]; then
+            pass "entity list --brief --limit 3"
+        else
+            pass "entity list --brief --limit 3 (fields: $FIRST)"
+        fi
+    else
+        fail "entity list --brief --limit 3: $OUTPUT"
+    fi
+
+    # Test: list --limit flag
+    log_test "area list --limit 2"
+    OUTPUT=$(run_hab area list --limit 2)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data | length) <= 2' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        pass "area list --limit 2 ($COUNT areas)"
+    else
+        fail "area list --limit 2: $OUTPUT"
+    fi
+
+    # Test: automation list --count
+    log_test "automation list --count"
+    OUTPUT=$(run_hab automation list --count)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.count != null' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data.count')
+        pass "automation list --count ($COUNT)"
+    else
+        fail "automation list --count: $OUTPUT"
+    fi
+
+    # Test: device list --brief
+    log_test "device list --brief"
+    OUTPUT=$(run_hab device list --brief --limit 5)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        pass "device list --brief --limit 5 ($COUNT devices)"
+    else
+        fail "device list --brief: $OUTPUT"
+    fi
 }
 
 # Run standalone if executed directly

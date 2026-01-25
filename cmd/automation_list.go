@@ -22,6 +22,9 @@ func init() {
 	automationCmd.AddCommand(automationListCmd)
 	automationListCmd.Flags().Bool("extended", false, "Include extended info (description, blueprint) - requires extra API calls")
 	automationListCmd.Flags().String("blueprint", "", "Filter to automations using specific blueprint path (implies --extended)")
+	automationListCmd.Flags().BoolP("count", "c", false, "Return only the count of items")
+	automationListCmd.Flags().BoolP("brief", "b", false, "Return minimal fields (entity_id and alias only)")
+	automationListCmd.Flags().IntP("limit", "n", 0, "Limit results to N items")
 }
 
 func runAutomationList(cmd *cobra.Command, args []string) error {
@@ -29,6 +32,9 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 	textMode := viper.GetBool("text")
 	extended, _ := cmd.Flags().GetBool("extended")
 	blueprintFilter, _ := cmd.Flags().GetString("blueprint")
+	listCount, _ := cmd.Flags().GetBool("count")
+	listBrief, _ := cmd.Flags().GetBool("brief")
+	listLimit, _ := cmd.Flags().GetInt("limit")
 
 	// Blueprint filter implies extended mode
 	if blueprintFilter != "" {
@@ -120,6 +126,30 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 		}
 
 		result = append(result, item)
+	}
+
+	// Handle count mode
+	if listCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if listLimit > 0 && len(result) > listLimit {
+		result = result[:listLimit]
+	}
+
+	// Handle brief mode
+	if listBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entity_id": item["entity_id"],
+				"alias":     item["alias"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

@@ -18,11 +18,17 @@ var scriptListCmd = &cobra.Command{
 
 func init() {
 	scriptCmd.AddCommand(scriptListCmd)
+	scriptListCmd.Flags().BoolP("count", "c", false, "Return only the count of items")
+	scriptListCmd.Flags().BoolP("brief", "b", false, "Return minimal fields (entity_id and alias only)")
+	scriptListCmd.Flags().IntP("limit", "n", 0, "Limit results to N items")
 }
 
 func runScriptList(cmd *cobra.Command, args []string) error {
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
+	listCount, _ := cmd.Flags().GetBool("count")
+	listBrief, _ := cmd.Flags().GetBool("brief")
+	listLimit, _ := cmd.Flags().GetInt("limit")
 
 	manager := auth.NewManager(configDir)
 	creds, err := manager.GetCredentials()
@@ -60,6 +66,30 @@ func runScriptList(cmd *cobra.Command, args []string) error {
 			"state":          state["state"],
 			"last_triggered": attrs["last_triggered"],
 		})
+	}
+
+	// Handle count mode
+	if listCount {
+		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		return nil
+	}
+
+	// Apply limit
+	if listLimit > 0 && len(result) > listLimit {
+		result = result[:listLimit]
+	}
+
+	// Handle brief mode
+	if listBrief {
+		var brief []map[string]interface{}
+		for _, item := range result {
+			brief = append(brief, map[string]interface{}{
+				"entity_id": item["entity_id"],
+				"alias":     item["alias"],
+			})
+		}
+		client.PrintOutput(brief, textMode, "")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")
