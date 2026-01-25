@@ -533,8 +533,13 @@ fi
 # Run helper tests from dedicated test file
 export HAB_TEST_CONFIG_DIR="$CONFIG_DIR"
 export HAB_TEST_HASS_RUNNING=1
-source "$SCRIPT_DIR/test_helpers.sh"
+TEST_SCRIPT_DIR="$PROJECT_DIR/test"
+source "$TEST_SCRIPT_DIR/test_helpers.sh"
 run_helpers_tests
+
+# Run template entity tests from dedicated test file
+source "$TEST_SCRIPT_DIR/test_template.sh"
+run_template_tests
 
 # Test: zone CRUD
 log_test "zone create"
