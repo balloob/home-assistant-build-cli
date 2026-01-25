@@ -95,15 +95,15 @@ func runHelperUtilityMeterCreate(cmd *cobra.Command, args []string) error {
 		tariffs = []string{}
 	}
 	formData := map[string]interface{}{
-		"name":                         name,
-		"source_sensor":                helperUtilityMeterCreateSource,
-		"meter_type":                   meterType,
-		"meter_offset":                 helperUtilityMeterCreateOffset,
-		"meter_delta_values":           helperUtilityMeterCreateDeltaValues,
-		"meter_net_consumption":        helperUtilityMeterCreateNetConsumption,
-		"meter_periodically_resetting": helperUtilityMeterCreatePeriodicallyReset,
-		"tariffs":                      tariffs,
-		"sensor_always_available":      helperUtilityMeterCreateAlwaysAvailable,
+		"name":                  name,
+		"source":                helperUtilityMeterCreateSource,
+		"cycle":                 meterType,
+		"offset":                helperUtilityMeterCreateOffset,
+		"delta_values":          helperUtilityMeterCreateDeltaValues,
+		"net_consumption":       helperUtilityMeterCreateNetConsumption,
+		"periodically_resetting": helperUtilityMeterCreatePeriodicallyReset,
+		"tariffs":               tariffs,
+		"always_available":      helperUtilityMeterCreateAlwaysAvailable,
 	}
 
 	finalResult, err := rest.ConfigFlowStep(flowID, formData)

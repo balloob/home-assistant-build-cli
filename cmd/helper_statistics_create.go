@@ -118,24 +118,39 @@ func runHelperStatisticsCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("config flow aborted: %s", reason)
 	}
 
-	// Step 2: Submit the state characteristic and options
+	// Step 2: Submit the state characteristic only
 	step2Data := map[string]interface{}{
 		"state_characteristic": helperStatisticsCreateCharacteristic,
-		"precision":            helperStatisticsCreatePrecision,
-		"keep_last_sample":     false,
+	}
+
+	step2Result, err := rest.ConfigFlowStep(flowID, step2Data)
+	if err != nil {
+		return fmt.Errorf("failed to submit state characteristic: %w", err)
+	}
+
+	step2Type, _ := step2Result["type"].(string)
+	if step2Type == "abort" {
+		reason, _ := step2Result["reason"].(string)
+		return fmt.Errorf("config flow aborted: %s", reason)
+	}
+
+	// Step 3: Submit the options (sampling size, max age, etc.)
+	step3Data := map[string]interface{}{
+		"precision":        helperStatisticsCreatePrecision,
+		"keep_last_sample": false,
 	}
 
 	if hasSamplingSize {
-		step2Data["samples_max_buffer_size"] = helperStatisticsCreateSamplingSize
+		step3Data["sampling_size"] = helperStatisticsCreateSamplingSize
 	}
 	if hasMaxAge {
-		step2Data["max_age"] = parseDurationForStatistics(helperStatisticsCreateMaxAge)
+		step3Data["max_age"] = parseDurationForStatistics(helperStatisticsCreateMaxAge)
 	}
 	if helperStatisticsCreateCharacteristic == "percentile" {
-		step2Data["percentile"] = helperStatisticsCreatePercentile
+		step3Data["percentile"] = helperStatisticsCreatePercentile
 	}
 
-	finalResult, err := rest.ConfigFlowStep(flowID, step2Data)
+	finalResult, err := rest.ConfigFlowStep(flowID, step3Data)
 	if err != nil {
 		return fmt.Errorf("failed to create statistics sensor: %w", err)
 	}
