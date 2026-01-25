@@ -7,15 +7,18 @@ import (
 	"github.com/spf13/viper"
 )
 
+var areaListFloor string
+
 var areaListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all areas",
-	Long:  `List all areas in Home Assistant.`,
+	Long:  `List all areas in Home Assistant. Use --floor to filter by floor.`,
 	RunE:  runAreaList,
 }
 
 func init() {
 	areaCmd.AddCommand(areaListCmd)
+	areaListCmd.Flags().StringVarP(&areaListFloor, "floor", "f", "", "Filter by floor ID")
 }
 
 func runAreaList(cmd *cobra.Command, args []string) error {
@@ -45,6 +48,15 @@ func runAreaList(cmd *cobra.Command, args []string) error {
 		if !ok {
 			continue
 		}
+
+		// Apply floor filter
+		if areaListFloor != "" {
+			floorID, _ := area["floor_id"].(string)
+			if floorID != areaListFloor {
+				continue
+			}
+		}
+
 		result = append(result, map[string]interface{}{
 			"area_id":  area["area_id"],
 			"name":     area["name"],

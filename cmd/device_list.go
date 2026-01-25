@@ -7,15 +7,18 @@ import (
 	"github.com/spf13/viper"
 )
 
+var deviceListArea string
+
 var deviceListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all devices",
-	Long:  `List all devices in Home Assistant.`,
+	Long:  `List all devices in Home Assistant. Use --area to filter by area.`,
 	RunE:  runDeviceList,
 }
 
 func init() {
 	deviceCmd.AddCommand(deviceListCmd)
+	deviceListCmd.Flags().StringVarP(&deviceListArea, "area", "a", "", "Filter by area ID")
 }
 
 func runDeviceList(cmd *cobra.Command, args []string) error {
@@ -45,6 +48,15 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 		if !ok {
 			continue
 		}
+
+		// Apply area filter
+		if deviceListArea != "" {
+			areaID, _ := device["area_id"].(string)
+			if areaID != deviceListArea {
+				continue
+			}
+		}
+
 		result = append(result, map[string]interface{}{
 			"id":           device["id"],
 			"name":         device["name"],

@@ -9,23 +9,23 @@ import (
 	"github.com/spf13/viper"
 )
 
-var deviceGetRelated bool
+var floorGetRelated bool
 
-var deviceGetCmd = &cobra.Command{
-	Use:   "get <device_id>",
-	Short: "Get device details",
-	Long:  `Get detailed information about a device. Use --related to also show related automations, scripts, scenes, and entities.`,
+var floorGetCmd = &cobra.Command{
+	Use:   "get <floor_id>",
+	Short: "Get floor details",
+	Long:  `Get detailed information about a floor. Use --related to also show related areas, devices, entities, automations, and scripts.`,
 	Args:  cobra.ExactArgs(1),
-	RunE:  runDeviceGet,
+	RunE:  runFloorGet,
 }
 
 func init() {
-	deviceCmd.AddCommand(deviceGetCmd)
-	deviceGetCmd.Flags().BoolVarP(&deviceGetRelated, "related", "r", false, "Include related items (automations, scripts, scenes, entities)")
+	floorCmd.AddCommand(floorGetCmd)
+	floorGetCmd.Flags().BoolVarP(&floorGetRelated, "related", "r", false, "Include related items (areas, devices, entities, automations, scripts)")
 }
 
-func runDeviceGet(cmd *cobra.Command, args []string) error {
-	deviceID := args[0]
+func runFloorGet(cmd *cobra.Command, args []string) error {
+	floorID := args[0]
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 
@@ -41,26 +41,26 @@ func runDeviceGet(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	devices, err := ws.DeviceRegistryList()
+	floors, err := ws.FloorRegistryList()
 	if err != nil {
 		return err
 	}
 
-	for _, d := range devices {
-		device, ok := d.(map[string]interface{})
+	for _, f := range floors {
+		floor, ok := f.(map[string]interface{})
 		if !ok {
 			continue
 		}
-		if device["id"] == deviceID {
-			result := device
+		if floor["floor_id"] == floorID {
+			result := floor
 
 			// Get related items if requested
-			if deviceGetRelated {
-				related, err := ws.SearchRelated("device", deviceID)
+			if floorGetRelated {
+				related, err := ws.SearchRelated("floor", floorID)
 				if err == nil && len(related) > 0 {
 					// Create a new map to avoid modifying the original
 					resultMap := make(map[string]interface{})
-					for k, v := range device {
+					for k, v := range floor {
 						resultMap[k] = v
 					}
 					resultMap["related"] = related
@@ -73,5 +73,5 @@ func runDeviceGet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return fmt.Errorf("device '%s' not found", deviceID)
+	return fmt.Errorf("floor '%s' not found", floorID)
 }

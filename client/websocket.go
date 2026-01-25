@@ -789,6 +789,36 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 	return data, nil
 }
 
+// SearchRelated returns related items for a given item type and ID
+// itemType can be: area, automation, automation_blueprint, config_entry, device, entity, floor, group, label, scene, script, script_blueprint
+func (c *WebSocketClient) SearchRelated(itemType, itemID string) (map[string][]string, error) {
+	result, err := c.SendCommand("search/related", map[string]interface{}{
+		"item_type": itemType,
+		"item_id":   itemID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the result to a map of string slices
+	resultMap := make(map[string][]string)
+	if m, ok := result.(map[string]interface{}); ok {
+		for key, value := range m {
+			if arr, ok := value.([]interface{}); ok {
+				var items []string
+				for _, item := range arr {
+					if str, ok := item.(string); ok {
+						items = append(items, str)
+					}
+				}
+				resultMap[key] = items
+			}
+		}
+	}
+
+	return resultMap, nil
+}
+
 // GetWebSocketClientForAuth creates a WebSocket client from auth manager
 func GetWebSocketClientForAuth(baseURL, token string) *WebSocketClient {
 	return NewWebSocketClient(baseURL, token)

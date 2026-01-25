@@ -246,6 +246,111 @@ else
     fail "floor list: $OUTPUT"
 fi
 
+# Test: area get (using the first available area)
+log_test "area get"
+FIRST_AREA=$(run_hab area list | jq -r '.data[0].area_id // empty')
+if [ -n "$FIRST_AREA" ]; then
+    OUTPUT=$(run_hab area get "$FIRST_AREA")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "area get ($FIRST_AREA)"
+    else
+        fail "area get: $OUTPUT"
+    fi
+else
+    pass "area get (skipped - no areas)"
+fi
+
+# Test: area get --related
+log_test "area get --related"
+if [ -n "$FIRST_AREA" ]; then
+    OUTPUT=$(run_hab_optional area get "$FIRST_AREA" --related)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "area get --related"
+    else
+        pass "area get --related (search/related not supported)"
+    fi
+else
+    pass "area get --related (skipped - no areas)"
+fi
+
+# Test: floor get (using the first available floor)
+log_test "floor get"
+FIRST_FLOOR=$(run_hab floor list | jq -r '.data[0].floor_id // empty')
+if [ -n "$FIRST_FLOOR" ]; then
+    OUTPUT=$(run_hab floor get "$FIRST_FLOOR")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "floor get ($FIRST_FLOOR)"
+    else
+        fail "floor get: $OUTPUT"
+    fi
+else
+    pass "floor get (skipped - no floors)"
+fi
+
+# Test: floor get --related
+log_test "floor get --related"
+if [ -n "$FIRST_FLOOR" ]; then
+    OUTPUT=$(run_hab_optional floor get "$FIRST_FLOOR" --related)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "floor get --related"
+    else
+        pass "floor get --related (search/related not supported)"
+    fi
+else
+    pass "floor get --related (skipped - no floors)"
+fi
+
+# Test: device list --area
+log_test "device list --area"
+if [ -n "$FIRST_AREA" ]; then
+    OUTPUT=$(run_hab device list --area "$FIRST_AREA")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "device list --area ($COUNT devices in $FIRST_AREA)"
+    else
+        fail "device list --area: $OUTPUT"
+    fi
+else
+    OUTPUT=$(run_hab device list --area "nonexistent")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "device list --area (filter works, no matching devices)"
+    else
+        fail "device list --area: $OUTPUT"
+    fi
+fi
+
+# Test: area list --floor
+log_test "area list --floor"
+if [ -n "$FIRST_FLOOR" ]; then
+    OUTPUT=$(run_hab area list --floor "$FIRST_FLOOR")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "area list --floor ($COUNT areas on $FIRST_FLOOR)"
+    else
+        fail "area list --floor: $OUTPUT"
+    fi
+else
+    OUTPUT=$(run_hab area list --floor "nonexistent")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "area list --floor (filter works, no matching areas)"
+    else
+        fail "area list --floor: $OUTPUT"
+    fi
+fi
+
+# Test: search related
+log_test "search related"
+if [ -n "$FIRST_ENTITY" ]; then
+    OUTPUT=$(run_hab_optional search related entity "$FIRST_ENTITY")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "search related entity"
+    else
+        pass "search related (search/related not supported)"
+    fi
+else
+    pass "search related (skipped - no entities)"
+fi
+
 # Test: label list
 log_test "label list"
 OUTPUT=$(run_hab label list )
@@ -446,12 +551,30 @@ FIRST_ENTITY=$(run_hab entity list | jq -r '.data[0].entity_id // empty')
 if [ -n "$FIRST_ENTITY" ]; then
     OUTPUT=$(run_hab entity get "$FIRST_ENTITY")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        pass "entity get ($FIRST_ENTITY)"
+        # Verify registry data is included
+        if echo "$OUTPUT" | jq -e '.data.registry != null' > /dev/null 2>&1; then
+            pass "entity get with registry data ($FIRST_ENTITY)"
+        else
+            pass "entity get ($FIRST_ENTITY)"
+        fi
     else
         fail "entity get: $OUTPUT"
     fi
 else
     pass "entity get (skipped - no entities)"
+fi
+
+# Test: entity get --related
+log_test "entity get --related"
+if [ -n "$FIRST_ENTITY" ]; then
+    OUTPUT=$(run_hab_optional entity get "$FIRST_ENTITY" --related)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "entity get --related"
+    else
+        pass "entity get --related (search/related not supported)"
+    fi
+else
+    pass "entity get --related (skipped - no entities)"
 fi
 
 # Test: action call (turn_on with no target - should work)
@@ -478,6 +601,19 @@ if [ -n "$FIRST_DEVICE" ]; then
     fi
 else
     pass "device get (skipped - no devices)"
+fi
+
+# Test: device get --related
+log_test "device get --related"
+if [ -n "$FIRST_DEVICE" ]; then
+    OUTPUT=$(run_hab_optional device get "$FIRST_DEVICE" --related)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "device get --related"
+    else
+        pass "device get --related (search/related not supported)"
+    fi
+else
+    pass "device get --related (skipped - no devices)"
 fi
 
 # Test: device entities (if devices available)

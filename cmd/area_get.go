@@ -9,23 +9,23 @@ import (
 	"github.com/spf13/viper"
 )
 
-var deviceGetRelated bool
+var areaGetRelated bool
 
-var deviceGetCmd = &cobra.Command{
-	Use:   "get <device_id>",
-	Short: "Get device details",
-	Long:  `Get detailed information about a device. Use --related to also show related automations, scripts, scenes, and entities.`,
+var areaGetCmd = &cobra.Command{
+	Use:   "get <area_id>",
+	Short: "Get area details",
+	Long:  `Get detailed information about an area. Use --related to also show related devices, entities, automations, and scripts.`,
 	Args:  cobra.ExactArgs(1),
-	RunE:  runDeviceGet,
+	RunE:  runAreaGet,
 }
 
 func init() {
-	deviceCmd.AddCommand(deviceGetCmd)
-	deviceGetCmd.Flags().BoolVarP(&deviceGetRelated, "related", "r", false, "Include related items (automations, scripts, scenes, entities)")
+	areaCmd.AddCommand(areaGetCmd)
+	areaGetCmd.Flags().BoolVarP(&areaGetRelated, "related", "r", false, "Include related items (devices, entities, automations, scripts)")
 }
 
-func runDeviceGet(cmd *cobra.Command, args []string) error {
-	deviceID := args[0]
+func runAreaGet(cmd *cobra.Command, args []string) error {
+	areaID := args[0]
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 
@@ -41,26 +41,26 @@ func runDeviceGet(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	devices, err := ws.DeviceRegistryList()
+	areas, err := ws.AreaRegistryList()
 	if err != nil {
 		return err
 	}
 
-	for _, d := range devices {
-		device, ok := d.(map[string]interface{})
+	for _, a := range areas {
+		area, ok := a.(map[string]interface{})
 		if !ok {
 			continue
 		}
-		if device["id"] == deviceID {
-			result := device
+		if area["area_id"] == areaID {
+			result := area
 
 			// Get related items if requested
-			if deviceGetRelated {
-				related, err := ws.SearchRelated("device", deviceID)
+			if areaGetRelated {
+				related, err := ws.SearchRelated("area", areaID)
 				if err == nil && len(related) > 0 {
 					// Create a new map to avoid modifying the original
 					resultMap := make(map[string]interface{})
-					for k, v := range device {
+					for k, v := range area {
 						resultMap[k] = v
 					}
 					resultMap["related"] = related
@@ -73,5 +73,5 @@ func runDeviceGet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return fmt.Errorf("device '%s' not found", deviceID)
+	return fmt.Errorf("area '%s' not found", areaID)
 }
