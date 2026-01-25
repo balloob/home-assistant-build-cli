@@ -33,9 +33,8 @@ func init() {
 
 func runScriptUpdate(cmd *cobra.Command, args []string) error {
 	scriptID := args[0]
-	if !strings.HasPrefix(scriptID, "script.") {
-		scriptID = "script." + scriptID
-	}
+	// Strip "script." prefix if provided - API expects just the ID
+	scriptID = strings.TrimPrefix(scriptID, "script.")
 
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
