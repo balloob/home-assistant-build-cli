@@ -48,10 +48,23 @@ func DiscoverServers(timeout time.Duration) ([]DiscoveredServer, error) {
 		}
 	}()
 
-	// Collect discovered entries
+	// Collect discovered entries, deduplicating by URL
+	seen := make(map[string]int) // URL -> index in servers slice
 	for entry := range entries {
 		server := parseServiceEntry(entry)
-		servers = append(servers, server)
+		if server.URL == "" {
+			continue
+		}
+
+		if existingIdx, exists := seen[server.URL]; exists {
+			// Keep the entry with the shorter name (likely the original, not "Home-2", "Home-3", etc.)
+			if len(server.Name) < len(servers[existingIdx].Name) {
+				servers[existingIdx] = server
+			}
+		} else {
+			seen[server.URL] = len(servers)
+			servers = append(servers, server)
+		}
 	}
 
 	// Sort by name for consistent display
