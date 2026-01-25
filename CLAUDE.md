@@ -25,6 +25,8 @@ go test ./...
 ./test/run_integration_test.sh script      # Script tests
 ./test/run_integration_test.sh dashboard   # Dashboard tests
 ./test/run_integration_test.sh helpers     # Helper type tests
+./test/run_integration_test.sh template    # Template entity tests
+./test/run_integration_test.sh calendar    # Calendar and to-do list tests
 ./test/run_integration_test.sh misc        # Actions, zones, backups, etc.
 
 # Run a single test file standalone (starts its own empty-hass)
@@ -41,7 +43,9 @@ Tests are organized by feature into separate files:
 - **test/test_automation.sh**: Automation and automation-trigger/condition/action CRUD
 - **test/test_script.sh**: Script and script-action CRUD
 - **test/test_dashboard.sh**: Dashboard, views, badges, sections, cards CRUD
-- **test/test_helpers.sh**: Helper types (input_boolean, input_number, counter, timer, group, etc.)
+- **test/test_helpers.sh**: Helper types (input_boolean, counter, timer, group, etc.)
+- **test/test_template.sh**: Template entity types (sensor, binary_sensor, switch, number, etc.)
+- **test/test_calendar_todo.sh**: Local calendar and to-do list helpers
 - **test/test_misc.sh**: Actions, zones, backups, blueprints
 
 Each test file can:
@@ -93,5 +97,8 @@ When adding new commands:
    - Automation commands: `test/test_automation.sh`
    - Script commands: `test/test_script.sh`
    - Dashboard commands: `test/test_dashboard.sh`
+   - Helper commands: `test/test_helpers.sh`
+   - Template entity commands: `test/test_template.sh`
+   - Calendar/to-do commands: `test/test_calendar_todo.sh`
    - Other commands: `test/test_misc.sh`
 3. Use `client.PrintOutput()` or `client.PrintSuccess()` for consistent output

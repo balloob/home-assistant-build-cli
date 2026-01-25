@@ -63,6 +63,7 @@ hab area create "Kitchen"
 - **Text Mode**: Human-readable output with `--text` flag
 - **OAuth Support**: Full OAuth2 flow for authentication
 - **WebSocket & REST**: Uses both APIs for optimal functionality
+- **Auto-Update**: Checks for updates automatically and supports self-updating via `hab update`
 
 ## Commands
 
@@ -86,6 +87,9 @@ hab area create "Kitchen"
 | `device` | Device management |
 | `group` | Manage entity groups |
 | `thread` | Manage Thread credentials |
+| `search` | Search for items and relationships |
+| `update` | Update hab to the latest version |
+| `version` | Show version information |
 
 Run `hab <command> --help` for more information on each command.
 
