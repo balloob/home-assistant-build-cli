@@ -21,12 +21,19 @@ var automationListCmd = &cobra.Command{
 func init() {
 	automationCmd.AddCommand(automationListCmd)
 	automationListCmd.Flags().Bool("extended", false, "Include extended info (description, blueprint) - requires extra API calls")
+	automationListCmd.Flags().String("blueprint", "", "Filter to automations using specific blueprint path (implies --extended)")
 }
 
 func runAutomationList(cmd *cobra.Command, args []string) error {
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 	extended, _ := cmd.Flags().GetBool("extended")
+	blueprintFilter, _ := cmd.Flags().GetString("blueprint")
+
+	// Blueprint filter implies extended mode
+	if blueprintFilter != "" {
+		extended = true
+	}
 
 	manager := auth.NewManager(configDir)
 	creds, err := manager.GetCredentials()
@@ -74,6 +81,8 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 			"last_triggered": attrs["last_triggered"],
 		}
 
+		var blueprintPath string
+
 		// Fetch extended info if requested
 		if extended && restClient != nil {
 			automationID := strings.TrimPrefix(entityID, "automation.")
@@ -91,9 +100,22 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 					if blueprint, ok := configMap["use_blueprint"].(map[string]interface{}); ok {
 						if path, ok := blueprint["path"].(string); ok {
 							item["blueprint"] = path
+							blueprintPath = path
 						}
 					}
 				}
+			}
+		}
+
+		// Apply blueprint filter
+		if blueprintFilter != "" {
+			// Filter by specific blueprint path, or use "*" to match any blueprint
+			if blueprintFilter == "*" {
+				if blueprintPath == "" {
+					continue
+				}
+			} else if blueprintPath != blueprintFilter {
+				continue
 			}
 		}
 

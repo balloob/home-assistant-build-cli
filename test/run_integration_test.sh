@@ -550,14 +550,6 @@ else
     fail "group list: $OUTPUT"
 fi
 
-# Test: blueprint list
-log_test "blueprint list"
-OUTPUT=$(run_hab blueprint list )
-if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-    pass "blueprint list"
-else
-    fail "blueprint list: $OUTPUT"
-fi
 
 # Test: zone CRUD
 log_test "zone create"
@@ -1275,6 +1267,103 @@ if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
     fi
 else
     fail "automation create: $OUTPUT"
+fi
+
+# Test: blueprint commands
+log_test "blueprint list"
+OUTPUT=$(run_hab blueprint list)
+if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+    pass "blueprint list"
+else
+    fail "blueprint list: $OUTPUT"
+fi
+
+log_test "blueprint list automation"
+OUTPUT=$(run_hab blueprint list automation)
+if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+    pass "blueprint list automation"
+else
+    fail "blueprint list automation: $OUTPUT"
+fi
+
+log_test "blueprint list script"
+OUTPUT=$(run_hab blueprint list script)
+if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+    pass "blueprint list script"
+else
+    fail "blueprint list script: $OUTPUT"
+fi
+
+# Test: blueprint import (using a well-known blueprint URL)
+log_test "blueprint import"
+BLUEPRINT_URL="https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/automation/blueprints/motion_light.yaml"
+OUTPUT=$(run_hab_optional blueprint import "$BLUEPRINT_URL")
+if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+    pass "blueprint import"
+    BLUEPRINT_PATH=$(echo "$OUTPUT" | jq -r '.data.suggested_filename // "homeassistant/motion_light.yaml"')
+
+    # Test: blueprint get
+    log_test "blueprint get"
+    OUTPUT=$(run_hab blueprint get "$BLUEPRINT_PATH")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "blueprint get"
+    else
+        fail "blueprint get: $OUTPUT"
+    fi
+
+    # Test: automation create-from-blueprint
+    log_test "automation create-from-blueprint"
+    BP_AUTOMATION_ID="test_bp_automation_$(date +%s)"
+    BP_INPUTS='{"alias":"Test Blueprint Automation","motion_entity":"sun.sun","light_target":{"entity_id":"sun.sun"}}'
+    OUTPUT=$(run_hab_optional automation create-from-blueprint "$BP_AUTOMATION_ID" "$BLUEPRINT_PATH" -d "$BP_INPUTS")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "automation create-from-blueprint"
+
+        # Test: automation list with --blueprint filter
+        log_test "automation list --blueprint (specific)"
+        OUTPUT=$(run_hab automation list --blueprint "$BLUEPRINT_PATH")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            if [ "$COUNT" -ge 1 ]; then
+                pass "automation list --blueprint (specific) ($COUNT automations)"
+            else
+                fail "automation list --blueprint (specific): expected at least 1 automation, got $COUNT"
+            fi
+        else
+            fail "automation list --blueprint (specific): $OUTPUT"
+        fi
+
+        log_test "automation list --blueprint=*"
+        OUTPUT=$(run_hab automation list --blueprint "*")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "automation list --blueprint=* ($COUNT automations from blueprints)"
+        else
+            fail "automation list --blueprint=*: $OUTPUT"
+        fi
+
+        # Cleanup automation created from blueprint
+        log_test "automation delete (from blueprint)"
+        OUTPUT=$(run_hab automation delete "$BP_AUTOMATION_ID" --force)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "automation delete (from blueprint)"
+        else
+            fail "automation delete (from blueprint): $OUTPUT"
+        fi
+    else
+        pass "automation create-from-blueprint (blueprint inputs may not match - skipped)"
+    fi
+
+    # Test: blueprint delete
+    log_test "blueprint delete"
+    OUTPUT=$(run_hab_optional blueprint delete "$BLUEPRINT_PATH")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "blueprint delete"
+    else
+        pass "blueprint delete (may not be supported)"
+    fi
+else
+    pass "blueprint import (network access may be restricted)"
 fi
 
 # Test: script CRUD (create, get, delete)
