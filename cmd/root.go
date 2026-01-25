@@ -7,15 +7,17 @@ import (
 	"strings"
 
 	"github.com/home-assistant/hab/config"
+	"github.com/home-assistant/hab/update"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	cfgDir   string
-	textMode bool
-	verbose  bool
+	cfgDir          string
+	textMode        bool
+	verbose         bool
+	skipUpdateCheck bool
 )
 
 // ExitWithError signals that the program should exit with a non-zero code
@@ -42,6 +44,9 @@ Output is JSON by default for easy parsing. Use --text for human-readable output
 			"verbose": viper.GetBool("verbose"),
 			"config":  viper.GetString("config"),
 		}).Debug("Configuration")
+
+		// Check for updates (skip for update and version commands)
+		checkUpdateOnStartup(cmd)
 	},
 }
 
@@ -60,15 +65,18 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgDir, "config", "", "Path to config directory (default: ~/.config/home-assistant-builder)")
 	rootCmd.PersistentFlags().BoolVar(&textMode, "text", false, "Use human-readable text output instead of JSON")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show verbose output")
+	rootCmd.PersistentFlags().BoolVar(&skipUpdateCheck, "skip-update-check", false, "Skip automatic update check on startup")
 
 	// Bind flags to viper
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("text", rootCmd.PersistentFlags().Lookup("text"))
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	viper.BindPFlag("skip-update-check", rootCmd.PersistentFlags().Lookup("skip-update-check"))
 
 	// Shell completions
 	rootCmd.RegisterFlagCompletionFunc("text", boolCompletions)
 	rootCmd.RegisterFlagCompletionFunc("verbose", boolCompletions)
+	rootCmd.RegisterFlagCompletionFunc("skip-update-check", boolCompletions)
 	rootCmd.MarkPersistentFlagDirname("config")
 }
 
@@ -82,6 +90,7 @@ func initConfig() {
 	viper.BindEnv("url", "HAB_URL")
 	viper.BindEnv("token", "HAB_TOKEN")
 	viper.BindEnv("refresh-token", "HAB_REFRESH_TOKEN")
+	viper.BindEnv("skip-update-check", "HAB_SKIP_UPDATE_CHECK")
 
 	// Set defaults
 	config.InitDefaults()
@@ -104,4 +113,51 @@ func initConfig() {
 
 func boolCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
+}
+
+// checkUpdateOnStartup checks for updates once per day and prints a notice if available
+func checkUpdateOnStartup(cmd *cobra.Command) {
+	// Skip for certain commands
+	cmdName := cmd.Name()
+	if cmdName == "update" || cmdName == "version" || cmdName == "help" {
+		return
+	}
+
+	// Skip if flag is set or env var is set
+	if viper.GetBool("skip-update-check") {
+		return
+	}
+
+	// Skip if version is dev (development build)
+	if Version == "" || Version == "dev" {
+		return
+	}
+
+	configDir := viper.GetString("config")
+
+	// Check if we need to check for updates (once per day)
+	if !update.NeedsCheck(configDir) {
+		// Load cached check to see if we should show notice
+		check, err := update.LoadUpdateCheck(configDir)
+		if err == nil && check != nil {
+			check.CurrentVersion = Version
+			if update.HasUpdate(check) {
+				update.PrintUpdateNotice(check)
+			}
+		}
+		return
+	}
+
+	// Perform update check in background (don't block startup)
+	go func() {
+		check, err := update.CheckForUpdate(configDir, Version)
+		if err != nil {
+			log.WithError(err).Debug("Failed to check for updates")
+			return
+		}
+
+		if update.HasUpdate(check) {
+			update.PrintUpdateNotice(check)
+		}
+	}()
 }
