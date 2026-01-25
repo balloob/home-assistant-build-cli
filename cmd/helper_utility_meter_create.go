@@ -43,7 +43,7 @@ func init() {
 	helperUtilityMeterCreateCmd.Flags().StringSliceVar(&helperUtilityMeterCreateTariffs, "tariffs", nil, "Tariff names for multi-rate billing")
 	helperUtilityMeterCreateCmd.Flags().BoolVar(&helperUtilityMeterCreateDeltaValues, "delta-values", false, "Source provides delta values (incremental)")
 	helperUtilityMeterCreateCmd.Flags().BoolVar(&helperUtilityMeterCreateNetConsumption, "net-consumption", false, "Net meter that can increase/decrease")
-	helperUtilityMeterCreateCmd.Flags().BoolVar(&helperUtilityMeterCreatePeriodicallyReset, "periodically-resetting", false, "Source may reset to 0 independently")
+	helperUtilityMeterCreateCmd.Flags().BoolVar(&helperUtilityMeterCreatePeriodicallyReset, "periodically-resetting", true, "Source may reset to 0 independently")
 	helperUtilityMeterCreateCmd.Flags().BoolVar(&helperUtilityMeterCreateAlwaysAvailable, "always-available", false, "Maintain last value when source unavailable")
 	helperUtilityMeterCreateCmd.MarkFlagRequired("source")
 }
@@ -53,13 +53,21 @@ func runHelperUtilityMeterCreate(cmd *cobra.Command, args []string) error {
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 
-	// Validate cycle
-	validCycles := map[string]bool{
-		"quarter-hourly": true, "hourly": true, "daily": true, "weekly": true,
-		"monthly": true, "bimonthly": true, "quarterly": true, "yearly": true,
+	// Map user-friendly cycle names to internal values
+	cycleMap := map[string]string{
+		"none":           "none",
+		"quarter-hourly": "quarter_hourly",
+		"hourly":         "hourly",
+		"daily":          "daily",
+		"weekly":         "weekly",
+		"monthly":        "monthly",
+		"bimonthly":      "bimonthly",
+		"quarterly":      "quarterly",
+		"yearly":         "yearly",
 	}
-	if !validCycles[helperUtilityMeterCreateCycle] {
-		return fmt.Errorf("invalid cycle: %s. Valid cycles: quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarterly, yearly", helperUtilityMeterCreateCycle)
+	meterType, ok := cycleMap[helperUtilityMeterCreateCycle]
+	if !ok {
+		return fmt.Errorf("invalid cycle: %s. Valid cycles: none, quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarterly, yearly", helperUtilityMeterCreateCycle)
 	}
 
 	manager := auth.NewManager(configDir)
@@ -81,19 +89,21 @@ func runHelperUtilityMeterCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no flow_id in response")
 	}
 
-	// Submit the form data
-	formData := map[string]interface{}{
-		"name":                  name,
-		"source":                helperUtilityMeterCreateSource,
-		"cycle":                 helperUtilityMeterCreateCycle,
-		"offset":                helperUtilityMeterCreateOffset,
-		"delta_values":          helperUtilityMeterCreateDeltaValues,
-		"net_consumption":       helperUtilityMeterCreateNetConsumption,
-		"periodically_resetting": helperUtilityMeterCreatePeriodicallyReset,
+	// Submit the form data with correct field names
+	tariffs := helperUtilityMeterCreateTariffs
+	if tariffs == nil {
+		tariffs = []string{}
 	}
-
-	if len(helperUtilityMeterCreateTariffs) > 0 {
-		formData["tariffs"] = helperUtilityMeterCreateTariffs
+	formData := map[string]interface{}{
+		"name":                         name,
+		"source_sensor":                helperUtilityMeterCreateSource,
+		"meter_type":                   meterType,
+		"meter_offset":                 helperUtilityMeterCreateOffset,
+		"meter_delta_values":           helperUtilityMeterCreateDeltaValues,
+		"meter_net_consumption":        helperUtilityMeterCreateNetConsumption,
+		"meter_periodically_resetting": helperUtilityMeterCreatePeriodicallyReset,
+		"tariffs":                      tariffs,
+		"sensor_always_available":      helperUtilityMeterCreateAlwaysAvailable,
 	}
 
 	finalResult, err := rest.ConfigFlowStep(flowID, formData)

@@ -10,12 +10,11 @@ import (
 )
 
 var (
-	helperDerivativeCreateSource      string
-	helperDerivativeCreateRound       int
-	helperDerivativeCreateUnitPrefix  string
-	helperDerivativeCreateUnitTime    string
-	helperDerivativeCreateUnit        string
-	helperDerivativeCreateTimeWindow  string
+	helperDerivativeCreateSource     string
+	helperDerivativeCreateRound      int
+	helperDerivativeCreateUnitPrefix string
+	helperDerivativeCreateUnitTime   string
+	helperDerivativeCreateTimeWindow string
 )
 
 var helperDerivativeCreateCmd = &cobra.Command{
@@ -39,11 +38,10 @@ Examples:
 func init() {
 	helperDerivativeParentCmd.AddCommand(helperDerivativeCreateCmd)
 	helperDerivativeCreateCmd.Flags().StringVarP(&helperDerivativeCreateSource, "source", "s", "", "Source entity ID (required)")
-	helperDerivativeCreateCmd.Flags().IntVar(&helperDerivativeCreateRound, "round", 3, "Decimal places for rounding")
-	helperDerivativeCreateCmd.Flags().StringVar(&helperDerivativeCreateUnitPrefix, "unit-prefix", "", "Metric unit prefix (n, µ, m, k, M, G, T)")
+	helperDerivativeCreateCmd.Flags().IntVar(&helperDerivativeCreateRound, "round", 2, "Decimal places for rounding (0-6)")
+	helperDerivativeCreateCmd.Flags().StringVar(&helperDerivativeCreateUnitPrefix, "unit-prefix", "", "Metric unit prefix (n, µ, m, k, M, G, T, P)")
 	helperDerivativeCreateCmd.Flags().StringVar(&helperDerivativeCreateUnitTime, "unit-time", "h", "Time unit for derivative (s, min, h, d)")
-	helperDerivativeCreateCmd.Flags().StringVar(&helperDerivativeCreateUnit, "unit", "", "Custom unit of measurement")
-	helperDerivativeCreateCmd.Flags().StringVar(&helperDerivativeCreateTimeWindow, "time-window", "", "Time window for smoothing (e.g., 00:05:00)")
+	helperDerivativeCreateCmd.Flags().StringVar(&helperDerivativeCreateTimeWindow, "time-window", "00:00:00", "Time window for smoothing (HH:MM:SS format)")
 	helperDerivativeCreateCmd.MarkFlagRequired("source")
 }
 
@@ -60,11 +58,14 @@ func runHelperDerivativeCreate(cmd *cobra.Command, args []string) error {
 
 	// Validate unit prefix if provided
 	if helperDerivativeCreateUnitPrefix != "" {
-		validPrefixes := map[string]bool{"n": true, "µ": true, "m": true, "k": true, "M": true, "G": true, "T": true}
+		validPrefixes := map[string]bool{"n": true, "µ": true, "m": true, "k": true, "M": true, "G": true, "T": true, "P": true}
 		if !validPrefixes[helperDerivativeCreateUnitPrefix] {
-			return fmt.Errorf("invalid unit prefix: %s. Valid prefixes: n, µ, m, k, M, G, T", helperDerivativeCreateUnitPrefix)
+			return fmt.Errorf("invalid unit prefix: %s. Valid prefixes: n, µ, m, k, M, G, T, P", helperDerivativeCreateUnitPrefix)
 		}
 	}
+
+	// Parse time window (HH:MM:SS format)
+	timeWindow := parseDuration(helperDerivativeCreateTimeWindow)
 
 	manager := auth.NewManager(configDir)
 	creds, err := manager.GetCredentials()
@@ -87,27 +88,15 @@ func runHelperDerivativeCreate(cmd *cobra.Command, args []string) error {
 
 	// Submit the form data
 	formData := map[string]interface{}{
-		"name":      name,
-		"source":    helperDerivativeCreateSource,
-		"round":     helperDerivativeCreateRound,
-		"unit_time": helperDerivativeCreateUnitTime,
+		"name":        name,
+		"source":      helperDerivativeCreateSource,
+		"round":       helperDerivativeCreateRound,
+		"unit_time":   helperDerivativeCreateUnitTime,
+		"time_window": timeWindow,
 	}
 
 	if helperDerivativeCreateUnitPrefix != "" {
 		formData["unit_prefix"] = helperDerivativeCreateUnitPrefix
-	}
-	if helperDerivativeCreateUnit != "" {
-		formData["unit_of_measurement"] = helperDerivativeCreateUnit
-	}
-	if cmd.Flags().Changed("time-window") && helperDerivativeCreateTimeWindow != "" {
-		formData["time_window"] = map[string]interface{}{
-			"hours":   0,
-			"minutes": 0,
-			"seconds": 0,
-		}
-		// Parse time window if provided (format: HH:MM:SS)
-		// For simplicity, pass as string and let HA parse it
-		formData["time_window"] = helperDerivativeCreateTimeWindow
 	}
 
 	finalResult, err := rest.ConfigFlowStep(flowID, formData)
@@ -121,11 +110,15 @@ func runHelperDerivativeCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("config flow aborted: %s", reason)
 	}
 
-	if resultType != "create_entry" {
-		// May need another step - check for form
-		if resultType == "form" {
-			return fmt.Errorf("unexpected form step required: %v", finalResult)
+	if resultType == "form" {
+		// Check for errors in the form response
+		if errors, ok := finalResult["errors"].(map[string]interface{}); ok && len(errors) > 0 {
+			return fmt.Errorf("validation error: %v", errors)
 		}
+		return fmt.Errorf("unexpected form step required: %v", finalResult)
+	}
+
+	if resultType != "create_entry" {
 		return fmt.Errorf("unexpected flow result type: %s", resultType)
 	}
 
@@ -141,4 +134,15 @@ func runHelperDerivativeCreate(cmd *cobra.Command, args []string) error {
 
 	client.PrintSuccess(result, textMode, fmt.Sprintf("Derivative sensor '%s' created successfully.", name))
 	return nil
+}
+
+// parseDuration converts HH:MM:SS format to a duration object
+func parseDuration(s string) map[string]interface{} {
+	hours, minutes, seconds := 0, 0, 0
+	fmt.Sscanf(s, "%d:%d:%d", &hours, &minutes, &seconds)
+	return map[string]interface{}{
+		"hours":   hours,
+		"minutes": minutes,
+		"seconds": seconds,
+	}
 }

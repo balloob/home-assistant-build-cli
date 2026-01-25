@@ -101,25 +101,41 @@ func runHelperStatisticsCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no flow_id in response")
 	}
 
-	// Submit the form data
-	formData := map[string]interface{}{
-		"name":                 name,
-		"entity_id":            helperStatisticsCreateEntity,
+	// Step 1: Submit name and entity_id
+	step1Data := map[string]interface{}{
+		"name":      name,
+		"entity_id": helperStatisticsCreateEntity,
+	}
+
+	step1Result, err := rest.ConfigFlowStep(flowID, step1Data)
+	if err != nil {
+		return fmt.Errorf("failed to submit entity selection: %w", err)
+	}
+
+	step1Type, _ := step1Result["type"].(string)
+	if step1Type == "abort" {
+		reason, _ := step1Result["reason"].(string)
+		return fmt.Errorf("config flow aborted: %s", reason)
+	}
+
+	// Step 2: Submit the state characteristic and options
+	step2Data := map[string]interface{}{
 		"state_characteristic": helperStatisticsCreateCharacteristic,
 		"precision":            helperStatisticsCreatePrecision,
+		"keep_last_sample":     false,
 	}
 
 	if hasSamplingSize {
-		formData["sampling_size"] = helperStatisticsCreateSamplingSize
+		step2Data["samples_max_buffer_size"] = helperStatisticsCreateSamplingSize
 	}
 	if hasMaxAge {
-		formData["max_age"] = helperStatisticsCreateMaxAge
+		step2Data["max_age"] = parseDurationForStatistics(helperStatisticsCreateMaxAge)
 	}
 	if helperStatisticsCreateCharacteristic == "percentile" {
-		formData["percentile"] = helperStatisticsCreatePercentile
+		step2Data["percentile"] = helperStatisticsCreatePercentile
 	}
 
-	finalResult, err := rest.ConfigFlowStep(flowID, formData)
+	finalResult, err := rest.ConfigFlowStep(flowID, step2Data)
 	if err != nil {
 		return fmt.Errorf("failed to create statistics sensor: %w", err)
 	}
@@ -130,10 +146,14 @@ func runHelperStatisticsCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("config flow aborted: %s", reason)
 	}
 
-	if resultType != "create_entry" {
-		if resultType == "form" {
-			return fmt.Errorf("unexpected form step required: %v", finalResult)
+	if resultType == "form" {
+		if errors, ok := finalResult["errors"].(map[string]interface{}); ok && len(errors) > 0 {
+			return fmt.Errorf("validation error: %v", errors)
 		}
+		return fmt.Errorf("unexpected form step required: %v", finalResult)
+	}
+
+	if resultType != "create_entry" {
 		return fmt.Errorf("unexpected flow result type: %s", resultType)
 	}
 
@@ -150,4 +170,15 @@ func runHelperStatisticsCreate(cmd *cobra.Command, args []string) error {
 
 	client.PrintSuccess(result, textMode, fmt.Sprintf("Statistics sensor '%s' created successfully.", name))
 	return nil
+}
+
+// parseDurationForStatistics converts HH:MM:SS format to a duration object for statistics
+func parseDurationForStatistics(s string) map[string]interface{} {
+	hours, minutes, seconds := 0, 0, 0
+	fmt.Sscanf(s, "%d:%d:%d", &hours, &minutes, &seconds)
+	return map[string]interface{}{
+		"hours":   hours,
+		"minutes": minutes,
+		"seconds": seconds,
+	}
 }
