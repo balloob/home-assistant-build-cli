@@ -1,5 +1,5 @@
 #!/bin/bash
-# Helper tests: helper types, input_boolean, input_number, input_text, input_select, counter, timer, group
+# Helper tests: helper types, input_boolean, input_number, input_text, input_select, input_button, input_datetime, counter, timer, schedule, group
 # Usage: ./test_helpers.sh (standalone) or source from run_integration_test.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -203,6 +203,127 @@ run_helpers_tests() {
         fi
     else
         fail "helper-timer create: $OUTPUT"
+    fi
+
+    # ==========================================================================
+    # Input Button Helper Tests
+    # ==========================================================================
+    log_test "helper-input-button list"
+    OUTPUT=$(run_hab helper-input-button list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "helper-input-button list ($COUNT helpers)"
+    else
+        fail "helper-input-button list: $OUTPUT"
+    fi
+
+    log_test "helper-input-button create"
+    OUTPUT=$(run_hab helper-input-button create "Test Button" --icon "mdi:button-pointer")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        INPUT_BUTTON_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-button create (id: $INPUT_BUTTON_ID)"
+
+        log_test "helper-input-button delete"
+        OUTPUT=$(run_hab helper-input-button delete "$INPUT_BUTTON_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-button delete"
+        else
+            fail "helper-input-button delete: $OUTPUT"
+        fi
+    else
+        fail "helper-input-button create: $OUTPUT"
+    fi
+
+    # ==========================================================================
+    # Input Datetime Helper Tests
+    # ==========================================================================
+    log_test "helper-input-datetime list"
+    OUTPUT=$(run_hab helper-input-datetime list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "helper-input-datetime list ($COUNT helpers)"
+    else
+        fail "helper-input-datetime list: $OUTPUT"
+    fi
+
+    log_test "helper-input-datetime create (date only)"
+    OUTPUT=$(run_hab helper-input-datetime create "Test Date" --has-date --icon "mdi:calendar")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        INPUT_DATETIME_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-datetime create date only (id: $INPUT_DATETIME_ID)"
+
+        log_test "helper-input-datetime delete (date)"
+        OUTPUT=$(run_hab helper-input-datetime delete "$INPUT_DATETIME_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-datetime delete (date)"
+        else
+            fail "helper-input-datetime delete (date): $OUTPUT"
+        fi
+    else
+        fail "helper-input-datetime create (date only): $OUTPUT"
+    fi
+
+    log_test "helper-input-datetime create (time only)"
+    OUTPUT=$(run_hab helper-input-datetime create "Test Time" --has-time --icon "mdi:clock")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        INPUT_DATETIME_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-datetime create time only (id: $INPUT_DATETIME_ID)"
+
+        log_test "helper-input-datetime delete (time)"
+        OUTPUT=$(run_hab helper-input-datetime delete "$INPUT_DATETIME_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-datetime delete (time)"
+        else
+            fail "helper-input-datetime delete (time): $OUTPUT"
+        fi
+    else
+        fail "helper-input-datetime create (time only): $OUTPUT"
+    fi
+
+    log_test "helper-input-datetime create (date and time)"
+    OUTPUT=$(run_hab helper-input-datetime create "Test DateTime" --has-date --has-time)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        INPUT_DATETIME_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-datetime create date+time (id: $INPUT_DATETIME_ID)"
+
+        log_test "helper-input-datetime delete (datetime)"
+        OUTPUT=$(run_hab helper-input-datetime delete "$INPUT_DATETIME_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-datetime delete (datetime)"
+        else
+            fail "helper-input-datetime delete (datetime): $OUTPUT"
+        fi
+    else
+        fail "helper-input-datetime create (date and time): $OUTPUT"
+    fi
+
+    # ==========================================================================
+    # Schedule Helper Tests
+    # ==========================================================================
+    log_test "helper-schedule list"
+    OUTPUT=$(run_hab helper-schedule list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "helper-schedule list ($COUNT helpers)"
+    else
+        fail "helper-schedule list: $OUTPUT"
+    fi
+
+    log_test "helper-schedule create"
+    OUTPUT=$(run_hab helper-schedule create "Test Schedule" --icon "mdi:calendar-clock")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        SCHEDULE_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-schedule create (id: $SCHEDULE_ID)"
+
+        log_test "helper-schedule delete"
+        OUTPUT=$(run_hab helper-schedule delete "$SCHEDULE_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-schedule delete"
+        else
+            fail "helper-schedule delete: $OUTPUT"
+        fi
+    else
+        fail "helper-schedule create: $OUTPUT"
     fi
 
     # ==========================================================================
