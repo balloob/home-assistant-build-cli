@@ -66,16 +66,11 @@ func runHelperGroupCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
-		return err
-	}
-	defer ws.Close()
+	// Use REST API for config flows
+	rest := client.NewRestClient(creds.URL, creds.AccessToken)
 
 	// Step 1: Start the config flow for group
-	flowResult, err := ws.ConfigFlowInit("group", map[string]interface{}{
-		"source": "user",
-	})
+	flowResult, err := rest.ConfigFlowCreate("group")
 	if err != nil {
 		return fmt.Errorf("failed to start config flow: %w", err)
 	}
@@ -86,7 +81,7 @@ func runHelperGroupCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Step 2: Select the group type (menu step)
-	menuResult, err := ws.ConfigFlowConfigure(flowID, map[string]interface{}{
+	menuResult, err := rest.ConfigFlowStep(flowID, map[string]interface{}{
 		"next_step_id": helperGroupCreateType,
 	})
 	if err != nil {
@@ -112,7 +107,7 @@ func runHelperGroupCreate(cmd *cobra.Command, args []string) error {
 		formData["all"] = helperGroupCreateAll
 	}
 
-	finalResult, err := ws.ConfigFlowConfigure(flowID, formData)
+	finalResult, err := rest.ConfigFlowStep(flowID, formData)
 	if err != nil {
 		return fmt.Errorf("failed to create group: %w", err)
 	}

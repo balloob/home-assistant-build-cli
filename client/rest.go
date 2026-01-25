@@ -313,3 +313,33 @@ func (c *RestClient) GetHistory(entityID string, startTime, endTime string) ([]i
 	}
 	return nil, fmt.Errorf("unexpected response type")
 }
+
+// Config Flow methods
+
+// ConfigFlowCreate starts a new config flow for an integration
+func (c *RestClient) ConfigFlowCreate(handler string) (map[string]interface{}, error) {
+	body := map[string]interface{}{
+		"handler":              handler,
+		"show_advanced_options": false,
+	}
+	result, err := c.Post("config/config_entries/flow", body)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
+
+// ConfigFlowStep submits data to a config flow step
+func (c *RestClient) ConfigFlowStep(flowID string, data map[string]interface{}) (map[string]interface{}, error) {
+	result, err := c.Post("config/config_entries/flow/"+flowID, data)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
