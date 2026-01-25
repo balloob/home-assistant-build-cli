@@ -1,0 +1,77 @@
+package cmd
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/home-assistant/hab/auth"
+	"github.com/home-assistant/hab/client"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var automationActionGetCmd = &cobra.Command{
+	Use:   "get <automation_id> <action_index>",
+	Short: "Get a specific action",
+	Long:  `Get a specific action from an automation by index.`,
+	Args:  cobra.ExactArgs(2),
+	RunE:  runAutomationActionGet,
+}
+
+func init() {
+	automationActionCmd.AddCommand(automationActionGetCmd)
+}
+
+func runAutomationActionGet(cmd *cobra.Command, args []string) error {
+	automationID := args[0]
+	automationID = strings.TrimPrefix(automationID, "automation.")
+	actionIndex, err := strconv.Atoi(args[1])
+	if err != nil {
+		return fmt.Errorf("invalid action index: %s", args[1])
+	}
+
+	configDir := viper.GetString("config")
+	textMode := viper.GetBool("text")
+
+	manager := auth.NewManager(configDir)
+	restClient, err := manager.GetRestClient()
+	if err != nil {
+		return err
+	}
+
+	result, err := restClient.Get("config/automation/config/" + automationID)
+	if err != nil {
+		return err
+	}
+
+	config, ok := result.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid automation config")
+	}
+
+	// Try both "actions" and "action" keys
+	actions, ok := config["actions"].([]interface{})
+	if !ok {
+		actions, ok = config["action"].([]interface{})
+		if !ok {
+			return fmt.Errorf("no actions in automation")
+		}
+	}
+
+	if actionIndex < 0 || actionIndex >= len(actions) {
+		return fmt.Errorf("action index %d out of range (0-%d)", actionIndex, len(actions)-1)
+	}
+
+	action := actions[actionIndex]
+	actionData := make(map[string]interface{})
+	if a, ok := action.(map[string]interface{}); ok {
+		for k, val := range a {
+			actionData[k] = val
+		}
+	}
+	actionData["index"] = actionIndex
+
+	client.PrintOutput(actionData, textMode, "")
+	return nil
+}

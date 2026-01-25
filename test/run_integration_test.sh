@@ -894,7 +894,7 @@ fi
 # Test: automation CRUD (create, get, update, delete)
 log_test "automation create"
 AUTOMATION_ID="test_automation_$(date +%s)"
-AUTOMATION_CONFIG='{"alias":"Test Automation","triggers":[],"actions":[]}'
+AUTOMATION_CONFIG='{"alias":"Test Automation","triggers":[],"conditions":[],"actions":[]}'
 OUTPUT=$(run_hab automation create "$AUTOMATION_ID" -d "$AUTOMATION_CONFIG")
 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
     pass "automation create (id: $AUTOMATION_ID)"
@@ -905,6 +905,141 @@ if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         pass "automation get"
     else
         fail "automation get: $OUTPUT"
+    fi
+
+    # Test: automation-trigger CRUD
+    log_test "automation-trigger list"
+    OUTPUT=$(run_hab_optional automation-trigger list "$AUTOMATION_ID")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        TRIGGER_COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        pass "automation-trigger list ($TRIGGER_COUNT triggers)"
+
+        log_test "automation-trigger create"
+        TRIGGER_CONFIG='{"trigger":"state","entity_id":"sun.sun"}'
+        OUTPUT=$(run_hab_optional automation-trigger create "$AUTOMATION_ID" -d "$TRIGGER_CONFIG")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            NEW_TRIGGER_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
+            pass "automation-trigger create (index: $NEW_TRIGGER_INDEX)"
+
+            log_test "automation-trigger get"
+            OUTPUT=$(run_hab_optional automation-trigger get "$AUTOMATION_ID" "$NEW_TRIGGER_INDEX")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-trigger get"
+            else
+                fail "automation-trigger get: $OUTPUT"
+            fi
+
+            log_test "automation-trigger update"
+            TRIGGER_UPDATE_CONFIG='{"trigger":"state","entity_id":"sun.sun","to":"above_horizon"}'
+            OUTPUT=$(run_hab_optional automation-trigger update "$AUTOMATION_ID" "$NEW_TRIGGER_INDEX" -d "$TRIGGER_UPDATE_CONFIG")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-trigger update"
+            else
+                fail "automation-trigger update: $OUTPUT"
+            fi
+
+            log_test "automation-trigger delete"
+            OUTPUT=$(run_hab_optional automation-trigger delete "$AUTOMATION_ID" "$NEW_TRIGGER_INDEX" --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-trigger delete"
+            else
+                fail "automation-trigger delete: $OUTPUT"
+            fi
+        else
+            fail "automation-trigger create: $OUTPUT"
+        fi
+    else
+        pass "automation-trigger list (not available)"
+    fi
+
+    # Test: automation-condition CRUD
+    log_test "automation-condition list"
+    OUTPUT=$(run_hab_optional automation-condition list "$AUTOMATION_ID")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        CONDITION_COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        pass "automation-condition list ($CONDITION_COUNT conditions)"
+
+        log_test "automation-condition create"
+        CONDITION_CONFIG='{"condition":"state","entity_id":"sun.sun","state":"above_horizon"}'
+        OUTPUT=$(run_hab_optional automation-condition create "$AUTOMATION_ID" -d "$CONDITION_CONFIG")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            NEW_CONDITION_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
+            pass "automation-condition create (index: $NEW_CONDITION_INDEX)"
+
+            log_test "automation-condition get"
+            OUTPUT=$(run_hab_optional automation-condition get "$AUTOMATION_ID" "$NEW_CONDITION_INDEX")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-condition get"
+            else
+                fail "automation-condition get: $OUTPUT"
+            fi
+
+            log_test "automation-condition update"
+            CONDITION_UPDATE_CONFIG='{"condition":"state","entity_id":"sun.sun","state":"below_horizon"}'
+            OUTPUT=$(run_hab_optional automation-condition update "$AUTOMATION_ID" "$NEW_CONDITION_INDEX" -d "$CONDITION_UPDATE_CONFIG")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-condition update"
+            else
+                fail "automation-condition update: $OUTPUT"
+            fi
+
+            log_test "automation-condition delete"
+            OUTPUT=$(run_hab_optional automation-condition delete "$AUTOMATION_ID" "$NEW_CONDITION_INDEX" --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-condition delete"
+            else
+                fail "automation-condition delete: $OUTPUT"
+            fi
+        else
+            fail "automation-condition create: $OUTPUT"
+        fi
+    else
+        pass "automation-condition list (not available)"
+    fi
+
+    # Test: automation-action CRUD
+    log_test "automation-action list"
+    OUTPUT=$(run_hab_optional automation-action list "$AUTOMATION_ID")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        ACTION_COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        pass "automation-action list ($ACTION_COUNT actions)"
+
+        log_test "automation-action create"
+        ACTION_CONFIG='{"action":"homeassistant.turn_on","target":{"entity_id":"sun.sun"}}'
+        OUTPUT=$(run_hab_optional automation-action create "$AUTOMATION_ID" -d "$ACTION_CONFIG")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            NEW_ACTION_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
+            pass "automation-action create (index: $NEW_ACTION_INDEX)"
+
+            log_test "automation-action get"
+            OUTPUT=$(run_hab_optional automation-action get "$AUTOMATION_ID" "$NEW_ACTION_INDEX")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-action get"
+            else
+                fail "automation-action get: $OUTPUT"
+            fi
+
+            log_test "automation-action update"
+            ACTION_UPDATE_CONFIG='{"action":"homeassistant.turn_off","target":{"entity_id":"sun.sun"}}'
+            OUTPUT=$(run_hab_optional automation-action update "$AUTOMATION_ID" "$NEW_ACTION_INDEX" -d "$ACTION_UPDATE_CONFIG")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-action update"
+            else
+                fail "automation-action update: $OUTPUT"
+            fi
+
+            log_test "automation-action delete"
+            OUTPUT=$(run_hab_optional automation-action delete "$AUTOMATION_ID" "$NEW_ACTION_INDEX" --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "automation-action delete"
+            else
+                fail "automation-action delete: $OUTPUT"
+            fi
+        else
+            fail "automation-action create: $OUTPUT"
+        fi
+    else
+        pass "automation-action list (not available)"
     fi
 
     log_test "automation delete"
@@ -932,6 +1067,51 @@ if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         pass "script get"
     else
         fail "script get: $OUTPUT"
+    fi
+
+    # Test: script-action CRUD
+    log_test "script-action list"
+    OUTPUT=$(run_hab_optional script-action list "$SCRIPT_ID")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        ACTION_COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        pass "script-action list ($ACTION_COUNT actions)"
+
+        log_test "script-action create"
+        ACTION_CONFIG='{"action":"homeassistant.turn_on","target":{"entity_id":"sun.sun"}}'
+        OUTPUT=$(run_hab_optional script-action create "$SCRIPT_ID" -d "$ACTION_CONFIG")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            NEW_ACTION_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
+            pass "script-action create (index: $NEW_ACTION_INDEX)"
+
+            log_test "script-action get"
+            OUTPUT=$(run_hab_optional script-action get "$SCRIPT_ID" "$NEW_ACTION_INDEX")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "script-action get"
+            else
+                fail "script-action get: $OUTPUT"
+            fi
+
+            log_test "script-action update"
+            ACTION_UPDATE_CONFIG='{"action":"homeassistant.turn_off","target":{"entity_id":"sun.sun"}}'
+            OUTPUT=$(run_hab_optional script-action update "$SCRIPT_ID" "$NEW_ACTION_INDEX" -d "$ACTION_UPDATE_CONFIG")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "script-action update"
+            else
+                fail "script-action update: $OUTPUT"
+            fi
+
+            log_test "script-action delete"
+            OUTPUT=$(run_hab_optional script-action delete "$SCRIPT_ID" "$NEW_ACTION_INDEX" --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "script-action delete"
+            else
+                fail "script-action delete: $OUTPUT"
+            fi
+        else
+            fail "script-action create: $OUTPUT"
+        fi
+    else
+        pass "script-action list (not available)"
     fi
 
     log_test "script delete"
