@@ -17,21 +17,25 @@ source "$ORCHESTRATOR_DIR/lib/common.sh"
 # Set trap for cleanup
 trap cleanup EXIT
 
-# Available test groups and their corresponding functions
-declare -A TEST_GROUPS=(
-    ["core"]="run_core_tests"
-    ["registry"]="run_registry_tests"
-    ["automation"]="run_automation_tests"
-    ["script"]="run_script_tests"
-    ["dashboard"]="run_dashboard_tests"
-    ["helpers"]="run_helpers_tests"
-    ["template"]="run_template_tests"
-    ["calendar"]="run_calendar_todo_tests"
-    ["misc"]="run_misc_tests"
-)
-
 # Order of test execution (matters for dependencies)
 TEST_ORDER=(core registry automation script dashboard helpers template calendar misc)
+
+# Get the test function for a given group (Bash 3.x compatible - no associative arrays)
+get_test_function() {
+    local group="$1"
+    case "$group" in
+        core)       echo "run_core_tests" ;;
+        registry)   echo "run_registry_tests" ;;
+        automation) echo "run_automation_tests" ;;
+        script)     echo "run_script_tests" ;;
+        dashboard)  echo "run_dashboard_tests" ;;
+        helpers)    echo "run_helpers_tests" ;;
+        template)   echo "run_template_tests" ;;
+        calendar)   echo "run_calendar_todo_tests" ;;
+        misc)       echo "run_misc_tests" ;;
+        *)          echo "" ;;
+    esac
+}
 
 # Source all test files
 source_test_files() {
@@ -82,7 +86,9 @@ run_tests() {
             print_usage
             exit 0
         fi
-        if [ -z "${TEST_GROUPS[$group]}" ]; then
+        local func
+        func=$(get_test_function "$group")
+        if [ -z "$func" ]; then
             echo -e "${RED}Unknown test group: $group${NC}"
             print_usage
             exit 1
@@ -91,7 +97,8 @@ run_tests() {
 
     # Run each test group
     for group in "${groups[@]}"; do
-        local func="${TEST_GROUPS[$group]}"
+        local func
+        func=$(get_test_function "$group")
         echo -e "\n${BLUE}Running test group: $group${NC}"
         $func
     done
