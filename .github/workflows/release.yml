@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+          - goos: windows
+            goarch: arm64
+            suffix: ".exe"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o hab-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} .
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: hab-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
