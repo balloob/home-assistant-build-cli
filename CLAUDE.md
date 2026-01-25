@@ -43,3 +43,10 @@ go test ./...
 
 - REST API via `client.RestClient` (uses resty) for state queries, service calls
 - WebSocket API via `client.WebSocketClient` for registry operations (areas, floors, labels, devices)
+
+### Adding New Commands
+
+When adding new commands:
+1. Follow the existing command structure pattern (parent command + subcommand files)
+2. **Always add tests** for new commands in `test/run_integration_test.sh`
+3. Use `client.PrintOutput()` or `client.PrintSuccess()` for consistent output

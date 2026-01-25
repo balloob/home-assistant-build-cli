@@ -404,6 +404,16 @@ else
     fail "action docs: $OUTPUT"
 fi
 
+# Test: action data (list actions that return data)
+log_test "action data"
+OUTPUT=$(run_hab action data )
+if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+    COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+    pass "action data ($COUNT actions that return data)"
+else
+    fail "action data: $OUTPUT"
+fi
+
 # Test: entity search (search for any entity)
 log_test "entity search"
 OUTPUT=$(run_hab entity search "." )
