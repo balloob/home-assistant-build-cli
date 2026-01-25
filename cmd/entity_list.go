@@ -12,13 +12,15 @@ import (
 var (
 	entityListDomain string
 	entityListArea   string
+	entityListFloor  string
 	entityListLabel  string
+	entityListDevice string
 )
 
 var entityListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List entities with optional filtering",
-	Long:  `List all entities with optional filtering by domain, area, or label.`,
+	Long:  `List all entities with optional filtering by domain, area, floor, label, or device.`,
 	RunE:  runEntityList,
 }
 
@@ -26,7 +28,9 @@ func init() {
 	entityCmd.AddCommand(entityListCmd)
 	entityListCmd.Flags().StringVarP(&entityListDomain, "domain", "d", "", "Filter by domain (e.g., light, switch)")
 	entityListCmd.Flags().StringVarP(&entityListArea, "area", "a", "", "Filter by area ID")
+	entityListCmd.Flags().StringVarP(&entityListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
 	entityListCmd.Flags().StringVarP(&entityListLabel, "label", "l", "", "Filter by label ID")
+	entityListCmd.Flags().StringVar(&entityListDevice, "device", "", "Filter by device ID")
 }
 
 func runEntityList(cmd *cobra.Command, args []string) error {
@@ -60,6 +64,24 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Build area-to-floor map if floor filter is used
+	var areaFloorMap map[string]string
+	if entityListFloor != "" {
+		areaFloorMap = make(map[string]string)
+		areas, err := ws.AreaRegistryList()
+		if err == nil {
+			for _, a := range areas {
+				if area, ok := a.(map[string]interface{}); ok {
+					areaID, _ := area["area_id"].(string)
+					floorID, _ := area["floor_id"].(string)
+					if areaID != "" {
+						areaFloorMap[areaID] = floorID
+					}
+				}
+			}
+		}
+	}
+
 	// Get states
 	states, err := ws.GetStates()
 	if err != nil {
@@ -87,12 +109,38 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 
 		regEntry := registryMap[entityID]
 
+		// Apply device filter
+		if entityListDevice != "" {
+			if regEntry == nil {
+				continue
+			}
+			deviceID, _ := regEntry["device_id"].(string)
+			if deviceID != entityListDevice {
+				continue
+			}
+		}
+
 		// Apply area filter
 		if entityListArea != "" {
 			if regEntry == nil {
 				continue
 			}
 			if areaID, _ := regEntry["area_id"].(string); areaID != entityListArea {
+				continue
+			}
+		}
+
+		// Apply floor filter (check if entity's area is on the specified floor)
+		if entityListFloor != "" {
+			if regEntry == nil {
+				continue
+			}
+			areaID, _ := regEntry["area_id"].(string)
+			if areaID == "" {
+				continue
+			}
+			floorID := areaFloorMap[areaID]
+			if floorID != entityListFloor {
 				continue
 			}
 		}
@@ -119,10 +167,12 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		friendlyName, _ := attrs["friendly_name"].(string)
 
 		var areaID string
+		var deviceID string
 		var labels []interface{}
 		var disabled bool
 		if regEntry != nil {
 			areaID, _ = regEntry["area_id"].(string)
+			deviceID, _ = regEntry["device_id"].(string)
 			labels, _ = regEntry["labels"].([]interface{})
 			disabled = regEntry["disabled_by"] != nil
 		}
@@ -132,6 +182,7 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 			"state":     state["state"],
 			"name":      friendlyName,
 			"area_id":   areaID,
+			"device_id": deviceID,
 			"labels":    labels,
 			"disabled":  disabled,
 		})

@@ -7,18 +7,22 @@ import (
 	"github.com/spf13/viper"
 )
 
-var deviceListArea string
+var (
+	deviceListArea  string
+	deviceListFloor string
+)
 
 var deviceListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all devices",
-	Long:  `List all devices in Home Assistant. Use --area to filter by area.`,
+	Long:  `List all devices in Home Assistant. Use --area to filter by area, or --floor to filter by floor.`,
 	RunE:  runDeviceList,
 }
 
 func init() {
 	deviceCmd.AddCommand(deviceListCmd)
 	deviceListCmd.Flags().StringVarP(&deviceListArea, "area", "a", "", "Filter by area ID")
+	deviceListCmd.Flags().StringVarP(&deviceListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
 }
 
 func runDeviceList(cmd *cobra.Command, args []string) error {
@@ -37,6 +41,24 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
+	// Build area-to-floor map if floor filter is used
+	var areaFloorMap map[string]string
+	if deviceListFloor != "" {
+		areaFloorMap = make(map[string]string)
+		areas, err := ws.AreaRegistryList()
+		if err == nil {
+			for _, a := range areas {
+				if area, ok := a.(map[string]interface{}); ok {
+					areaID, _ := area["area_id"].(string)
+					floorID, _ := area["floor_id"].(string)
+					if areaID != "" {
+						areaFloorMap[areaID] = floorID
+					}
+				}
+			}
+		}
+	}
+
 	devices, err := ws.DeviceRegistryList()
 	if err != nil {
 		return err
@@ -49,10 +71,22 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
+		areaID, _ := device["area_id"].(string)
+
 		// Apply area filter
 		if deviceListArea != "" {
-			areaID, _ := device["area_id"].(string)
 			if areaID != deviceListArea {
+				continue
+			}
+		}
+
+		// Apply floor filter (check if device's area is on the specified floor)
+		if deviceListFloor != "" {
+			if areaID == "" {
+				continue
+			}
+			floorID := areaFloorMap[areaID]
+			if floorID != deviceListFloor {
 				continue
 			}
 		}

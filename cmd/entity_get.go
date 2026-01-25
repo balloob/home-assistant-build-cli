@@ -7,19 +7,26 @@ import (
 	"github.com/spf13/viper"
 )
 
-var entityGetRelated bool
+var (
+	entityGetRelated bool
+	entityGetDevice  bool
+)
 
 var entityGetCmd = &cobra.Command{
 	Use:   "get <entity_id>",
 	Short: "Get entity state, attributes, and registry data",
-	Long:  `Get the current state, attributes, and registry data of an entity. Use --related to also show related automations, scripts, scenes, and devices.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runEntityGet,
+	Long: `Get the current state, attributes, and registry data of an entity.
+
+Use --related to show related automations, scripts, scenes, and devices.
+Use --device to include the parent device information.`,
+	Args: cobra.ExactArgs(1),
+	RunE: runEntityGet,
 }
 
 func init() {
 	entityCmd.AddCommand(entityGetCmd)
 	entityGetCmd.Flags().BoolVarP(&entityGetRelated, "related", "r", false, "Include related items (automations, scripts, scenes, devices)")
+	entityGetCmd.Flags().BoolVarP(&entityGetDevice, "device", "D", false, "Include parent device information")
 }
 
 func runEntityGet(cmd *cobra.Command, args []string) error {
@@ -74,6 +81,23 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 
 	// Add registry data under "registry" key
 	result["registry"] = registry
+
+	// Get parent device if requested
+	if entityGetDevice {
+		if deviceID, ok := registry["device_id"].(string); ok && deviceID != "" {
+			devices, err := ws.DeviceRegistryList()
+			if err == nil {
+				for _, d := range devices {
+					if device, ok := d.(map[string]interface{}); ok {
+						if device["id"] == deviceID {
+							result["device"] = device
+							break
+						}
+					}
+				}
+			}
+		}
+	}
 
 	// Get related items if requested
 	if entityGetRelated {

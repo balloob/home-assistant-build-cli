@@ -351,6 +351,76 @@ else
     pass "search related (skipped - no entities)"
 fi
 
+# Test: entity list --floor
+log_test "entity list --floor"
+if [ -n "$FIRST_FLOOR" ]; then
+    OUTPUT=$(run_hab entity list --floor "$FIRST_FLOOR")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "entity list --floor ($COUNT entities on $FIRST_FLOOR)"
+    else
+        fail "entity list --floor: $OUTPUT"
+    fi
+else
+    OUTPUT=$(run_hab entity list --floor "nonexistent")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "entity list --floor (filter works, no matching entities)"
+    else
+        fail "entity list --floor: $OUTPUT"
+    fi
+fi
+
+# Test: device list --floor
+log_test "device list --floor"
+if [ -n "$FIRST_FLOOR" ]; then
+    OUTPUT=$(run_hab device list --floor "$FIRST_FLOOR")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "device list --floor ($COUNT devices on $FIRST_FLOOR)"
+    else
+        fail "device list --floor: $OUTPUT"
+    fi
+else
+    OUTPUT=$(run_hab device list --floor "nonexistent")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "device list --floor (filter works, no matching devices)"
+    else
+        fail "device list --floor: $OUTPUT"
+    fi
+fi
+
+# Test: entity list --device
+log_test "entity list --device"
+if [ -n "$FIRST_DEVICE" ]; then
+    OUTPUT=$(run_hab entity list --device "$FIRST_DEVICE")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "entity list --device ($COUNT entities for device)"
+    else
+        fail "entity list --device: $OUTPUT"
+    fi
+else
+    OUTPUT=$(run_hab entity list --device "nonexistent")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "entity list --device (filter works, no matching entities)"
+    else
+        fail "entity list --device: $OUTPUT"
+    fi
+fi
+
+# Test: entity get --device
+log_test "entity get --device"
+if [ -n "$FIRST_ENTITY" ]; then
+    OUTPUT=$(run_hab_optional entity get "$FIRST_ENTITY" --device)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "entity get --device"
+    else
+        fail "entity get --device: $OUTPUT"
+    fi
+else
+    pass "entity get --device (skipped - no entities)"
+fi
+
 # Test: label list
 log_test "label list"
 OUTPUT=$(run_hab label list )
