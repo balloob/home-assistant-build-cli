@@ -961,9 +961,23 @@ func (c *WebSocketClient) ResolveEntityToConfigEntry(entityID string) (string, e
 	return "", nil
 }
 
-// DeleteHelperByEntityOrEntryID deletes a helper by either entity_id or config_entry_id
-// It first tries to use the ID as a config_entry_id, then falls back to resolving from entity_id
+// DeleteHelperByEntityOrEntryID deletes a helper by either entity_id, helper ID, or config_entry_id
+// For storage helpers (input_boolean, input_number, etc.): uses WebSocket helper/delete command
+// For config entry helpers (group): uses config entry deletion
 func (c *WebSocketClient) DeleteHelperByEntityOrEntryID(id string, helperType string) error {
+	// Storage-based helper types use WebSocket commands, not config entries
+	storageHelperTypes := map[string]bool{
+		"input_boolean":  true,
+		"input_number":   true,
+		"input_text":     true,
+		"input_select":   true,
+		"input_datetime": true,
+		"input_button":   true,
+		"counter":        true,
+		"timer":          true,
+		"schedule":       true,
+	}
+
 	// Check if it looks like an entity_id (contains a dot)
 	isEntityID := false
 	for _, ch := range id {
@@ -973,6 +987,16 @@ func (c *WebSocketClient) DeleteHelperByEntityOrEntryID(id string, helperType st
 		}
 	}
 
+	// For storage-based helpers, use the HelperDelete WebSocket command
+	if storageHelperTypes[helperType] {
+		helperID := id
+		if isEntityID {
+			helperID = extractIDFromEntityID(id)
+		}
+		return c.HelperDelete(helperType, helperID)
+	}
+
+	// For config entry based helpers (like group), resolve to config_entry_id
 	var entryID string
 	if isEntityID {
 		// Try to resolve entity_id to config_entry_id
@@ -981,10 +1005,6 @@ func (c *WebSocketClient) DeleteHelperByEntityOrEntryID(id string, helperType st
 			return fmt.Errorf("failed to resolve entity_id: %w", err)
 		}
 		if resolved == "" {
-			// No config entry, try using the WebSocket helper delete for non-config-entry helpers
-			if helperType != "" && helperType != "group" {
-				return c.HelperDelete(helperType, extractIDFromEntityID(id))
-			}
 			return fmt.Errorf("entity %s does not have a config entry", id)
 		}
 		entryID = resolved

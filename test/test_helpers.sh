@@ -44,19 +44,17 @@ run_helpers_tests() {
     fi
 
     log_test "helper-input-boolean create"
-    OUTPUT=$(run_hab_optional helper-input-boolean create "Test Boolean" --icon "mdi:toggle-switch")
+    OUTPUT=$(run_hab helper-input-boolean create "Test Boolean" --icon "mdi:toggle-switch")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        HELPER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
-        pass "helper-input-boolean create (id: $HELPER_ID)"
+        INPUT_BOOLEAN_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-boolean create (id: $INPUT_BOOLEAN_ID)"
 
-        if [ -n "$HELPER_ID" ]; then
-            log_test "helper-input-boolean delete"
-            OUTPUT=$(run_hab_optional helper-input-boolean delete "$HELPER_ID")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "helper-input-boolean delete"
-            else
-                fail "helper-input-boolean delete: $OUTPUT"
-            fi
+        log_test "helper-input-boolean delete"
+        OUTPUT=$(run_hab helper-input-boolean delete "$INPUT_BOOLEAN_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-boolean delete"
+        else
+            fail "helper-input-boolean delete: $OUTPUT"
         fi
     else
         fail "helper-input-boolean create: $OUTPUT"
@@ -75,19 +73,17 @@ run_helpers_tests() {
     fi
 
     log_test "helper-input-number create"
-    OUTPUT=$(run_hab_optional helper-input-number create "Test Number" --min 0 --max 100 --step 5 --unit "%")
+    OUTPUT=$(run_hab helper-input-number create "Test Number" --min 0 --max 100 --step 5 --unit "%")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        HELPER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
-        pass "helper-input-number create (id: $HELPER_ID)"
+        INPUT_NUMBER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-number create (id: $INPUT_NUMBER_ID)"
 
-        if [ -n "$HELPER_ID" ]; then
-            log_test "helper-input-number delete"
-            OUTPUT=$(run_hab_optional helper-input-number delete "$HELPER_ID")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "helper-input-number delete"
-            else
-                fail "helper-input-number delete: $OUTPUT"
-            fi
+        log_test "helper-input-number delete"
+        OUTPUT=$(run_hab helper-input-number delete "$INPUT_NUMBER_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-number delete"
+        else
+            fail "helper-input-number delete: $OUTPUT"
         fi
     else
         fail "helper-input-number create: $OUTPUT"
@@ -106,19 +102,17 @@ run_helpers_tests() {
     fi
 
     log_test "helper-input-text create"
-    OUTPUT=$(run_hab_optional helper-input-text create "Test Text" --min 0 --max 50)
+    OUTPUT=$(run_hab helper-input-text create "Test Text" --min 0 --max 50)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        HELPER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
-        pass "helper-input-text create (id: $HELPER_ID)"
+        INPUT_TEXT_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-text create (id: $INPUT_TEXT_ID)"
 
-        if [ -n "$HELPER_ID" ]; then
-            log_test "helper-input-text delete"
-            OUTPUT=$(run_hab_optional helper-input-text delete "$HELPER_ID")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "helper-input-text delete"
-            else
-                fail "helper-input-text delete: $OUTPUT"
-            fi
+        log_test "helper-input-text delete"
+        OUTPUT=$(run_hab helper-input-text delete "$INPUT_TEXT_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-text delete"
+        else
+            fail "helper-input-text delete: $OUTPUT"
         fi
     else
         fail "helper-input-text create: $OUTPUT"
@@ -137,19 +131,17 @@ run_helpers_tests() {
     fi
 
     log_test "helper-input-select create"
-    OUTPUT=$(run_hab_optional helper-input-select create "Test Select" --options "Option1,Option2,Option3")
+    OUTPUT=$(run_hab helper-input-select create "Test Select" --options "Option1,Option2,Option3")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        HELPER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
-        pass "helper-input-select create (id: $HELPER_ID)"
+        INPUT_SELECT_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-input-select create (id: $INPUT_SELECT_ID)"
 
-        if [ -n "$HELPER_ID" ]; then
-            log_test "helper-input-select delete"
-            OUTPUT=$(run_hab_optional helper-input-select delete "$HELPER_ID")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "helper-input-select delete"
-            else
-                fail "helper-input-select delete: $OUTPUT"
-            fi
+        log_test "helper-input-select delete"
+        OUTPUT=$(run_hab helper-input-select delete "$INPUT_SELECT_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-input-select delete"
+        else
+            fail "helper-input-select delete: $OUTPUT"
         fi
     else
         fail "helper-input-select create: $OUTPUT"
@@ -168,19 +160,17 @@ run_helpers_tests() {
     fi
 
     log_test "helper-counter create"
-    OUTPUT=$(run_hab_optional helper-counter create "Test Counter" --initial 0 --step 1 --minimum 0 --maximum 100)
+    OUTPUT=$(run_hab helper-counter create "Test Counter" --initial 0 --step 1 --minimum 0 --maximum 100)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        HELPER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
-        pass "helper-counter create (id: $HELPER_ID)"
+        COUNTER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-counter create (id: $COUNTER_ID)"
 
-        if [ -n "$HELPER_ID" ]; then
-            log_test "helper-counter delete"
-            OUTPUT=$(run_hab_optional helper-counter delete "$HELPER_ID")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "helper-counter delete"
-            else
-                fail "helper-counter delete: $OUTPUT"
-            fi
+        log_test "helper-counter delete"
+        OUTPUT=$(run_hab helper-counter delete "$COUNTER_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-counter delete"
+        else
+            fail "helper-counter delete: $OUTPUT"
         fi
     else
         fail "helper-counter create: $OUTPUT"
@@ -199,19 +189,17 @@ run_helpers_tests() {
     fi
 
     log_test "helper-timer create"
-    OUTPUT=$(run_hab_optional helper-timer create "Test Timer" --duration "00:05:00")
+    OUTPUT=$(run_hab helper-timer create "Test Timer" --duration "00:05:00")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        HELPER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
-        pass "helper-timer create (id: $HELPER_ID)"
+        TIMER_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "helper-timer create (id: $TIMER_ID)"
 
-        if [ -n "$HELPER_ID" ]; then
-            log_test "helper-timer delete"
-            OUTPUT=$(run_hab_optional helper-timer delete "$HELPER_ID")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "helper-timer delete"
-            else
-                fail "helper-timer delete: $OUTPUT"
-            fi
+        log_test "helper-timer delete"
+        OUTPUT=$(run_hab helper-timer delete "$TIMER_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-timer delete"
+        else
+            fail "helper-timer delete: $OUTPUT"
         fi
     else
         fail "helper-timer create: $OUTPUT"
@@ -231,25 +219,20 @@ run_helpers_tests() {
 
     log_test "helper-group create"
     # Groups use config entry flow - need to specify type and entities of matching domain
-    # Using switch type with a switch entity would be ideal, but empty-hass may not have one
-    # So we test with sensor type which is more flexible
-    OUTPUT=$(run_hab_optional helper-group create "Test Group" --type sensor --entities "sun.sun")
+    OUTPUT=$(run_hab helper-group create "Test Group" --type sensor --entities "sun.sun")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
-        pass "helper-group create (entry_id: $ENTRY_ID)"
+        GROUP_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+        pass "helper-group create (entry_id: $GROUP_ENTRY_ID)"
 
-        if [ -n "$ENTRY_ID" ]; then
-            log_test "helper-group delete"
-            OUTPUT=$(run_hab_optional helper-group delete "$ENTRY_ID")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "helper-group delete"
-            else
-                fail "helper-group delete: $OUTPUT"
-            fi
+        log_test "helper-group delete"
+        OUTPUT=$(run_hab helper-group delete "$GROUP_ENTRY_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper-group delete"
+        else
+            fail "helper-group delete: $OUTPUT"
         fi
     else
-        # Group creation may fail if empty-hass doesn't support config flows
-        pass "helper-group create (config flow not supported by server)"
+        fail "helper-group create: $OUTPUT"
     fi
 }
 
