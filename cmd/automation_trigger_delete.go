@@ -89,7 +89,7 @@ func runAutomationTriggerDelete(cmd *cobra.Command, args []string) error {
 	config[triggerKey] = triggers
 
 	// Save the config
-	_, err = restClient.Post("config/automation/config/automation."+automationID, config)
+	_, err = restClient.Post("config/automation/config/"+automationID, config)
 	if err != nil {
 		return err
 	}

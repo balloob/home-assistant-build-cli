@@ -81,7 +81,7 @@ func runScriptActionUpdate(cmd *cobra.Command, args []string) error {
 	config["sequence"] = sequence
 
 	// Save the config
-	_, err = restClient.Post("config/script/config/script."+scriptID, config)
+	_, err = restClient.Post("config/script/config/"+scriptID, config)
 	if err != nil {
 		return err
 	}
