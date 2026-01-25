@@ -1,5 +1,5 @@
 #!/bin/bash
-# Miscellaneous tests: actions, helpers, groups, zones, backups, blueprints, threads
+# Miscellaneous tests: actions, zones, backups, blueprints, threads
 # Usage: ./test_misc.sh (standalone) or source from run_integration_test.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,26 +50,6 @@ run_misc_tests() {
         pass "action call (action not available)"
     else
         fail "action call: $OUTPUT"
-    fi
-
-    # Test: helper list
-    log_test "helper list"
-    OUTPUT=$(run_hab helper list)
-    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
-        pass "helper list ($COUNT helpers)"
-    else
-        fail "helper list: $OUTPUT"
-    fi
-
-    # Test: group list
-    log_test "group list"
-    OUTPUT=$(run_hab group list)
-    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
-        pass "group list ($COUNT groups)"
-    else
-        fail "group list: $OUTPUT"
     fi
 
     # Test: blueprint list

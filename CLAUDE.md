@@ -24,7 +24,8 @@ go test ./...
 ./test/run_integration_test.sh automation  # Automation tests
 ./test/run_integration_test.sh script      # Script tests
 ./test/run_integration_test.sh dashboard   # Dashboard tests
-./test/run_integration_test.sh misc        # Actions, helpers, zones, backups, etc.
+./test/run_integration_test.sh helpers     # Helper type tests
+./test/run_integration_test.sh misc        # Actions, zones, backups, etc.
 
 # Run a single test file standalone (starts its own empty-hass)
 ./test/test_automation.sh
@@ -40,7 +41,8 @@ Tests are organized by feature into separate files:
 - **test/test_automation.sh**: Automation and automation-trigger/condition/action CRUD
 - **test/test_script.sh**: Script and script-action CRUD
 - **test/test_dashboard.sh**: Dashboard, views, badges, sections, cards CRUD
-- **test/test_misc.sh**: Actions, helpers, groups, zones, backups, blueprints
+- **test/test_helpers.sh**: Helper types (input_boolean, input_number, counter, timer, group, etc.)
+- **test/test_misc.sh**: Actions, zones, backups, blueprints
 
 Each test file can:
 1. Run **standalone**: `./test/test_automation.sh` - starts its own empty-hass instance

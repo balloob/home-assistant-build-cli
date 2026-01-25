@@ -823,3 +823,185 @@ func (c *WebSocketClient) SearchRelated(itemType, itemID string) (map[string][]s
 func GetWebSocketClientForAuth(baseURL, token string) *WebSocketClient {
 	return NewWebSocketClient(baseURL, token)
 }
+
+// Helper operations
+
+// HelperList returns all helpers of a specific type
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+func (c *WebSocketClient) HelperList(helperType string) ([]interface{}, error) {
+	result, err := c.SendCommand(helperType+"/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	if arr, ok := result.([]interface{}); ok {
+		return arr, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
+
+// HelperCreate creates a new helper of a specific type
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+func (c *WebSocketClient) HelperCreate(helperType string, params map[string]interface{}) (map[string]interface{}, error) {
+	result, err := c.SendCommand(helperType+"/create", params)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
+
+// HelperUpdate updates an existing helper
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+// The idField depends on the helper type (e.g., "input_boolean_id", "counter_id", "timer_id", "schedule_id")
+func (c *WebSocketClient) HelperUpdate(helperType, helperID string, params map[string]interface{}) (map[string]interface{}, error) {
+	// Determine the ID field name based on helper type
+	idField := helperType + "_id"
+	p := map[string]interface{}{idField: helperID}
+	for k, v := range params {
+		p[k] = v
+	}
+	result, err := c.SendCommand(helperType+"/update", p)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
+
+// HelperDelete deletes a helper
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+// The idField depends on the helper type (e.g., "input_boolean_id", "counter_id", "timer_id", "schedule_id")
+func (c *WebSocketClient) HelperDelete(helperType, helperID string) error {
+	// Determine the ID field name based on helper type
+	idField := helperType + "_id"
+	_, err := c.SendCommand(helperType+"/delete", map[string]interface{}{
+		idField: helperID,
+	})
+	return err
+}
+
+// Config Entry Flow operations
+
+// ConfigFlowInit starts a new config flow for an integration
+func (c *WebSocketClient) ConfigFlowInit(handler string, context map[string]interface{}) (map[string]interface{}, error) {
+	params := map[string]interface{}{
+		"handler": handler,
+	}
+	if context != nil {
+		params["context"] = context
+	}
+	result, err := c.SendCommand("config_entries/flow", params)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
+
+// ConfigFlowConfigure submits data to a config flow step
+func (c *WebSocketClient) ConfigFlowConfigure(flowID string, data map[string]interface{}) (map[string]interface{}, error) {
+	params := map[string]interface{}{
+		"flow_id": flowID,
+	}
+	if data != nil {
+		for k, v := range data {
+			params[k] = v
+		}
+	}
+	result, err := c.SendCommand("config_entries/flow", params)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
+
+// ConfigEntriesList returns all config entries, optionally filtered by domain
+func (c *WebSocketClient) ConfigEntriesList(domain string) ([]interface{}, error) {
+	params := map[string]interface{}{}
+	if domain != "" {
+		params["domain"] = domain
+	}
+	result, err := c.SendCommand("config_entries/get", params)
+	if err != nil {
+		return nil, err
+	}
+	if arr, ok := result.([]interface{}); ok {
+		return arr, nil
+	}
+	return nil, fmt.Errorf("unexpected response type")
+}
+
+// ConfigEntryDelete deletes a config entry
+func (c *WebSocketClient) ConfigEntryDelete(entryID string) error {
+	_, err := c.SendCommand("config_entries/delete", map[string]interface{}{
+		"entry_id": entryID,
+	})
+	return err
+}
+
+// ResolveEntityToConfigEntry resolves an entity_id to its config_entry_id
+// Returns the config_entry_id if found, or empty string if the entity doesn't have one
+func (c *WebSocketClient) ResolveEntityToConfigEntry(entityID string) (string, error) {
+	entity, err := c.EntityRegistryGet(entityID)
+	if err != nil {
+		return "", err
+	}
+	if configEntryID, ok := entity["config_entry_id"].(string); ok && configEntryID != "" {
+		return configEntryID, nil
+	}
+	return "", nil
+}
+
+// DeleteHelperByEntityOrEntryID deletes a helper by either entity_id or config_entry_id
+// It first tries to use the ID as a config_entry_id, then falls back to resolving from entity_id
+func (c *WebSocketClient) DeleteHelperByEntityOrEntryID(id string, helperType string) error {
+	// Check if it looks like an entity_id (contains a dot)
+	isEntityID := false
+	for _, ch := range id {
+		if ch == '.' {
+			isEntityID = true
+			break
+		}
+	}
+
+	var entryID string
+	if isEntityID {
+		// Try to resolve entity_id to config_entry_id
+		resolved, err := c.ResolveEntityToConfigEntry(id)
+		if err != nil {
+			return fmt.Errorf("failed to resolve entity_id: %w", err)
+		}
+		if resolved == "" {
+			// No config entry, try using the WebSocket helper delete for non-config-entry helpers
+			if helperType != "" && helperType != "group" {
+				return c.HelperDelete(helperType, extractIDFromEntityID(id))
+			}
+			return fmt.Errorf("entity %s does not have a config entry", id)
+		}
+		entryID = resolved
+	} else {
+		// Assume it's already a config_entry_id
+		entryID = id
+	}
+
+	return c.ConfigEntryDelete(entryID)
+}
+
+// extractIDFromEntityID extracts the ID part from an entity_id (e.g., "input_boolean.my_toggle" -> "my_toggle")
+func extractIDFromEntityID(entityID string) string {
+	for i, ch := range entityID {
+		if ch == '.' {
+			return entityID[i+1:]
+		}
+	}
+	return entityID
+}

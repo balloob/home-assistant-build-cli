@@ -1,26 +1,24 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var groupListCmd = &cobra.Command{
+var helperGroupListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all groups",
-	Long:  `List all entity groups.`,
-	RunE:  runGroupList,
+	Long:  `List all group helpers created via config entries.`,
+	RunE:  runHelperGroupList,
 }
 
 func init() {
-	groupCmd.AddCommand(groupListCmd)
+	helperGroupParentCmd.AddCommand(helperGroupListCmd)
 }
 
-func runGroupList(cmd *cobra.Command, args []string) error {
+func runHelperGroupList(cmd *cobra.Command, args []string) error {
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 
@@ -36,29 +34,30 @@ func runGroupList(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	states, err := ws.GetStates()
+	// Get config entries for the "group" domain
+	entries, err := ws.ConfigEntriesList("group")
 	if err != nil {
 		return err
 	}
 
 	var result []map[string]interface{}
-	for _, s := range states {
-		state, ok := s.(map[string]interface{})
+	for _, e := range entries {
+		entry, ok := e.(map[string]interface{})
 		if !ok {
 			continue
 		}
 
-		entityID, _ := state["entity_id"].(string)
-		if !strings.HasPrefix(entityID, "group.") {
-			continue
+		item := map[string]interface{}{
+			"entry_id": entry["entry_id"],
+			"title":    entry["title"],
 		}
 
-		attrs, _ := state["attributes"].(map[string]interface{})
-		result = append(result, map[string]interface{}{
-			"entity_id":   entityID,
-			"name":        attrs["friendly_name"],
-			"entity_list": attrs["entity_id"],
-		})
+		// Extract domain from entry if available
+		if domain, ok := entry["domain"].(string); ok {
+			item["domain"] = domain
+		}
+
+		result = append(result, item)
 	}
 
 	client.PrintOutput(result, textMode, "")
