@@ -39,8 +39,19 @@ fi
 
 # Check if we should manage empty-hass ourselves
 # Set HAB_TEST_HASS_RUNNING=1 when running as part of a suite
+# Also auto-detect if Home Assistant is already running on the port
+check_hass_running() {
+    curl -s -H "Authorization: Bearer $TOKEN" "$URL/api/config" 2>/dev/null | grep -q '"state"'
+}
+
 if [ -z "$HAB_TEST_HASS_RUNNING" ]; then
-    export HAB_TEST_MANAGE_HASS=1
+    # Auto-detect: if HA is already running, don't try to start another
+    if check_hass_running; then
+        echo -e "${YELLOW}Detected Home Assistant already running on $URL${NC}"
+        export HAB_TEST_MANAGE_HASS=0
+    else
+        export HAB_TEST_MANAGE_HASS=1
+    fi
 else
     export HAB_TEST_MANAGE_HASS=0
 fi
@@ -87,8 +98,9 @@ run_hab_optional() {
 }
 
 wait_for_hass() {
-    echo "Waiting for Home Assistant to be ready..."
-    for i in {1..60}; do
+    local max_attempts="${1:-90}"  # Default 90 attempts = 180 seconds for first-time uvx downloads
+    echo "Waiting for Home Assistant to be ready (timeout: $((max_attempts * 2))s)..."
+    for i in $(seq 1 $max_attempts); do
         STATE=$(curl -s -H "Authorization: Bearer $TOKEN" "$URL/api/config" 2>/dev/null | jq -r '.state // empty')
         if [ "$STATE" = "RUNNING" ]; then
             echo "Home Assistant is ready (state: RUNNING)!"
@@ -98,7 +110,9 @@ wait_for_hass() {
         fi
         sleep 2
     done
-    echo "Home Assistant did not become ready in time"
+    echo "Home Assistant did not become ready in time (waited $((max_attempts * 2)) seconds)"
+    echo "Tip: In sandboxed environments, pre-start empty-hass manually:"
+    echo "  uvx --from git+https://github.com/balloob/empty-hass empty-hass --port 8124 &"
     return 1
 }
 
@@ -110,8 +124,16 @@ build_hab() {
 }
 
 start_empty_hass() {
+    # Double-check if HA started running since we last checked (e.g., from parallel test)
+    if check_hass_running; then
+        echo -e "${YELLOW}Home Assistant is already running on $URL${NC}"
+        export HAB_TEST_MANAGE_HASS=0
+        return 0
+    fi
+
     if [ "$HAB_TEST_MANAGE_HASS" = "1" ]; then
         echo -e "\n${YELLOW}Starting empty-hass...${NC}"
+        echo -e "${YELLOW}(First run may take 1-2 minutes to download dependencies)${NC}"
         uvx --from git+https://github.com/balloob/empty-hass empty-hass --port 8124 > /dev/null 2>&1 &
         EMPTY_HASS_PID=$!
         echo "Started empty-hass with PID: $EMPTY_HASS_PID"
