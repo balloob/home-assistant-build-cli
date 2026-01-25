@@ -217,22 +217,39 @@ run_helpers_tests() {
         fail "helper-group list: $OUTPUT"
     fi
 
-    log_test "helper-group create"
-    # Groups use config entry flow - need to specify type and entities of matching domain
-    OUTPUT=$(run_hab helper-group create "Test Group" --type sensor --entities "sun.sun")
-    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        GROUP_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
-        pass "helper-group create (entry_id: $GROUP_ENTRY_ID)"
+    # Create input_number helpers to use in the group test
+    log_test "helper-group create (setup: create input_numbers)"
+    OUTPUT1=$(run_hab helper-input-number create "Group Test Number 1" --min 0 --max 100)
+    OUTPUT2=$(run_hab helper-input-number create "Group Test Number 2" --min 0 --max 100)
+    if echo "$OUTPUT1" | jq -e '.success == true' > /dev/null 2>&1 && \
+       echo "$OUTPUT2" | jq -e '.success == true' > /dev/null 2>&1; then
+        GROUP_NUM1_ID=$(echo "$OUTPUT1" | jq -r '.data.id // empty')
+        GROUP_NUM2_ID=$(echo "$OUTPUT2" | jq -r '.data.id // empty')
+        pass "helper-group create setup (created input_number.$GROUP_NUM1_ID, input_number.$GROUP_NUM2_ID)"
 
-        log_test "helper-group delete"
-        OUTPUT=$(run_hab helper-group delete "$GROUP_ENTRY_ID")
+        log_test "helper-group create"
+        # Groups use config entry flow - entities must match the group type domain
+        OUTPUT=$(run_hab helper-group create "Test Sensor Group" --type sensor --entities "input_number.$GROUP_NUM1_ID,input_number.$GROUP_NUM2_ID")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "helper-group delete"
+            GROUP_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-group create (entry_id: $GROUP_ENTRY_ID)"
+
+            log_test "helper-group delete"
+            OUTPUT=$(run_hab helper-group delete "$GROUP_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-group delete"
+            else
+                fail "helper-group delete: $OUTPUT"
+            fi
         else
-            fail "helper-group delete: $OUTPUT"
+            fail "helper-group create: $OUTPUT"
         fi
+
+        # Cleanup the input_numbers we created for the group test
+        run_hab helper-input-number delete "$GROUP_NUM1_ID" > /dev/null 2>&1
+        run_hab helper-input-number delete "$GROUP_NUM2_ID" > /dev/null 2>&1
     else
-        fail "helper-group create: $OUTPUT"
+        fail "helper-group create setup: failed to create input_numbers for group test"
     fi
 }
 
