@@ -1,10 +1,14 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/home-assistant/hab/client"
 )
+
+// ErrNotAuthenticated is returned when the user is not authenticated
+var ErrNotAuthenticated = errors.New("not authenticated")
 
 // Manager handles authentication state and token refresh
 type Manager struct {
@@ -39,7 +43,7 @@ func (m *Manager) GetCredentials() (*Credentials, error) {
 	}
 	if creds == nil {
 		client.PrintWarning("Not authenticated. Run 'hab auth login' to authenticate.")
-		return nil, fmt.Errorf("not authenticated")
+		return nil, ErrNotAuthenticated
 	}
 	return creds, nil
 }

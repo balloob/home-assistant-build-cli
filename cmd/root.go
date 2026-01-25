@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strings"
 
+	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/config"
 	"github.com/home-assistant/hab/update"
 	log "github.com/sirupsen/logrus"
@@ -53,13 +55,20 @@ Output is JSON by default for easy parsing. Use --text for human-readable output
 // Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		// Don't print auth errors again - warning was already shown
+		if !errors.Is(err, auth.ErrNotAuthenticated) {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		ExitWithError = true
 	}
 }
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Silence usage and errors - we handle error display ourselves
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgDir, "config", "", "Path to config directory (default: ~/.config/home-assistant-builder)")
