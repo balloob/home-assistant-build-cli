@@ -99,6 +99,7 @@ func runHelperGroupCreate(cmd *cobra.Command, args []string) error {
 	formData := map[string]interface{}{
 		"name":         name,
 		"entities":     helperGroupCreateEntities,
+		"type":         helperGroupCreateType,
 		"hide_members": helperGroupCreateHideMembers,
 	}
 
