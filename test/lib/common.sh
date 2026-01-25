@@ -89,9 +89,7 @@ run_hab_optional() {
 wait_for_hass() {
     echo "Waiting for Home Assistant to be ready..."
     for i in {1..60}; do
-        # Fetch response and parse state, handling invalid JSON gracefully
-        RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" "$URL/api/config" 2>/dev/null || true)
-        STATE=$(echo "$RESPONSE" | jq -r '.state // empty' 2>/dev/null || true)
+        STATE=$(curl -s -H "Authorization: Bearer $TOKEN" "$URL/api/config" 2>/dev/null | jq -r '.state // empty')
         if [ "$STATE" = "RUNNING" ]; then
             echo "Home Assistant is ready (state: RUNNING)!"
             return 0
