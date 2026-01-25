@@ -19,8 +19,8 @@ func NewManager(configDir string) *Manager {
 	}
 }
 
-// GetCredentials returns the current credentials
-func (m *Manager) GetCredentials() (*Credentials, error) {
+// loadCredentials loads credentials without printing warnings (internal use)
+func (m *Manager) loadCredentials() (*Credentials, error) {
 	if m.credentials == nil {
 		creds, err := LoadCredentials(m.ConfigDir)
 		if err != nil {
@@ -31,9 +31,22 @@ func (m *Manager) GetCredentials() (*Credentials, error) {
 	return m.credentials, nil
 }
 
+// GetCredentials returns the current credentials, printing a warning if not authenticated
+func (m *Manager) GetCredentials() (*Credentials, error) {
+	creds, err := m.loadCredentials()
+	if err != nil {
+		return nil, err
+	}
+	if creds == nil {
+		client.PrintWarning("Not authenticated. Run 'hab auth login' to authenticate.")
+		return nil, fmt.Errorf("not authenticated")
+	}
+	return creds, nil
+}
+
 // IsAuthenticated returns true if authenticated
 func (m *Manager) IsAuthenticated() bool {
-	creds, err := m.GetCredentials()
+	creds, err := m.loadCredentials()
 	if err != nil || creds == nil {
 		return false
 	}
@@ -42,7 +55,7 @@ func (m *Manager) IsAuthenticated() bool {
 
 // GetURL returns the Home Assistant URL
 func (m *Manager) GetURL() string {
-	creds, _ := m.GetCredentials()
+	creds, _ := m.loadCredentials()
 	if creds == nil {
 		return ""
 	}
@@ -51,7 +64,7 @@ func (m *Manager) GetURL() string {
 
 // GetToken returns the access token
 func (m *Manager) GetToken() string {
-	creds, _ := m.GetCredentials()
+	creds, _ := m.loadCredentials()
 	if creds == nil {
 		return ""
 	}
@@ -60,7 +73,7 @@ func (m *Manager) GetToken() string {
 
 // NeedsRefresh returns true if the token needs to be refreshed
 func (m *Manager) NeedsRefresh() bool {
-	creds, _ := m.GetCredentials()
+	creds, _ := m.loadCredentials()
 	if creds == nil {
 		return false
 	}
@@ -100,7 +113,7 @@ func (m *Manager) Logout() bool {
 
 // GetAuthStatus returns authentication status as a map
 func (m *Manager) GetAuthStatus() map[string]interface{} {
-	creds, _ := m.GetCredentials()
+	creds, _ := m.loadCredentials()
 	if creds == nil {
 		return map[string]interface{}{
 			"authenticated": false,
@@ -126,9 +139,6 @@ func (m *Manager) GetRestClient() (*client.RestClient, error) {
 	creds, err := m.GetCredentials()
 	if err != nil {
 		return nil, err
-	}
-	if creds == nil {
-		return nil, fmt.Errorf("not authenticated - run 'hab auth login' first")
 	}
 
 	// Check if token needs refresh
