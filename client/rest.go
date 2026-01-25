@@ -343,3 +343,9 @@ func (c *RestClient) ConfigFlowStep(flowID string, data map[string]interface{}) 
 	}
 	return nil, fmt.Errorf("unexpected response type")
 }
+
+// ConfigEntryDelete deletes a config entry by ID
+func (c *RestClient) ConfigEntryDelete(entryID string) error {
+	_, err := c.Delete("config/config_entries/entry/" + entryID)
+	return err
+}
