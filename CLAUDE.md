@@ -15,9 +15,38 @@ go build -o hab .
 # Run unit tests
 go test ./...
 
-# Run integration tests (requires uvx and empty-hass)
+# Run all integration tests (requires uvx and empty-hass)
 ./test/run_integration_test.sh
+
+# Run specific test group
+./test/run_integration_test.sh core        # Auth & system tests
+./test/run_integration_test.sh registry    # Entity/device/area/floor/label tests
+./test/run_integration_test.sh automation  # Automation tests
+./test/run_integration_test.sh script      # Script tests
+./test/run_integration_test.sh dashboard   # Dashboard tests
+./test/run_integration_test.sh misc        # Actions, helpers, zones, backups, etc.
+
+# Run a single test file standalone (starts its own empty-hass)
+./test/test_automation.sh
 ```
+
+### Integration Test Structure
+
+Tests are organized by feature into separate files:
+
+- **test/lib/common.sh**: Shared functions, colors, test helpers
+- **test/test_core.sh**: Auth login/logout/status, system info/health
+- **test/test_registry.sh**: Entity, device, area, floor, label CRUD operations
+- **test/test_automation.sh**: Automation and automation-trigger/condition/action CRUD
+- **test/test_script.sh**: Script and script-action CRUD
+- **test/test_dashboard.sh**: Dashboard, views, badges, sections, cards CRUD
+- **test/test_misc.sh**: Actions, helpers, groups, zones, backups, blueprints
+
+Each test file can:
+1. Run **standalone**: `./test/test_automation.sh` - starts its own empty-hass instance
+2. Run **via orchestrator**: `./test/run_integration_test.sh automation` - uses shared empty-hass
+
+When running all tests via `./test/run_integration_test.sh`, empty-hass is started once and shared across all test files.
 
 ## Architecture
 
@@ -57,5 +86,10 @@ Each domain typically has a TypeScript file (e.g., `light.ts`, `climate.ts`) tha
 
 When adding new commands:
 1. Follow the existing command structure pattern (parent command + subcommand files)
-2. **Always add tests** for new commands in `test/run_integration_test.sh`
+2. **Always add tests** for new commands in the appropriate test file under `test/`:
+   - Entity/device/area/floor/label commands: `test/test_registry.sh`
+   - Automation commands: `test/test_automation.sh`
+   - Script commands: `test/test_script.sh`
+   - Dashboard commands: `test/test_dashboard.sh`
+   - Other commands: `test/test_misc.sh`
 3. Use `client.PrintOutput()` or `client.PrintSuccess()` for consistent output
