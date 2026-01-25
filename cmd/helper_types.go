@@ -28,11 +28,7 @@ func runHelperTypes(cmd *cobra.Command, args []string) error {
 	textMode := viper.GetBool("text")
 
 	types := []HelperTypeInfo{
-		{
-			Type:        "group",
-			Description: "A group of entities that can be controlled together (uses config flow)",
-			Parameters:  []string{"name (required)", "type (light/switch/binary_sensor/cover/fan/lock/media_player/sensor/event)", "entities (required, array)", "all (true/false, for binary_sensor/light/switch)", "hide-members (true/false)"},
-		},
+		// Storage-based helpers (WebSocket API)
 		{
 			Type:        "input_boolean",
 			Description: "A boolean on/off toggle helper",
@@ -77,6 +73,42 @@ func runHelperTypes(cmd *cobra.Command, args []string) error {
 			Type:        "schedule",
 			Description: "A schedule helper for time-based automation",
 			Parameters:  []string{"name (required)", "icon"},
+		},
+		// Config flow-based helpers (REST API)
+		{
+			Type:        "group",
+			Description: "A group of entities that can be controlled together (config flow)",
+			Parameters:  []string{"name (required)", "type (light/switch/binary_sensor/cover/fan/lock/media_player/sensor/event)", "entities (required, array)", "all (true/false, for binary_sensor/light/switch)", "hide-members (true/false)"},
+		},
+		{
+			Type:        "derivative",
+			Description: "Calculates the rate of change of a source sensor (config flow)",
+			Parameters:  []string{"name (required)", "source (required)", "round", "unit-prefix (n/µ/m/k/M/G/T)", "unit-time (s/min/h/d)", "unit", "time-window"},
+		},
+		{
+			Type:        "integration",
+			Description: "Calculates the Riemann sum (integral) of a source sensor (config flow)",
+			Parameters:  []string{"name (required)", "source (required)", "round", "unit-prefix (k/M/G/T)", "unit-time (s/min/h/d)", "method (trapezoidal/left/right)"},
+		},
+		{
+			Type:        "min_max",
+			Description: "Aggregates values from multiple sensors (min/max/mean/etc) (config flow)",
+			Parameters:  []string{"name (required)", "entities (required, array)", "type (min/max/mean/median/last/range/sum)", "round"},
+		},
+		{
+			Type:        "threshold",
+			Description: "Monitors a sensor value against configurable thresholds (config flow)",
+			Parameters:  []string{"name (required)", "entity (required)", "lower", "upper", "hysteresis"},
+		},
+		{
+			Type:        "utility_meter",
+			Description: "Tracks consumption across billing cycles (config flow)",
+			Parameters:  []string{"name (required)", "source (required)", "cycle (quarter-hourly/hourly/daily/weekly/monthly/bimonthly/quarterly/yearly)", "offset", "tariffs (array)", "delta-values", "net-consumption"},
+		},
+		{
+			Type:        "statistics",
+			Description: "Provides statistical analysis of sensor history (config flow)",
+			Parameters:  []string{"name (required)", "entity (required)", "characteristic (mean/median/standard_deviation/etc)", "sampling-size", "max-age", "precision", "percentile"},
 		},
 	}
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Helper tests: helper types, input_boolean, input_number, input_text, input_select, input_button, input_datetime, counter, timer, schedule, group
+# Plus config flow helpers: derivative, integration, min_max, threshold, utility_meter, statistics
 # Usage: ./test_helpers.sh (standalone) or source from run_integration_test.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -371,6 +372,211 @@ run_helpers_tests() {
         run_hab helper-input-number delete "$GROUP_NUM2_ID" > /dev/null 2>&1
     else
         fail "helper-group create setup: failed to create input_numbers for group test"
+    fi
+
+    # ==========================================================================
+    # Config Flow-Based Helper Tests
+    # These helpers require a source sensor, so we create an input_number first
+    # ==========================================================================
+
+    # Create a source sensor for config flow helper tests
+    log_test "config flow helpers (setup: create source sensor)"
+    OUTPUT=$(run_hab helper-input-number create "Config Flow Test Source" --min 0 --max 1000 --step 1 --unit "W")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        CF_SOURCE_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        CF_SOURCE_ENTITY="input_number.$CF_SOURCE_ID"
+        pass "config flow helpers setup (source: $CF_SOURCE_ENTITY)"
+
+        # ==========================================================================
+        # Derivative Helper Tests
+        # ==========================================================================
+        log_test "helper-derivative list"
+        OUTPUT=$(run_hab helper-derivative list)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "helper-derivative list ($COUNT helpers)"
+        else
+            fail "helper-derivative list: $OUTPUT"
+        fi
+
+        log_test "helper-derivative create"
+        OUTPUT=$(run_hab helper-derivative create "Test Derivative" --source "$CF_SOURCE_ENTITY" --unit-time h --round 2)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            DERIVATIVE_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-derivative create (entry_id: $DERIVATIVE_ENTRY_ID)"
+
+            log_test "helper-derivative delete"
+            OUTPUT=$(run_hab helper-derivative delete "$DERIVATIVE_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-derivative delete"
+            else
+                fail "helper-derivative delete: $OUTPUT"
+            fi
+        else
+            fail "helper-derivative create: $OUTPUT"
+        fi
+
+        # ==========================================================================
+        # Integration (Integral) Helper Tests
+        # ==========================================================================
+        log_test "helper-integration list"
+        OUTPUT=$(run_hab helper-integration list)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "helper-integration list ($COUNT helpers)"
+        else
+            fail "helper-integration list: $OUTPUT"
+        fi
+
+        log_test "helper-integration create"
+        OUTPUT=$(run_hab helper-integration create "Test Integration" --source "$CF_SOURCE_ENTITY" --unit-time h --method trapezoidal)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            INTEGRATION_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-integration create (entry_id: $INTEGRATION_ENTRY_ID)"
+
+            log_test "helper-integration delete"
+            OUTPUT=$(run_hab helper-integration delete "$INTEGRATION_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-integration delete"
+            else
+                fail "helper-integration delete: $OUTPUT"
+            fi
+        else
+            fail "helper-integration create: $OUTPUT"
+        fi
+
+        # ==========================================================================
+        # Min/Max Helper Tests (needs multiple source sensors)
+        # ==========================================================================
+        # Create a second source for min/max tests
+        OUTPUT2=$(run_hab helper-input-number create "Config Flow Test Source 2" --min 0 --max 1000 --step 1 --unit "W")
+        if echo "$OUTPUT2" | jq -e '.success == true' > /dev/null 2>&1; then
+            CF_SOURCE2_ID=$(echo "$OUTPUT2" | jq -r '.data.id // empty')
+            CF_SOURCE2_ENTITY="input_number.$CF_SOURCE2_ID"
+
+            log_test "helper-min-max list"
+            OUTPUT=$(run_hab helper-min-max list)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+                pass "helper-min-max list ($COUNT helpers)"
+            else
+                fail "helper-min-max list: $OUTPUT"
+            fi
+
+            log_test "helper-min-max create"
+            OUTPUT=$(run_hab helper-min-max create "Test Min Max" --entities "$CF_SOURCE_ENTITY,$CF_SOURCE2_ENTITY" --type mean --round 2)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                MINMAX_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+                pass "helper-min-max create (entry_id: $MINMAX_ENTRY_ID)"
+
+                log_test "helper-min-max delete"
+                OUTPUT=$(run_hab helper-min-max delete "$MINMAX_ENTRY_ID")
+                if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                    pass "helper-min-max delete"
+                else
+                    fail "helper-min-max delete: $OUTPUT"
+                fi
+            else
+                fail "helper-min-max create: $OUTPUT"
+            fi
+
+            # Cleanup second source
+            run_hab helper-input-number delete "$CF_SOURCE2_ID" > /dev/null 2>&1
+        else
+            fail "helper-min-max setup: failed to create second source sensor"
+        fi
+
+        # ==========================================================================
+        # Threshold Helper Tests
+        # ==========================================================================
+        log_test "helper-threshold list"
+        OUTPUT=$(run_hab helper-threshold list)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "helper-threshold list ($COUNT helpers)"
+        else
+            fail "helper-threshold list: $OUTPUT"
+        fi
+
+        log_test "helper-threshold create"
+        OUTPUT=$(run_hab helper-threshold create "Test Threshold" --entity "$CF_SOURCE_ENTITY" --upper 500 --hysteresis 10)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            THRESHOLD_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-threshold create (entry_id: $THRESHOLD_ENTRY_ID)"
+
+            log_test "helper-threshold delete"
+            OUTPUT=$(run_hab helper-threshold delete "$THRESHOLD_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-threshold delete"
+            else
+                fail "helper-threshold delete: $OUTPUT"
+            fi
+        else
+            fail "helper-threshold create: $OUTPUT"
+        fi
+
+        # ==========================================================================
+        # Utility Meter Helper Tests
+        # ==========================================================================
+        log_test "helper-utility-meter list"
+        OUTPUT=$(run_hab helper-utility-meter list)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "helper-utility-meter list ($COUNT helpers)"
+        else
+            fail "helper-utility-meter list: $OUTPUT"
+        fi
+
+        log_test "helper-utility-meter create"
+        OUTPUT=$(run_hab helper-utility-meter create "Test Utility Meter" --source "$CF_SOURCE_ENTITY" --cycle daily)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            UTILITY_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-utility-meter create (entry_id: $UTILITY_ENTRY_ID)"
+
+            log_test "helper-utility-meter delete"
+            OUTPUT=$(run_hab helper-utility-meter delete "$UTILITY_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-utility-meter delete"
+            else
+                fail "helper-utility-meter delete: $OUTPUT"
+            fi
+        else
+            fail "helper-utility-meter create: $OUTPUT"
+        fi
+
+        # ==========================================================================
+        # Statistics Helper Tests
+        # ==========================================================================
+        log_test "helper-statistics list"
+        OUTPUT=$(run_hab helper-statistics list)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "helper-statistics list ($COUNT helpers)"
+        else
+            fail "helper-statistics list: $OUTPUT"
+        fi
+
+        log_test "helper-statistics create"
+        OUTPUT=$(run_hab helper-statistics create "Test Statistics" --entity "$CF_SOURCE_ENTITY" --characteristic mean --sampling-size 20)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            STATISTICS_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-statistics create (entry_id: $STATISTICS_ENTRY_ID)"
+
+            log_test "helper-statistics delete"
+            OUTPUT=$(run_hab helper-statistics delete "$STATISTICS_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-statistics delete"
+            else
+                fail "helper-statistics delete: $OUTPUT"
+            fi
+        else
+            fail "helper-statistics create: $OUTPUT"
+        fi
+
+        # Cleanup the source sensor we created for config flow helper tests
+        run_hab helper-input-number delete "$CF_SOURCE_ID" > /dev/null 2>&1
+    else
+        fail "config flow helpers setup: failed to create source sensor"
     fi
 }
 
