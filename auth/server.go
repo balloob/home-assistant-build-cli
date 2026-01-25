@@ -135,11 +135,23 @@ func getLocalIP() string {
 
 // BuildAuthorizeURL constructs the OAuth authorization URL
 func BuildAuthorizeURL(haURL, redirectURI, state string) string {
+	// Client ID must be the origin of the redirect URI
+	clientID := GetClientID(redirectURI)
+
 	params := url.Values{}
-	params.Set("client_id", ClientID)
+	params.Set("client_id", clientID)
 	params.Set("redirect_uri", redirectURI)
 	params.Set("response_type", "code")
 	params.Set("state", state)
 
 	return fmt.Sprintf("%s/auth/authorize?%s", haURL, params.Encode())
+}
+
+// GetClientID extracts the origin (scheme://host:port) from a redirect URI to use as client ID
+func GetClientID(redirectURI string) string {
+	parsed, err := url.Parse(redirectURI)
+	if err != nil {
+		return redirectURI
+	}
+	return fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
 }

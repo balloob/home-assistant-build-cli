@@ -14,8 +14,6 @@ import (
 )
 
 const (
-	// ClientID is the OAuth client ID
-	ClientID = "https://github.com/home-assistant/hab"
 	// AuthorizePath is the OAuth authorization endpoint
 	AuthorizePath = "/auth/authorize"
 	// TokenPath is the OAuth token endpoint
@@ -42,11 +40,12 @@ func generateState() (string, error) {
 // ExchangeCodeForTokens exchanges an authorization code for tokens
 func ExchangeCodeForTokens(haURL, code, redirectURI string) (*Credentials, error) {
 	tokenURL := strings.TrimRight(haURL, "/") + TokenPath
+	clientID := GetClientID(redirectURI)
 
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
-	data.Set("client_id", ClientID)
+	data.Set("client_id", clientID)
 	data.Set("redirect_uri", redirectURI)
 
 	resp, err := http.PostForm(tokenURL, data)
@@ -72,6 +71,7 @@ func ExchangeCodeForTokens(haURL, code, redirectURI string) (*Credentials, error
 
 	return &Credentials{
 		URL:          haURL,
+		ClientID:     clientID,
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: tokenResp.RefreshToken,
 		TokenExpiry:  tokenExpiry,
@@ -79,13 +79,13 @@ func ExchangeCodeForTokens(haURL, code, redirectURI string) (*Credentials, error
 }
 
 // RefreshAccessToken refreshes an expired access token
-func RefreshAccessToken(haURL, refreshToken string) (*Credentials, error) {
-	tokenURL := strings.TrimRight(haURL, "/") + TokenPath
+func RefreshAccessToken(creds *Credentials) (*Credentials, error) {
+	tokenURL := strings.TrimRight(creds.URL, "/") + TokenPath
 
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", refreshToken)
-	data.Set("client_id", ClientID)
+	data.Set("refresh_token", creds.RefreshToken)
+	data.Set("client_id", creds.ClientID)
 
 	resp, err := http.PostForm(tokenURL, data)
 	if err != nil {
@@ -111,11 +111,12 @@ func RefreshAccessToken(haURL, refreshToken string) (*Credentials, error) {
 	// Use existing refresh token if new one not provided
 	newRefreshToken := tokenResp.RefreshToken
 	if newRefreshToken == "" {
-		newRefreshToken = refreshToken
+		newRefreshToken = creds.RefreshToken
 	}
 
 	return &Credentials{
-		URL:          haURL,
+		URL:          creds.URL,
+		ClientID:     creds.ClientID,
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: newRefreshToken,
 		TokenExpiry:  tokenExpiry,

@@ -11,6 +11,7 @@ import (
 // Credentials stores authentication information
 type Credentials struct {
 	URL          string  `json:"url"`
+	ClientID     string  `json:"client_id,omitempty"`
 	AccessToken  string  `json:"access_token,omitempty"`
 	RefreshToken string  `json:"refresh_token,omitempty"`
 	TokenExpiry  float64 `json:"token_expiry,omitempty"`

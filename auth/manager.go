@@ -77,7 +77,7 @@ func (m *Manager) RefreshToken() error {
 		return fmt.Errorf("no refresh token available")
 	}
 
-	newCreds, err := RefreshAccessToken(creds.URL, creds.RefreshToken)
+	newCreds, err := RefreshAccessToken(creds)
 	if err != nil {
 		return err
 	}
