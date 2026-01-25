@@ -1,38 +1,44 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	cardDeleteForce   bool
-	cardDeleteSection int
+	cardUpdateData    string
+	cardUpdateFile    string
+	cardUpdateFormat  string
+	cardUpdateType    string
+	cardUpdateEntity  string
+	cardUpdateSection int
 )
 
-var cardDeleteCmd = &cobra.Command{
-	Use:   "delete <dashboard_url_path> <view_index> <card_index>",
-	Short: "Delete a card",
-	Long:  `Delete a card from a view or section by index.`,
+var cardUpdateCmd = &cobra.Command{
+	Use:   "update <dashboard_url_path> <view_index> <card_index>",
+	Short: "Update a card",
+	Long:  `Update a card in a view or section by index.`,
 	Args:  cobra.ExactArgs(3),
-	RunE:  runCardDelete,
+	RunE:  runCardUpdate,
 }
 
 func init() {
-	cardCmd.AddCommand(cardDeleteCmd)
-	cardDeleteCmd.Flags().BoolVarP(&cardDeleteForce, "force", "f", false, "Skip confirmation prompt")
-	cardDeleteCmd.Flags().IntVarP(&cardDeleteSection, "section", "s", -1, "Section index (if card is in a section)")
+	dashboardCardCmd.AddCommand(cardUpdateCmd)
+	cardUpdateCmd.Flags().StringVarP(&cardUpdateData, "data", "d", "", "Card configuration as JSON (replaces entire card)")
+	cardUpdateCmd.Flags().StringVarP(&cardUpdateFile, "file", "f", "", "Path to config file")
+	cardUpdateCmd.Flags().StringVar(&cardUpdateFormat, "format", "", "Input format (json, yaml)")
+	cardUpdateCmd.Flags().StringVar(&cardUpdateType, "type", "", "Card type")
+	cardUpdateCmd.Flags().StringVar(&cardUpdateEntity, "entity", "", "Entity ID")
+	cardUpdateCmd.Flags().IntVarP(&cardUpdateSection, "section", "s", -1, "Section index (if card is in a section)")
 }
 
-func runCardDelete(cmd *cobra.Command, args []string) error {
+func runCardUpdate(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
@@ -92,18 +98,18 @@ func runCardDelete(cmd *cobra.Command, args []string) error {
 	var section map[string]interface{}
 	var sections []interface{}
 
-	if cardDeleteSection >= 0 {
+	if cardUpdateSection >= 0 {
 		// Get cards from section
 		sections, ok = view["sections"].([]interface{})
 		if !ok {
 			return fmt.Errorf("no sections in view")
 		}
-		if cardDeleteSection >= len(sections) {
-			return fmt.Errorf("section index %d out of range (0-%d)", cardDeleteSection, len(sections)-1)
+		if cardUpdateSection >= len(sections) {
+			return fmt.Errorf("section index %d out of range (0-%d)", cardUpdateSection, len(sections)-1)
 		}
-		section, ok = sections[cardDeleteSection].(map[string]interface{})
+		section, ok = sections[cardUpdateSection].(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("invalid section at index %d", cardDeleteSection)
+			return fmt.Errorf("invalid section at index %d", cardUpdateSection)
 		}
 		cards, _ = section["cards"].([]interface{})
 	} else {
@@ -119,31 +125,34 @@ func runCardDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("card index %d out of range (0-%d)", cardIndex, len(cards)-1)
 	}
 
-	// Get card type for confirmation
-	cardDesc := fmt.Sprintf("card at index %d", cardIndex)
-	if cardMap, ok := cards[cardIndex].(map[string]interface{}); ok {
-		if cardType, ok := cardMap["type"].(string); ok {
-			cardDesc = fmt.Sprintf("%s card (index %d)", cardType, cardIndex)
-		}
+	// Get existing card
+	existingCard, ok := cards[cardIndex].(map[string]interface{})
+	if !ok {
+		existingCard = make(map[string]interface{})
 	}
 
-	// Confirmation prompt
-	if !cardDeleteForce && !textMode {
-		fmt.Printf("Are you sure you want to delete %s? [y/N]: ", cardDesc)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-		if response != "y" && response != "yes" {
-			return fmt.Errorf("deletion cancelled")
+	// If data or file provided, replace the entire card config
+	if cardUpdateData != "" || cardUpdateFile != "" {
+		newConfig, err := input.ParseInput(cardUpdateData, cardUpdateFile, cardUpdateFormat)
+		if err != nil {
+			return err
 		}
+		existingCard = newConfig
 	}
 
-	// Remove the card
-	cards = append(cards[:cardIndex], cards[cardIndex+1:]...)
+	// Apply flag updates
+	if cmd.Flags().Changed("type") {
+		existingCard["type"] = cardUpdateType
+	}
+	if cmd.Flags().Changed("entity") {
+		existingCard["entity"] = cardUpdateEntity
+	}
 
-	if cardDeleteSection >= 0 {
+	cards[cardIndex] = existingCard
+
+	if cardUpdateSection >= 0 {
 		section["cards"] = cards
-		sections[cardDeleteSection] = section
+		sections[cardUpdateSection] = section
 		view["sections"] = sections
 	} else {
 		view["cards"] = cards
@@ -165,6 +174,7 @@ func runCardDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("Card at index %d deleted.", cardIndex))
+	existingCard["index"] = cardIndex
+	client.PrintSuccess(existingCard, textMode, fmt.Sprintf("Card at index %d updated.", cardIndex))
 	return nil
 }

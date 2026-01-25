@@ -4,12 +4,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var badgeCmd = &cobra.Command{
-	Use:   "badge",
+var dashboardBadgeCmd = &cobra.Command{
+	Use:   "dashboard-badge",
 	Short: "Manage view badges",
 	Long:  `Create, update, list, and delete badges in a dashboard view.`,
 }
 
 func init() {
-	rootCmd.AddCommand(badgeCmd)
+	rootCmd.AddCommand(dashboardBadgeCmd)
 }

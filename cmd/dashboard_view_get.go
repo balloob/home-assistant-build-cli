@@ -19,7 +19,7 @@ var viewGetCmd = &cobra.Command{
 }
 
 func init() {
-	viewCmd.AddCommand(viewGetCmd)
+	dashboardViewCmd.AddCommand(viewGetCmd)
 }
 
 func runViewGet(cmd *cobra.Command, args []string) error {

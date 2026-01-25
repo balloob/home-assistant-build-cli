@@ -12,62 +12,41 @@ import (
 )
 
 var (
-	badgeCreateData   string
-	badgeCreateFile   string
-	badgeCreateFormat string
-	badgeCreateEntity string
-	badgeCreateType   string
+	badgeUpdateData   string
+	badgeUpdateFile   string
+	badgeUpdateFormat string
+	badgeUpdateEntity string
 )
 
-var badgeCreateCmd = &cobra.Command{
-	Use:   "create <dashboard_url_path> <view_index>",
-	Short: "Create a new badge",
-	Long:  `Create a new badge in a dashboard view.`,
-	Args:  cobra.ExactArgs(2),
-	RunE:  runBadgeCreate,
+var badgeUpdateCmd = &cobra.Command{
+	Use:   "update <dashboard_url_path> <view_index> <badge_index>",
+	Short: "Update a badge",
+	Long:  `Update a badge in a view by index.`,
+	Args:  cobra.ExactArgs(3),
+	RunE:  runBadgeUpdate,
 }
 
 func init() {
-	badgeCmd.AddCommand(badgeCreateCmd)
-	badgeCreateCmd.Flags().StringVarP(&badgeCreateData, "data", "d", "", "Badge configuration as JSON")
-	badgeCreateCmd.Flags().StringVarP(&badgeCreateFile, "file", "f", "", "Path to config file")
-	badgeCreateCmd.Flags().StringVar(&badgeCreateFormat, "format", "", "Input format (json, yaml)")
-	badgeCreateCmd.Flags().StringVar(&badgeCreateEntity, "entity", "", "Entity ID for simple badge")
-	badgeCreateCmd.Flags().StringVar(&badgeCreateType, "type", "", "Badge type (e.g., entity)")
+	dashboardBadgeCmd.AddCommand(badgeUpdateCmd)
+	badgeUpdateCmd.Flags().StringVarP(&badgeUpdateData, "data", "d", "", "Badge configuration as JSON (replaces entire badge)")
+	badgeUpdateCmd.Flags().StringVarP(&badgeUpdateFile, "file", "f", "", "Path to config file")
+	badgeUpdateCmd.Flags().StringVar(&badgeUpdateFormat, "format", "", "Input format (json, yaml)")
+	badgeUpdateCmd.Flags().StringVar(&badgeUpdateEntity, "entity", "", "Entity ID for simple badge")
 }
 
-func runBadgeCreate(cmd *cobra.Command, args []string) error {
+func runBadgeUpdate(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid view index: %s", args[1])
 	}
+	badgeIndex, err := strconv.Atoi(args[2])
+	if err != nil {
+		return fmt.Errorf("invalid badge index: %s", args[2])
+	}
 
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
-
-	var badgeConfig interface{}
-
-	// If data or file provided, parse it
-	if badgeCreateData != "" || badgeCreateFile != "" {
-		config, err := input.ParseInput(badgeCreateData, badgeCreateFile, badgeCreateFormat)
-		if err != nil {
-			return err
-		}
-		badgeConfig = config
-	} else if badgeCreateEntity != "" {
-		// Simple entity badge
-		if badgeCreateType != "" {
-			badgeConfig = map[string]interface{}{
-				"type":   badgeCreateType,
-				"entity": badgeCreateEntity,
-			}
-		} else {
-			badgeConfig = badgeCreateEntity
-		}
-	} else {
-		return fmt.Errorf("badge configuration required (use --data, --file, or --entity)")
-	}
 
 	manager := auth.NewManager(configDir)
 	creds, err := manager.GetCredentials()
@@ -113,11 +92,30 @@ func runBadgeCreate(cmd *cobra.Command, args []string) error {
 
 	badges, ok := view["badges"].([]interface{})
 	if !ok {
-		badges = []interface{}{}
+		return fmt.Errorf("no badges in view")
 	}
 
-	// Add the new badge
-	badges = append(badges, badgeConfig)
+	if badgeIndex < 0 || badgeIndex >= len(badges) {
+		return fmt.Errorf("badge index %d out of range (0-%d)", badgeIndex, len(badges)-1)
+	}
+
+	var newBadge interface{}
+
+	// If data or file provided, replace entirely
+	if badgeUpdateData != "" || badgeUpdateFile != "" {
+		parsed, err := input.ParseInput(badgeUpdateData, badgeUpdateFile, badgeUpdateFormat)
+		if err != nil {
+			return err
+		}
+		newBadge = parsed
+	} else if cmd.Flags().Changed("entity") {
+		// Update to simple entity badge
+		newBadge = badgeUpdateEntity
+	} else {
+		return fmt.Errorf("update data required (use --data, --file, or --entity)")
+	}
+
+	badges[badgeIndex] = newBadge
 	view["badges"] = badges
 	views[viewIndex] = view
 	config["views"] = views
@@ -136,9 +134,9 @@ func runBadgeCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	resultData := map[string]interface{}{
-		"index":  len(badges) - 1,
-		"config": badgeConfig,
+		"index":  badgeIndex,
+		"config": newBadge,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Badge created at index %d.", len(badges)-1))
+	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Badge at index %d updated.", badgeIndex))
 	return nil
 }

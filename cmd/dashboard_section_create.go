@@ -28,7 +28,7 @@ var sectionCreateCmd = &cobra.Command{
 }
 
 func init() {
-	sectionCmd.AddCommand(sectionCreateCmd)
+	dashboardSectionCmd.AddCommand(sectionCreateCmd)
 	sectionCreateCmd.Flags().StringVarP(&sectionCreateData, "data", "d", "", "Section configuration as JSON")
 	sectionCreateCmd.Flags().StringVarP(&sectionCreateFile, "file", "f", "", "Path to config file")
 	sectionCreateCmd.Flags().StringVar(&sectionCreateFormat, "format", "", "Input format (json, yaml)")

@@ -10,22 +10,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cardListSection int
-
-var cardListCmd = &cobra.Command{
+var badgeListCmd = &cobra.Command{
 	Use:   "list <dashboard_url_path> <view_index>",
-	Short: "List cards in a view or section",
-	Long:  `List all cards in a dashboard view or section. Use --section to specify a section index.`,
+	Short: "List badges in a view",
+	Long:  `List all badges in a dashboard view.`,
 	Args:  cobra.ExactArgs(2),
-	RunE:  runCardList,
+	RunE:  runBadgeList,
 }
 
 func init() {
-	cardCmd.AddCommand(cardListCmd)
-	cardListCmd.Flags().IntVarP(&cardListSection, "section", "s", -1, "Section index (if cards are in a section)")
+	dashboardBadgeCmd.AddCommand(badgeListCmd)
 }
 
-func runCardList(cmd *cobra.Command, args []string) error {
+func runBadgeList(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
@@ -76,45 +73,29 @@ func runCardList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid view at index %d", viewIndex)
 	}
 
-	var cards []interface{}
-
-	if cardListSection >= 0 {
-		// Get cards from section
-		sections, ok := view["sections"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no sections in view")
-		}
-		if cardListSection >= len(sections) {
-			return fmt.Errorf("section index %d out of range (0-%d)", cardListSection, len(sections)-1)
-		}
-		section, ok := sections[cardListSection].(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("invalid section at index %d", cardListSection)
-		}
-		cards, _ = section["cards"].([]interface{})
-	} else {
-		// Get cards directly from view
-		cards, _ = view["cards"].([]interface{})
-	}
-
-	if cards == nil {
+	badges, ok := view["badges"].([]interface{})
+	if !ok {
 		client.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
-	// Add index to each card for easier reference
-	cardList := make([]map[string]interface{}, len(cards))
-	for i, c := range cards {
-		cardData := make(map[string]interface{})
-		if cardMap, ok := c.(map[string]interface{}); ok {
-			for k, val := range cardMap {
-				cardData[k] = val
+	// Add index to each badge for easier reference
+	badgeList := make([]map[string]interface{}, len(badges))
+	for i, b := range badges {
+		badgeData := make(map[string]interface{})
+		switch badge := b.(type) {
+		case map[string]interface{}:
+			for k, val := range badge {
+				badgeData[k] = val
 			}
+		case string:
+			// Simple entity_id badge
+			badgeData["entity"] = badge
 		}
-		cardData["index"] = i
-		cardList[i] = cardData
+		badgeData["index"] = i
+		badgeList[i] = badgeData
 	}
 
-	client.PrintOutput(cardList, textMode, "")
+	client.PrintOutput(badgeList, textMode, "")
 	return nil
 }

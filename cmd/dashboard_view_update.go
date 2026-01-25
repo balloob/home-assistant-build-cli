@@ -29,7 +29,7 @@ var viewUpdateCmd = &cobra.Command{
 }
 
 func init() {
-	viewCmd.AddCommand(viewUpdateCmd)
+	dashboardViewCmd.AddCommand(viewUpdateCmd)
 	viewUpdateCmd.Flags().StringVarP(&viewUpdateData, "data", "d", "", "View configuration as JSON (replaces entire view)")
 	viewUpdateCmd.Flags().StringVarP(&viewUpdateFile, "file", "f", "", "Path to config file")
 	viewUpdateCmd.Flags().StringVar(&viewUpdateFormat, "format", "", "Input format (json, yaml)")

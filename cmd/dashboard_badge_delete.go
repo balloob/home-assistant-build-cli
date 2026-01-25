@@ -13,26 +13,30 @@ import (
 	"github.com/spf13/viper"
 )
 
-var viewDeleteForce bool
+var badgeDeleteForce bool
 
-var viewDeleteCmd = &cobra.Command{
-	Use:   "delete <dashboard_url_path> <view_index>",
-	Short: "Delete a view",
-	Long:  `Delete a view from a dashboard by index.`,
-	Args:  cobra.ExactArgs(2),
-	RunE:  runViewDelete,
+var badgeDeleteCmd = &cobra.Command{
+	Use:   "delete <dashboard_url_path> <view_index> <badge_index>",
+	Short: "Delete a badge",
+	Long:  `Delete a badge from a view by index.`,
+	Args:  cobra.ExactArgs(3),
+	RunE:  runBadgeDelete,
 }
 
 func init() {
-	viewCmd.AddCommand(viewDeleteCmd)
-	viewDeleteCmd.Flags().BoolVarP(&viewDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	dashboardBadgeCmd.AddCommand(badgeDeleteCmd)
+	badgeDeleteCmd.Flags().BoolVarP(&badgeDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
-func runViewDelete(cmd *cobra.Command, args []string) error {
+func runBadgeDelete(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid view index: %s", args[1])
+	}
+	badgeIndex, err := strconv.Atoi(args[2])
+	if err != nil {
+		return fmt.Errorf("invalid badge index: %s", args[2])
 	}
 
 	configDir := viper.GetString("config")
@@ -75,17 +79,23 @@ func runViewDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("view index %d out of range (0-%d)", viewIndex, len(views)-1)
 	}
 
-	// Get view title for confirmation
-	viewTitle := fmt.Sprintf("view at index %d", viewIndex)
-	if viewMap, ok := views[viewIndex].(map[string]interface{}); ok {
-		if title, ok := viewMap["title"].(string); ok {
-			viewTitle = fmt.Sprintf("view '%s' (index %d)", title, viewIndex)
-		}
+	view, ok := views[viewIndex].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid view at index %d", viewIndex)
+	}
+
+	badges, ok := view["badges"].([]interface{})
+	if !ok {
+		return fmt.Errorf("no badges in view")
+	}
+
+	if badgeIndex < 0 || badgeIndex >= len(badges) {
+		return fmt.Errorf("badge index %d out of range (0-%d)", badgeIndex, len(badges)-1)
 	}
 
 	// Confirmation prompt
-	if !viewDeleteForce && !textMode {
-		fmt.Printf("Are you sure you want to delete %s? [y/N]: ", viewTitle)
+	if !badgeDeleteForce && !textMode {
+		fmt.Printf("Are you sure you want to delete badge at index %d? [y/N]: ", badgeIndex)
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(strings.ToLower(response))
@@ -94,8 +104,10 @@ func runViewDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Remove the view
-	views = append(views[:viewIndex], views[viewIndex+1:]...)
+	// Remove the badge
+	badges = append(badges[:badgeIndex], badges[badgeIndex+1:]...)
+	view["badges"] = badges
+	views[viewIndex] = view
 	config["views"] = views
 
 	// Save the config
@@ -111,6 +123,6 @@ func runViewDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("View at index %d deleted.", viewIndex))
+	client.PrintSuccess(nil, textMode, fmt.Sprintf("Badge at index %d deleted.", badgeIndex))
 	return nil
 }

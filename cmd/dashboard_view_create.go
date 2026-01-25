@@ -28,7 +28,7 @@ var viewCreateCmd = &cobra.Command{
 }
 
 func init() {
-	viewCmd.AddCommand(viewCreateCmd)
+	dashboardViewCmd.AddCommand(viewCreateCmd)
 	viewCreateCmd.Flags().StringVarP(&viewCreateData, "data", "d", "", "View configuration as JSON")
 	viewCreateCmd.Flags().StringVarP(&viewCreateFile, "file", "f", "", "Path to config file")
 	viewCreateCmd.Flags().StringVar(&viewCreateFormat, "format", "", "Input format (json, yaml)")

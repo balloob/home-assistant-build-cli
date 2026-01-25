@@ -10,23 +10,27 @@ import (
 	"github.com/spf13/viper"
 )
 
-var badgeListCmd = &cobra.Command{
-	Use:   "list <dashboard_url_path> <view_index>",
-	Short: "List badges in a view",
-	Long:  `List all badges in a dashboard view.`,
-	Args:  cobra.ExactArgs(2),
-	RunE:  runBadgeList,
+var badgeGetCmd = &cobra.Command{
+	Use:   "get <dashboard_url_path> <view_index> <badge_index>",
+	Short: "Get a specific badge",
+	Long:  `Get a specific badge from a view by index.`,
+	Args:  cobra.ExactArgs(3),
+	RunE:  runBadgeGet,
 }
 
 func init() {
-	badgeCmd.AddCommand(badgeListCmd)
+	dashboardBadgeCmd.AddCommand(badgeGetCmd)
 }
 
-func runBadgeList(cmd *cobra.Command, args []string) error {
+func runBadgeGet(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid view index: %s", args[1])
+	}
+	badgeIndex, err := strconv.Atoi(args[2])
+	if err != nil {
+		return fmt.Errorf("invalid badge index: %s", args[2])
 	}
 
 	configDir := viper.GetString("config")
@@ -75,27 +79,25 @@ func runBadgeList(cmd *cobra.Command, args []string) error {
 
 	badges, ok := view["badges"].([]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
-		return nil
+		return fmt.Errorf("no badges in view")
 	}
 
-	// Add index to each badge for easier reference
-	badgeList := make([]map[string]interface{}, len(badges))
-	for i, b := range badges {
-		badgeData := make(map[string]interface{})
-		switch badge := b.(type) {
-		case map[string]interface{}:
-			for k, val := range badge {
-				badgeData[k] = val
-			}
-		case string:
-			// Simple entity_id badge
-			badgeData["entity"] = badge
+	if badgeIndex < 0 || badgeIndex >= len(badges) {
+		return fmt.Errorf("badge index %d out of range (0-%d)", badgeIndex, len(badges)-1)
+	}
+
+	badge := badges[badgeIndex]
+	badgeData := make(map[string]interface{})
+	switch b := badge.(type) {
+	case map[string]interface{}:
+		for k, val := range b {
+			badgeData[k] = val
 		}
-		badgeData["index"] = i
-		badgeList[i] = badgeData
+	case string:
+		badgeData["entity"] = b
 	}
+	badgeData["index"] = badgeIndex
 
-	client.PrintOutput(badgeList, textMode, "")
+	client.PrintOutput(badgeData, textMode, "")
 	return nil
 }

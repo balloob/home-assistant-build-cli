@@ -16,7 +16,7 @@ var viewListCmd = &cobra.Command{
 }
 
 func init() {
-	viewCmd.AddCommand(viewListCmd)
+	dashboardViewCmd.AddCommand(viewListCmd)
 }
 
 func runViewList(cmd *cobra.Command, args []string) error {

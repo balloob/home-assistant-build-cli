@@ -13,30 +13,30 @@ import (
 	"github.com/spf13/viper"
 )
 
-var badgeDeleteForce bool
+var sectionDeleteForce bool
 
-var badgeDeleteCmd = &cobra.Command{
-	Use:   "delete <dashboard_url_path> <view_index> <badge_index>",
-	Short: "Delete a badge",
-	Long:  `Delete a badge from a view by index.`,
+var sectionDeleteCmd = &cobra.Command{
+	Use:   "delete <dashboard_url_path> <view_index> <section_index>",
+	Short: "Delete a section",
+	Long:  `Delete a section from a view by index.`,
 	Args:  cobra.ExactArgs(3),
-	RunE:  runBadgeDelete,
+	RunE:  runSectionDelete,
 }
 
 func init() {
-	badgeCmd.AddCommand(badgeDeleteCmd)
-	badgeDeleteCmd.Flags().BoolVarP(&badgeDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	dashboardSectionCmd.AddCommand(sectionDeleteCmd)
+	sectionDeleteCmd.Flags().BoolVarP(&sectionDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
-func runBadgeDelete(cmd *cobra.Command, args []string) error {
+func runSectionDelete(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid view index: %s", args[1])
 	}
-	badgeIndex, err := strconv.Atoi(args[2])
+	sectionIndex, err := strconv.Atoi(args[2])
 	if err != nil {
-		return fmt.Errorf("invalid badge index: %s", args[2])
+		return fmt.Errorf("invalid section index: %s", args[2])
 	}
 
 	configDir := viper.GetString("config")
@@ -84,18 +84,26 @@ func runBadgeDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid view at index %d", viewIndex)
 	}
 
-	badges, ok := view["badges"].([]interface{})
+	sections, ok := view["sections"].([]interface{})
 	if !ok {
-		return fmt.Errorf("no badges in view")
+		return fmt.Errorf("no sections in view")
 	}
 
-	if badgeIndex < 0 || badgeIndex >= len(badges) {
-		return fmt.Errorf("badge index %d out of range (0-%d)", badgeIndex, len(badges)-1)
+	if sectionIndex < 0 || sectionIndex >= len(sections) {
+		return fmt.Errorf("section index %d out of range (0-%d)", sectionIndex, len(sections)-1)
+	}
+
+	// Get section title for confirmation
+	sectionTitle := fmt.Sprintf("section at index %d", sectionIndex)
+	if sectionMap, ok := sections[sectionIndex].(map[string]interface{}); ok {
+		if title, ok := sectionMap["title"].(string); ok && title != "" {
+			sectionTitle = fmt.Sprintf("section '%s' (index %d)", title, sectionIndex)
+		}
 	}
 
 	// Confirmation prompt
-	if !badgeDeleteForce && !textMode {
-		fmt.Printf("Are you sure you want to delete badge at index %d? [y/N]: ", badgeIndex)
+	if !sectionDeleteForce && !textMode {
+		fmt.Printf("Are you sure you want to delete %s? [y/N]: ", sectionTitle)
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(strings.ToLower(response))
@@ -104,9 +112,9 @@ func runBadgeDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Remove the badge
-	badges = append(badges[:badgeIndex], badges[badgeIndex+1:]...)
-	view["badges"] = badges
+	// Remove the section
+	sections = append(sections[:sectionIndex], sections[sectionIndex+1:]...)
+	view["sections"] = sections
 	views[viewIndex] = view
 	config["views"] = views
 
@@ -123,6 +131,6 @@ func runBadgeDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("Badge at index %d deleted.", badgeIndex))
+	client.PrintSuccess(nil, textMode, fmt.Sprintf("Section at index %d deleted.", sectionIndex))
 	return nil
 }

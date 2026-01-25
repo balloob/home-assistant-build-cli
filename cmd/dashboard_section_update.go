@@ -1,34 +1,42 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var sectionDeleteForce bool
+var (
+	sectionUpdateData   string
+	sectionUpdateFile   string
+	sectionUpdateFormat string
+	sectionUpdateTitle  string
+	sectionUpdateType   string
+)
 
-var sectionDeleteCmd = &cobra.Command{
-	Use:   "delete <dashboard_url_path> <view_index> <section_index>",
-	Short: "Delete a section",
-	Long:  `Delete a section from a view by index.`,
+var sectionUpdateCmd = &cobra.Command{
+	Use:   "update <dashboard_url_path> <view_index> <section_index>",
+	Short: "Update a section",
+	Long:  `Update a section in a view by index.`,
 	Args:  cobra.ExactArgs(3),
-	RunE:  runSectionDelete,
+	RunE:  runSectionUpdate,
 }
 
 func init() {
-	sectionCmd.AddCommand(sectionDeleteCmd)
-	sectionDeleteCmd.Flags().BoolVarP(&sectionDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	dashboardSectionCmd.AddCommand(sectionUpdateCmd)
+	sectionUpdateCmd.Flags().StringVarP(&sectionUpdateData, "data", "d", "", "Section configuration as JSON (replaces entire section)")
+	sectionUpdateCmd.Flags().StringVarP(&sectionUpdateFile, "file", "f", "", "Path to config file")
+	sectionUpdateCmd.Flags().StringVar(&sectionUpdateFormat, "format", "", "Input format (json, yaml)")
+	sectionUpdateCmd.Flags().StringVar(&sectionUpdateTitle, "title", "", "Section title")
+	sectionUpdateCmd.Flags().StringVar(&sectionUpdateType, "type", "", "Section type")
 }
 
-func runSectionDelete(cmd *cobra.Command, args []string) error {
+func runSectionUpdate(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
@@ -93,27 +101,30 @@ func runSectionDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("section index %d out of range (0-%d)", sectionIndex, len(sections)-1)
 	}
 
-	// Get section title for confirmation
-	sectionTitle := fmt.Sprintf("section at index %d", sectionIndex)
-	if sectionMap, ok := sections[sectionIndex].(map[string]interface{}); ok {
-		if title, ok := sectionMap["title"].(string); ok && title != "" {
-			sectionTitle = fmt.Sprintf("section '%s' (index %d)", title, sectionIndex)
-		}
+	// Get existing section
+	existingSection, ok := sections[sectionIndex].(map[string]interface{})
+	if !ok {
+		existingSection = make(map[string]interface{})
 	}
 
-	// Confirmation prompt
-	if !sectionDeleteForce && !textMode {
-		fmt.Printf("Are you sure you want to delete %s? [y/N]: ", sectionTitle)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-		if response != "y" && response != "yes" {
-			return fmt.Errorf("deletion cancelled")
+	// If data or file provided, replace the entire section config
+	if sectionUpdateData != "" || sectionUpdateFile != "" {
+		newConfig, err := input.ParseInput(sectionUpdateData, sectionUpdateFile, sectionUpdateFormat)
+		if err != nil {
+			return err
 		}
+		existingSection = newConfig
 	}
 
-	// Remove the section
-	sections = append(sections[:sectionIndex], sections[sectionIndex+1:]...)
+	// Apply flag updates
+	if cmd.Flags().Changed("title") {
+		existingSection["title"] = sectionUpdateTitle
+	}
+	if cmd.Flags().Changed("type") {
+		existingSection["type"] = sectionUpdateType
+	}
+
+	sections[sectionIndex] = existingSection
 	view["sections"] = sections
 	views[viewIndex] = view
 	config["views"] = views
@@ -131,6 +142,7 @@ func runSectionDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("Section at index %d deleted.", sectionIndex))
+	existingSection["index"] = sectionIndex
+	client.PrintSuccess(existingSection, textMode, fmt.Sprintf("Section at index %d updated.", sectionIndex))
 	return nil
 }

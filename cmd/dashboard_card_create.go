@@ -29,7 +29,7 @@ var cardCreateCmd = &cobra.Command{
 }
 
 func init() {
-	cardCmd.AddCommand(cardCreateCmd)
+	dashboardCardCmd.AddCommand(cardCreateCmd)
 	cardCreateCmd.Flags().StringVarP(&cardCreateData, "data", "d", "", "Card configuration as JSON")
 	cardCreateCmd.Flags().StringVarP(&cardCreateFile, "file", "f", "", "Path to config file")
 	cardCreateCmd.Flags().StringVar(&cardCreateFormat, "format", "", "Input format (json, yaml)")

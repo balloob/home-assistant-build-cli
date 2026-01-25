@@ -10,30 +10,26 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cardGetSection int
+var cardListSection int
 
-var cardGetCmd = &cobra.Command{
-	Use:   "get <dashboard_url_path> <view_index> <card_index>",
-	Short: "Get a specific card",
-	Long:  `Get a specific card from a view or section by index.`,
-	Args:  cobra.ExactArgs(3),
-	RunE:  runCardGet,
+var cardListCmd = &cobra.Command{
+	Use:   "list <dashboard_url_path> <view_index>",
+	Short: "List cards in a view or section",
+	Long:  `List all cards in a dashboard view or section. Use --section to specify a section index.`,
+	Args:  cobra.ExactArgs(2),
+	RunE:  runCardList,
 }
 
 func init() {
-	cardCmd.AddCommand(cardGetCmd)
-	cardGetCmd.Flags().IntVarP(&cardGetSection, "section", "s", -1, "Section index (if card is in a section)")
+	dashboardCardCmd.AddCommand(cardListCmd)
+	cardListCmd.Flags().IntVarP(&cardListSection, "section", "s", -1, "Section index (if cards are in a section)")
 }
 
-func runCardGet(cmd *cobra.Command, args []string) error {
+func runCardList(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid view index: %s", args[1])
-	}
-	cardIndex, err := strconv.Atoi(args[2])
-	if err != nil {
-		return fmt.Errorf("invalid card index: %s", args[2])
 	}
 
 	configDir := viper.GetString("config")
@@ -82,18 +78,18 @@ func runCardGet(cmd *cobra.Command, args []string) error {
 
 	var cards []interface{}
 
-	if cardGetSection >= 0 {
+	if cardListSection >= 0 {
 		// Get cards from section
 		sections, ok := view["sections"].([]interface{})
 		if !ok {
 			return fmt.Errorf("no sections in view")
 		}
-		if cardGetSection >= len(sections) {
-			return fmt.Errorf("section index %d out of range (0-%d)", cardGetSection, len(sections)-1)
+		if cardListSection >= len(sections) {
+			return fmt.Errorf("section index %d out of range (0-%d)", cardListSection, len(sections)-1)
 		}
-		section, ok := sections[cardGetSection].(map[string]interface{})
+		section, ok := sections[cardListSection].(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("invalid section at index %d", cardGetSection)
+			return fmt.Errorf("invalid section at index %d", cardListSection)
 		}
 		cards, _ = section["cards"].([]interface{})
 	} else {
@@ -102,18 +98,23 @@ func runCardGet(cmd *cobra.Command, args []string) error {
 	}
 
 	if cards == nil {
-		return fmt.Errorf("no cards found")
+		client.PrintOutput([]interface{}{}, textMode, "")
+		return nil
 	}
 
-	if cardIndex < 0 || cardIndex >= len(cards) {
-		return fmt.Errorf("card index %d out of range (0-%d)", cardIndex, len(cards)-1)
+	// Add index to each card for easier reference
+	cardList := make([]map[string]interface{}, len(cards))
+	for i, c := range cards {
+		cardData := make(map[string]interface{})
+		if cardMap, ok := c.(map[string]interface{}); ok {
+			for k, val := range cardMap {
+				cardData[k] = val
+			}
+		}
+		cardData["index"] = i
+		cardList[i] = cardData
 	}
 
-	card := cards[cardIndex]
-	if cardMap, ok := card.(map[string]interface{}); ok {
-		cardMap["index"] = cardIndex
-	}
-
-	client.PrintOutput(card, textMode, "")
+	client.PrintOutput(cardList, textMode, "")
 	return nil
 }

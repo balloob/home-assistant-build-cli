@@ -10,27 +10,27 @@ import (
 	"github.com/spf13/viper"
 )
 
-var badgeGetCmd = &cobra.Command{
-	Use:   "get <dashboard_url_path> <view_index> <badge_index>",
-	Short: "Get a specific badge",
-	Long:  `Get a specific badge from a view by index.`,
+var sectionGetCmd = &cobra.Command{
+	Use:   "get <dashboard_url_path> <view_index> <section_index>",
+	Short: "Get a specific section",
+	Long:  `Get a specific section from a view by index.`,
 	Args:  cobra.ExactArgs(3),
-	RunE:  runBadgeGet,
+	RunE:  runSectionGet,
 }
 
 func init() {
-	badgeCmd.AddCommand(badgeGetCmd)
+	dashboardSectionCmd.AddCommand(sectionGetCmd)
 }
 
-func runBadgeGet(cmd *cobra.Command, args []string) error {
+func runSectionGet(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	viewIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid view index: %s", args[1])
 	}
-	badgeIndex, err := strconv.Atoi(args[2])
+	sectionIndex, err := strconv.Atoi(args[2])
 	if err != nil {
-		return fmt.Errorf("invalid badge index: %s", args[2])
+		return fmt.Errorf("invalid section index: %s", args[2])
 	}
 
 	configDir := viper.GetString("config")
@@ -77,27 +77,20 @@ func runBadgeGet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid view at index %d", viewIndex)
 	}
 
-	badges, ok := view["badges"].([]interface{})
+	sections, ok := view["sections"].([]interface{})
 	if !ok {
-		return fmt.Errorf("no badges in view")
+		return fmt.Errorf("no sections in view")
 	}
 
-	if badgeIndex < 0 || badgeIndex >= len(badges) {
-		return fmt.Errorf("badge index %d out of range (0-%d)", badgeIndex, len(badges)-1)
+	if sectionIndex < 0 || sectionIndex >= len(sections) {
+		return fmt.Errorf("section index %d out of range (0-%d)", sectionIndex, len(sections)-1)
 	}
 
-	badge := badges[badgeIndex]
-	badgeData := make(map[string]interface{})
-	switch b := badge.(type) {
-	case map[string]interface{}:
-		for k, val := range b {
-			badgeData[k] = val
-		}
-	case string:
-		badgeData["entity"] = b
+	section := sections[sectionIndex]
+	if sectionMap, ok := section.(map[string]interface{}); ok {
+		sectionMap["index"] = sectionIndex
 	}
-	badgeData["index"] = badgeIndex
 
-	client.PrintOutput(badgeData, textMode, "")
+	client.PrintOutput(section, textMode, "")
 	return nil
 }

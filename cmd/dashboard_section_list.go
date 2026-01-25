@@ -19,7 +19,7 @@ var sectionListCmd = &cobra.Command{
 }
 
 func init() {
-	sectionCmd.AddCommand(sectionListCmd)
+	dashboardSectionCmd.AddCommand(sectionListCmd)
 }
 
 func runSectionList(cmd *cobra.Command, args []string) error {
