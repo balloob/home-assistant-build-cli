@@ -44,6 +44,15 @@ go test ./...
 - REST API via `client.RestClient` (uses resty) for state queries, service calls
 - WebSocket API via `client.WebSocketClient` for registry operations (areas, floors, labels, devices)
 
+### Learning Domain Interactions
+
+To understand how to interact with specific Home Assistant domains (e.g., `light`, `climate`, `cover`), check the data folder of the Home Assistant frontend repository:
+
+- **Web**: https://github.com/home-assistant/frontend/tree/dev/src/data
+- **CLI**: `gh browse home-assistant/frontend:src/data` or `gh api repos/home-assistant/frontend/contents/src/data`
+
+Each domain typically has a TypeScript file (e.g., `light.ts`, `climate.ts`) that defines the available services, attributes, and WebSocket commands.
+
 ### Adding New Commands
 
 When adding new commands:
