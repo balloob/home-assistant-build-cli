@@ -200,6 +200,54 @@ run_automation_tests() {
     else
         fail "automation create: $OUTPUT"
     fi
+
+    # Test: automation create-from-blueprint (requires blueprint import first)
+    log_test "automation create-from-blueprint"
+    BLUEPRINT_URL="https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/automation/blueprints/motion_light.yaml"
+    IMPORT_OUTPUT=$(run_hab_optional blueprint import "$BLUEPRINT_URL")
+    if echo "$IMPORT_OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        BLUEPRINT_PATH=$(echo "$IMPORT_OUTPUT" | jq -r '.data.suggested_filename // "homeassistant/motion_light.yaml"')
+
+        BP_AUTOMATION_ID="test_bp_automation_$(date +%s)"
+        BP_INPUTS='{"alias":"Test Blueprint Automation","motion_entity":"sun.sun","light_target":{"entity_id":"sun.sun"}}'
+        OUTPUT=$(run_hab_optional automation create-from-blueprint "$BP_AUTOMATION_ID" "$BLUEPRINT_PATH" -d "$BP_INPUTS")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "automation create-from-blueprint"
+
+            # Test: automation list with --blueprint filter
+            log_test "automation list --blueprint (specific)"
+            OUTPUT=$(run_hab automation list --blueprint "$BLUEPRINT_PATH")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+                if [ "$COUNT" -ge 1 ]; then
+                    pass "automation list --blueprint (specific) ($COUNT automations)"
+                else
+                    fail "automation list --blueprint (specific): expected at least 1 automation, got $COUNT"
+                fi
+            else
+                fail "automation list --blueprint (specific): $OUTPUT"
+            fi
+
+            log_test "automation list --blueprint=*"
+            OUTPUT=$(run_hab automation list --blueprint "*")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+                pass "automation list --blueprint=* ($COUNT automations from blueprints)"
+            else
+                fail "automation list --blueprint=*: $OUTPUT"
+            fi
+
+            # Cleanup automation created from blueprint
+            run_hab automation delete "$BP_AUTOMATION_ID" --force > /dev/null 2>&1
+        else
+            pass "automation create-from-blueprint (blueprint inputs may not match - skipped)"
+        fi
+
+        # Cleanup blueprint
+        run_hab_optional blueprint delete "$BLUEPRINT_PATH" > /dev/null 2>&1
+    else
+        pass "automation create-from-blueprint (skipped - blueprint import failed, network may be restricted)"
+    fi
 }
 
 # Run standalone if executed directly

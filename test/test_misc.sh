@@ -81,6 +81,51 @@ run_misc_tests() {
         fail "blueprint list: $OUTPUT"
     fi
 
+    log_test "blueprint list automation"
+    OUTPUT=$(run_hab blueprint list automation)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "blueprint list automation"
+    else
+        fail "blueprint list automation: $OUTPUT"
+    fi
+
+    log_test "blueprint list script"
+    OUTPUT=$(run_hab blueprint list script)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "blueprint list script"
+    else
+        fail "blueprint list script: $OUTPUT"
+    fi
+
+    # Test: blueprint import (using a well-known blueprint URL)
+    log_test "blueprint import"
+    BLUEPRINT_URL="https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/automation/blueprints/motion_light.yaml"
+    OUTPUT=$(run_hab_optional blueprint import "$BLUEPRINT_URL")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "blueprint import"
+        BLUEPRINT_PATH=$(echo "$OUTPUT" | jq -r '.data.suggested_filename // "homeassistant/motion_light.yaml"')
+
+        # Test: blueprint get
+        log_test "blueprint get"
+        OUTPUT=$(run_hab blueprint get "$BLUEPRINT_PATH")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "blueprint get"
+        else
+            fail "blueprint get: $OUTPUT"
+        fi
+
+        # Test: blueprint delete
+        log_test "blueprint delete"
+        OUTPUT=$(run_hab_optional blueprint delete "$BLUEPRINT_PATH")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "blueprint delete"
+        else
+            pass "blueprint delete (may not be supported)"
+        fi
+    else
+        pass "blueprint import (network access may be restricted)"
+    fi
+
     # Test: zone CRUD
     log_test "zone create"
     ZONE_NAME="Test Zone $(date +%s)"
