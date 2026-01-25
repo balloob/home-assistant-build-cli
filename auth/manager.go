@@ -35,7 +35,8 @@ func (m *Manager) loadCredentials() (*Credentials, error) {
 	return m.credentials, nil
 }
 
-// GetCredentials returns the current credentials, printing a warning if not authenticated
+// GetCredentials returns the current credentials, printing a warning if not authenticated.
+// It automatically refreshes OAuth tokens if they are expired or about to expire.
 func (m *Manager) GetCredentials() (*Credentials, error) {
 	creds, err := m.loadCredentials()
 	if err != nil {
@@ -45,6 +46,21 @@ func (m *Manager) GetCredentials() (*Credentials, error) {
 		client.PrintWarning("Not authenticated. Run 'hab auth login' to authenticate.")
 		return nil, ErrNotAuthenticated
 	}
+
+	// Automatically refresh OAuth tokens if needed
+	if creds.NeedsRefresh() && creds.RefreshToken != "" {
+		newCreds, err := RefreshAccessToken(creds)
+		if err != nil {
+			return nil, fmt.Errorf("token refresh failed: %w", err)
+		}
+		m.credentials = newCreds
+		if err := SaveCredentials(newCreds, m.ConfigDir); err != nil {
+			// Log warning but continue with refreshed credentials in memory
+			client.PrintWarning("Failed to save refreshed credentials: " + err.Error())
+		}
+		return newCreds, nil
+	}
+
 	return creds, nil
 }
 
@@ -138,19 +154,12 @@ func (m *Manager) GetAuthStatus() map[string]interface{} {
 	}
 }
 
-// GetRestClient returns a configured REST client
+// GetRestClient returns a configured REST client.
+// Token refresh is handled automatically by GetCredentials().
 func (m *Manager) GetRestClient() (*client.RestClient, error) {
 	creds, err := m.GetCredentials()
 	if err != nil {
 		return nil, err
-	}
-
-	// Check if token needs refresh
-	if m.NeedsRefresh() {
-		if err := m.RefreshToken(); err != nil {
-			return nil, fmt.Errorf("token refresh failed: %w", err)
-		}
-		creds = m.credentials
 	}
 
 	return client.NewRestClient(creds.URL, creds.AccessToken), nil
