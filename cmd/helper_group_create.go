@@ -14,6 +14,7 @@ var (
 	helperGroupCreateType        string
 	helperGroupCreateAll         bool
 	helperGroupCreateHideMembers bool
+	helperGroupCreateSensorType  string
 )
 
 var helperGroupCreateCmd = &cobra.Command{
@@ -23,9 +24,12 @@ var helperGroupCreateCmd = &cobra.Command{
 
 Group types available: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch.
 
+For sensor groups, use --sensor-type to specify aggregation: last, max, mean, median, min, product, range, stdev, sum.
+
 Examples:
   hab helper-group create "Living Room Lights" --type light --entities light.lamp1,light.lamp2
-  hab helper-group create "All Motion Sensors" --type binary_sensor --entities binary_sensor.motion1,binary_sensor.motion2 --all`,
+  hab helper-group create "All Motion Sensors" --type binary_sensor --entities binary_sensor.motion1,binary_sensor.motion2 --all
+  hab helper-group create "Average Temperature" --type sensor --sensor-type mean --entities sensor.temp1,sensor.temp2`,
 	Args: cobra.ExactArgs(1),
 	RunE: runHelperGroupCreate,
 }
@@ -36,6 +40,7 @@ func init() {
 	helperGroupCreateCmd.Flags().StringSliceVarP(&helperGroupCreateEntities, "entities", "e", nil, "Entity IDs to include in the group (required)")
 	helperGroupCreateCmd.Flags().BoolVar(&helperGroupCreateAll, "all", false, "Set to true if all entities must be on for group to be on (only for binary_sensor, light, switch)")
 	helperGroupCreateCmd.Flags().BoolVar(&helperGroupCreateHideMembers, "hide-members", false, "Hide member entities from the UI")
+	helperGroupCreateCmd.Flags().StringVar(&helperGroupCreateSensorType, "sensor-type", "mean", "Sensor aggregation type: last, max, mean, median, min, product, range, stdev, sum")
 	helperGroupCreateCmd.MarkFlagRequired("entities")
 }
 
@@ -58,6 +63,17 @@ func runHelperGroupCreate(cmd *cobra.Command, args []string) error {
 	}
 	if !validTypes[helperGroupCreateType] {
 		return fmt.Errorf("invalid group type: %s. Valid types: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch", helperGroupCreateType)
+	}
+
+	// Validate sensor type if sensor group
+	if helperGroupCreateType == "sensor" {
+		validSensorTypes := map[string]bool{
+			"last": true, "max": true, "mean": true, "median": true,
+			"min": true, "product": true, "range": true, "stdev": true, "sum": true,
+		}
+		if !validSensorTypes[helperGroupCreateSensorType] {
+			return fmt.Errorf("invalid sensor type: %s. Valid types: last, max, mean, median, min, product, range, stdev, sum", helperGroupCreateSensorType)
+		}
 	}
 
 	manager := auth.NewManager(configDir)
@@ -99,12 +115,15 @@ func runHelperGroupCreate(cmd *cobra.Command, args []string) error {
 	formData := map[string]interface{}{
 		"name":         name,
 		"entities":     helperGroupCreateEntities,
-		"type":         helperGroupCreateType,
 		"hide_members": helperGroupCreateHideMembers,
 	}
 
-	// Add "all" flag for types that support it
-	if helperGroupCreateType == "binary_sensor" || helperGroupCreateType == "light" || helperGroupCreateType == "switch" {
+	// Add type-specific fields
+	if helperGroupCreateType == "sensor" {
+		// Sensor groups need aggregation type
+		formData["type"] = helperGroupCreateSensorType
+	} else if helperGroupCreateType == "binary_sensor" || helperGroupCreateType == "light" || helperGroupCreateType == "switch" {
+		// These types support "all" flag
 		formData["all"] = helperGroupCreateAll
 	}
 
