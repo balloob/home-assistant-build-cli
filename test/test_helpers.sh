@@ -339,19 +339,25 @@ run_helpers_tests() {
         fail "helper-group list: $OUTPUT"
     fi
 
-    # Create input_number helpers to use in the group test
-    log_test "helper-group create (setup: create input_numbers)"
-    OUTPUT1=$(run_hab helper-input-number create "Group Test Number 1" --min 0 --max 100)
-    OUTPUT2=$(run_hab helper-input-number create "Group Test Number 2" --min 0 --max 100)
+    # Create template sensors to use in the group test (groups require matching domain entities)
+    log_test "helper-group create (setup: create template sensors)"
+    OUTPUT1=$(run_hab helper-template create "Group Test Sensor 1" --type sensor --state "{{ 25 }}" --unit "°C")
+    OUTPUT2=$(run_hab helper-template create "Group Test Sensor 2" --type sensor --state "{{ 30 }}" --unit "°C")
     if echo "$OUTPUT1" | jq -e '.success == true' > /dev/null 2>&1 && \
        echo "$OUTPUT2" | jq -e '.success == true' > /dev/null 2>&1; then
-        GROUP_NUM1_ID=$(echo "$OUTPUT1" | jq -r '.data.id // empty')
-        GROUP_NUM2_ID=$(echo "$OUTPUT2" | jq -r '.data.id // empty')
-        pass "helper-group create setup (created input_number.$GROUP_NUM1_ID, input_number.$GROUP_NUM2_ID)"
+        GROUP_SENSOR1_ENTRY_ID=$(echo "$OUTPUT1" | jq -r '.data.entry_id // empty')
+        GROUP_SENSOR2_ENTRY_ID=$(echo "$OUTPUT2" | jq -r '.data.entry_id // empty')
+        # Template sensors get entity IDs like sensor.group_test_sensor_1
+        GROUP_SENSOR1_ENTITY="sensor.group_test_sensor_1"
+        GROUP_SENSOR2_ENTITY="sensor.group_test_sensor_2"
+        pass "helper-group create setup (created $GROUP_SENSOR1_ENTITY, $GROUP_SENSOR2_ENTITY)"
+
+        # Give Home Assistant a moment to create the entities
+        sleep 1
 
         log_test "helper-group create"
         # Groups use config entry flow - entities must match the group type domain
-        OUTPUT=$(run_hab helper-group create "Test Sensor Group" --type sensor --entities "input_number.$GROUP_NUM1_ID,input_number.$GROUP_NUM2_ID")
+        OUTPUT=$(run_hab helper-group create "Test Sensor Group" --type sensor --entities "$GROUP_SENSOR1_ENTITY,$GROUP_SENSOR2_ENTITY")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             GROUP_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
             pass "helper-group create (entry_id: $GROUP_ENTRY_ID)"
@@ -367,25 +373,28 @@ run_helpers_tests() {
             fail "helper-group create: $OUTPUT"
         fi
 
-        # Cleanup the input_numbers we created for the group test
-        run_hab helper-input-number delete "$GROUP_NUM1_ID" > /dev/null 2>&1
-        run_hab helper-input-number delete "$GROUP_NUM2_ID" > /dev/null 2>&1
+        # Cleanup the template sensors we created for the group test
+        run_hab helper-template delete "$GROUP_SENSOR1_ENTRY_ID" > /dev/null 2>&1
+        run_hab helper-template delete "$GROUP_SENSOR2_ENTRY_ID" > /dev/null 2>&1
     else
-        fail "helper-group create setup: failed to create input_numbers for group test"
+        fail "helper-group create setup: failed to create template sensors for group test"
     fi
 
     # ==========================================================================
     # Config Flow-Based Helper Tests
-    # These helpers require a source sensor, so we create an input_number first
+    # These helpers require a source sensor, so we create a template sensor first
     # ==========================================================================
 
     # Create a source sensor for config flow helper tests
-    log_test "config flow helpers (setup: create source sensor)"
-    OUTPUT=$(run_hab helper-input-number create "Config Flow Test Source" --min 0 --max 1000 --step 1 --unit "W")
+    log_test "config flow helpers (setup: create source template sensor)"
+    OUTPUT=$(run_hab helper-template create "Config Flow Test Source" --type sensor --state "{{ 500 }}" --unit "W" --device-class power)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        CF_SOURCE_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
-        CF_SOURCE_ENTITY="input_number.$CF_SOURCE_ID"
+        CF_SOURCE_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+        CF_SOURCE_ENTITY="sensor.config_flow_test_source"
         pass "config flow helpers setup (source: $CF_SOURCE_ENTITY)"
+
+        # Give Home Assistant a moment to create the entity
+        sleep 1
 
         # ==========================================================================
         # Derivative Helper Tests
@@ -449,10 +458,13 @@ run_helpers_tests() {
         # Min/Max Helper Tests (needs multiple source sensors)
         # ==========================================================================
         # Create a second source for min/max tests
-        OUTPUT2=$(run_hab helper-input-number create "Config Flow Test Source 2" --min 0 --max 1000 --step 1 --unit "W")
+        OUTPUT2=$(run_hab helper-template create "Config Flow Test Source 2" --type sensor --state "{{ 600 }}" --unit "W" --device-class power)
         if echo "$OUTPUT2" | jq -e '.success == true' > /dev/null 2>&1; then
-            CF_SOURCE2_ID=$(echo "$OUTPUT2" | jq -r '.data.id // empty')
-            CF_SOURCE2_ENTITY="input_number.$CF_SOURCE2_ID"
+            CF_SOURCE2_ENTRY_ID=$(echo "$OUTPUT2" | jq -r '.data.entry_id // empty')
+            CF_SOURCE2_ENTITY="sensor.config_flow_test_source_2"
+
+            # Give Home Assistant a moment to create the entity
+            sleep 1
 
             log_test "helper-min-max list"
             OUTPUT=$(run_hab helper-min-max list)
@@ -481,7 +493,7 @@ run_helpers_tests() {
             fi
 
             # Cleanup second source
-            run_hab helper-input-number delete "$CF_SOURCE2_ID" > /dev/null 2>&1
+            run_hab helper-template delete "$CF_SOURCE2_ENTRY_ID" > /dev/null 2>&1
         else
             fail "helper-min-max setup: failed to create second source sensor"
         fi
@@ -499,9 +511,21 @@ run_helpers_tests() {
         fi
 
         log_test "helper-threshold create"
-        # Note: threshold requires sensor domain entities, not input_number
-        # Use the derivative sensor we just created as a source (it's a sensor)
-        pass "helper-threshold create (skipped - requires sensor domain entity)"
+        OUTPUT=$(run_hab helper-threshold create "Test Threshold" --entity "$CF_SOURCE_ENTITY" --upper 750 --hysteresis 10)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            THRESHOLD_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-threshold create (entry_id: $THRESHOLD_ENTRY_ID)"
+
+            log_test "helper-threshold delete"
+            OUTPUT=$(run_hab helper-threshold delete "$THRESHOLD_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-threshold delete"
+            else
+                fail "helper-threshold delete: $OUTPUT"
+            fi
+        else
+            fail "helper-threshold create: $OUTPUT"
+        fi
 
         # ==========================================================================
         # Utility Meter Helper Tests (requires sensor domain entity)
@@ -516,8 +540,21 @@ run_helpers_tests() {
         fi
 
         log_test "helper-utility-meter create"
-        # Note: utility_meter requires sensor domain entities, not input_number
-        pass "helper-utility-meter create (skipped - requires sensor domain entity)"
+        OUTPUT=$(run_hab helper-utility-meter create "Test Utility Meter" --source "$CF_SOURCE_ENTITY" --cycle daily)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            UTILITY_METER_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-utility-meter create (entry_id: $UTILITY_METER_ENTRY_ID)"
+
+            log_test "helper-utility-meter delete"
+            OUTPUT=$(run_hab helper-utility-meter delete "$UTILITY_METER_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-utility-meter delete"
+            else
+                fail "helper-utility-meter delete: $OUTPUT"
+            fi
+        else
+            fail "helper-utility-meter create: $OUTPUT"
+        fi
 
         # ==========================================================================
         # Statistics Helper Tests (requires sensor or binary_sensor domain entity)
@@ -532,11 +569,24 @@ run_helpers_tests() {
         fi
 
         log_test "helper-statistics create"
-        # Note: statistics requires sensor or binary_sensor domain entities, not input_number
-        pass "helper-statistics create (skipped - requires sensor/binary_sensor domain entity)"
+        OUTPUT=$(run_hab helper-statistics create "Test Statistics" --entity "$CF_SOURCE_ENTITY" --characteristic mean --sampling-size 100)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            STATISTICS_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+            pass "helper-statistics create (entry_id: $STATISTICS_ENTRY_ID)"
+
+            log_test "helper-statistics delete"
+            OUTPUT=$(run_hab helper-statistics delete "$STATISTICS_ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper-statistics delete"
+            else
+                fail "helper-statistics delete: $OUTPUT"
+            fi
+        else
+            fail "helper-statistics create: $OUTPUT"
+        fi
 
         # Cleanup the source sensor we created for config flow helper tests
-        run_hab helper-input-number delete "$CF_SOURCE_ID" > /dev/null 2>&1
+        run_hab helper-template delete "$CF_SOURCE_ENTRY_ID" > /dev/null 2>&1
     else
         fail "config flow helpers setup: failed to create source sensor"
     fi
