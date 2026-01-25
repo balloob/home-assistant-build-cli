@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
@@ -45,17 +47,71 @@ func runAuthLogin(cmd *cobra.Command, args []string) error {
 	return loginWithOAuth(manager, textMode)
 }
 
+// getURLWithDiscovery attempts to discover Home Assistant servers on the network
+// and presents a selection menu. Returns the selected or manually entered URL.
+func getURLWithDiscovery() (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Println("Searching for Home Assistant servers...")
+	servers, err := auth.DiscoverServers(3 * time.Second)
+
+	if err != nil || len(servers) == 0 {
+		// No servers found or discovery failed, fall back to manual entry
+		if err != nil {
+			fmt.Printf("Discovery failed: %v\n", err)
+		} else {
+			fmt.Println("No Home Assistant servers found on the network.")
+		}
+		fmt.Print("\nHome Assistant URL: ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("failed to read URL: %w", err)
+		}
+		return strings.TrimSpace(input), nil
+	}
+
+	// Display discovered servers
+	fmt.Printf("\nFound %d Home Assistant server(s):\n\n", len(servers))
+	for i, server := range servers {
+		fmt.Printf("  [%d] %s\n", i, auth.FormatServerDisplay(server))
+	}
+	fmt.Printf("  [%d] Enter URL manually\n", len(servers))
+
+	// Get user selection
+	fmt.Printf("\nSelect server [0-%d]: ", len(servers))
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("failed to read selection: %w", err)
+	}
+
+	selection := strings.TrimSpace(input)
+	idx, err := strconv.Atoi(selection)
+	if err != nil || idx < 0 || idx > len(servers) {
+		return "", fmt.Errorf("invalid selection: %s", selection)
+	}
+
+	// Manual entry option
+	if idx == len(servers) {
+		fmt.Print("Home Assistant URL: ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("failed to read URL: %w", err)
+		}
+		return strings.TrimSpace(input), nil
+	}
+
+	return servers[idx].URL, nil
+}
+
 func loginWithToken(manager *auth.Manager, textMode bool) error {
 	// Get URL
 	url := loginURL
 	if url == "" {
-		fmt.Print("Home Assistant URL: ")
-		reader := bufio.NewReader(os.Stdin)
-		input, err := reader.ReadString('\n')
+		var err error
+		url, err = getURLWithDiscovery()
 		if err != nil {
-			return fmt.Errorf("failed to read URL: %w", err)
+			return err
 		}
-		url = strings.TrimSpace(input)
 	}
 
 	// Get access token
@@ -106,13 +162,11 @@ func loginWithOAuth(manager *auth.Manager, textMode bool) error {
 	// Get URL
 	url := loginURL
 	if url == "" {
-		fmt.Print("Home Assistant URL: ")
-		reader := bufio.NewReader(os.Stdin)
-		input, err := reader.ReadString('\n')
+		var err error
+		url, err = getURLWithDiscovery()
 		if err != nil {
-			return fmt.Errorf("failed to read URL: %w", err)
+			return err
 		}
-		url = strings.TrimSpace(input)
 	}
 
 	// Run OAuth flow
