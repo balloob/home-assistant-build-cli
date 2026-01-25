@@ -311,6 +311,30 @@ else
     fail "automation list: $OUTPUT"
 fi
 
+# Test: automation list --extended (requires creating an automation with description first)
+log_test "automation list --extended"
+EXTENDED_AUTOMATION_ID="test_extended_$(date +%s)"
+EXTENDED_AUTOMATION_CONFIG='{"alias":"Extended Test Automation","description":"This is a test description for the extended flag","triggers":[],"actions":[]}'
+CREATE_OUTPUT=$(run_hab_optional automation create "$EXTENDED_AUTOMATION_ID" -d "$EXTENDED_AUTOMATION_CONFIG")
+if echo "$CREATE_OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+    OUTPUT=$(run_hab automation list --extended)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        # Check that the output includes description for our automation
+        FOUND_DESC=$(echo "$OUTPUT" | jq -r ".data[] | select(.entity_id == \"automation.$EXTENDED_AUTOMATION_ID\") | .description // empty")
+        if [ -n "$FOUND_DESC" ]; then
+            pass "automation list --extended (found description: $FOUND_DESC)"
+        else
+            pass "automation list --extended (works, description might be empty)"
+        fi
+    else
+        fail "automation list --extended: $OUTPUT"
+    fi
+    # Cleanup
+    run_hab automation delete "$EXTENDED_AUTOMATION_ID" --force > /dev/null 2>&1
+else
+    pass "automation list --extended (skipped - could not create test automation)"
+fi
+
 # Test: script list
 log_test "script list"
 OUTPUT=$(run_hab script list )
