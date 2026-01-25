@@ -110,6 +110,16 @@ func runHelperTypes(cmd *cobra.Command, args []string) error {
 			Description: "Provides statistical analysis of sensor history (config flow)",
 			Parameters:  []string{"name (required)", "entity (required)", "characteristic (mean/median/standard_deviation/etc)", "sampling-size", "max-age", "precision", "percentile"},
 		},
+		{
+			Type:        "local_calendar",
+			Description: "A local calendar for storing events in Home Assistant (config flow)",
+			Parameters:  []string{"name (required)", "icon"},
+		},
+		{
+			Type:        "local_todo",
+			Description: "A local to-do list for storing tasks in Home Assistant (config flow)",
+			Parameters:  []string{"name (required)", "icon"},
+		},
 	}
 
 	// Convert to interface slice for output

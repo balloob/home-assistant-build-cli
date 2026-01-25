@@ -541,6 +541,10 @@ run_helpers_tests
 source "$TEST_SCRIPT_DIR/test_template.sh"
 run_template_tests
 
+# Run calendar and to-do tests from dedicated test file
+source "$TEST_SCRIPT_DIR/test_calendar_todo.sh"
+run_calendar_todo_tests
+
 # Test: zone CRUD
 log_test "zone create"
 ZONE_NAME="Test Zone $(date +%s)"
@@ -620,32 +624,6 @@ fi
 # Test: thread list (skip - not supported by empty-hass and may hang)
 log_test "thread list"
 pass "thread list (skipped - not supported by empty-hass)"
-
-# Test: calendar list (requires a calendar entity)
-log_test "calendar list"
-# Try to find a calendar entity
-CALENDAR_ENTITY=$(run_hab entity list | jq -r '.data[] | select(.entity_id | startswith("calendar.")) | .entity_id' | head -1)
-if [ -n "$CALENDAR_ENTITY" ]; then
-    OUTPUT=$(run_hab_optional calendar list "$CALENDAR_ENTITY")
-    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        EVENT_COUNT=$(echo "$OUTPUT" | jq '.data.events | if . == null then 0 elif type == "array" then length else 0 end')
-        pass "calendar list ($EVENT_COUNT events from $CALENDAR_ENTITY)"
-    else
-        # Calendar might exist but have no events or API might not be available
-        pass "calendar list (API may not support event listing)"
-    fi
-else
-    # No calendar entities available - test the command with a non-existent calendar
-    OUTPUT=$(run_hab_optional calendar list "calendar.test_nonexistent")
-    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-        pass "calendar list (no events)"
-    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
-        # Command executed but calendar doesn't exist
-        pass "calendar list (no calendar entities available)"
-    else
-        pass "calendar list (skipped - no calendar entities)"
-    fi
-fi
 
 # Test: entity get (get first available entity)
 log_test "entity get"
