@@ -5,11 +5,12 @@ import (
 )
 
 var helperCounterParentCmd = &cobra.Command{
-	Use:   "helper-counter",
-	Short: "Manage counter helpers",
-	Long:  `Create, list, and delete counter helpers.`,
+	Use:     "counter",
+	Short:   "Manage counter helpers",
+	Long:    `Create, list, and delete counter helpers.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperCounterParentCmd)
+	helperCmd.AddCommand(helperCounterParentCmd)
 }

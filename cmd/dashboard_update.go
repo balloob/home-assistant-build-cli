@@ -17,11 +17,12 @@ var (
 )
 
 var dashboardUpdateCmd = &cobra.Command{
-	Use:   "update <dashboard_id>",
-	Short: "Update a dashboard",
-	Long:  `Update dashboard settings like title, icon, sidebar visibility, and admin requirement.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDashboardUpdate,
+	Use:     "update <dashboard_id>",
+	Short:   "Update a dashboard",
+	Long:    `Update dashboard settings like title, icon, sidebar visibility, and admin requirement.`,
+	GroupID: dashboardGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runDashboardUpdate,
 }
 
 func init() {

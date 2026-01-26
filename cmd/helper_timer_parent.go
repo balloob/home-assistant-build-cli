@@ -5,11 +5,12 @@ import (
 )
 
 var helperTimerParentCmd = &cobra.Command{
-	Use:   "helper-timer",
-	Short: "Manage timer helpers",
-	Long:  `Create, list, and delete timer helpers.`,
+	Use:     "timer",
+	Short:   "Manage timer helpers",
+	Long:    `Create, list, and delete timer helpers.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperTimerParentCmd)
+	helperCmd.AddCommand(helperTimerParentCmd)
 }

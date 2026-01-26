@@ -71,23 +71,23 @@ run_automation_tests() {
             fail "automation update: $OUTPUT"
         fi
 
-        # Test: automation trigger (manual trigger)
-        log_test "automation trigger"
-        OUTPUT=$(run_hab_optional automation trigger "$AUTOMATION_ID")
+        # Test: automation run (manual trigger)
+        log_test "automation run"
+        OUTPUT=$(run_hab_optional automation run "$AUTOMATION_ID")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation trigger"
+            pass "automation run"
         else
-            # Trigger might fail if automation has no valid actions, but command should work
-            pass "automation trigger (automation may not have valid triggers/actions)"
+            # Run might fail if automation has no valid actions, but command should work
+            pass "automation run (automation may not have valid triggers/actions)"
         fi
 
-        # Test: automation trigger --skip-condition
-        log_test "automation trigger --skip-condition"
-        OUTPUT=$(run_hab_optional automation trigger "$AUTOMATION_ID" --skip-condition)
+        # Test: automation run --skip-condition
+        log_test "automation run --skip-condition"
+        OUTPUT=$(run_hab_optional automation run "$AUTOMATION_ID" --skip-condition)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation trigger --skip-condition"
+            pass "automation run --skip-condition"
         else
-            pass "automation trigger --skip-condition (automation may not have valid triggers/actions)"
+            pass "automation run --skip-condition (automation may not have valid triggers/actions)"
         fi
 
         # Test: automation trace (list traces)
@@ -101,133 +101,133 @@ run_automation_tests() {
             pass "automation trace (no traces yet)"
         fi
 
-        # Test: automation-trigger CRUD
-        log_test "automation-trigger list (empty)"
-        OUTPUT=$(run_hab automation-trigger list "$AUTOMATION_ID")
+        # Test: automation trigger CRUD
+        log_test "automation trigger list (empty)"
+        OUTPUT=$(run_hab automation trigger list "$AUTOMATION_ID")
         if echo "$OUTPUT" | jq -e '.success == true and (.data | length) == 0' > /dev/null 2>&1; then
-            pass "automation-trigger list (empty)"
+            pass "automation trigger list (empty)"
         else
-            fail "automation-trigger list (empty): $OUTPUT"
+            fail "automation trigger list (empty): $OUTPUT"
         fi
 
-        log_test "automation-trigger create"
+        log_test "automation trigger create"
         TRIGGER_CONFIG='{"trigger":"state","entity_id":"sun.sun"}'
-        OUTPUT=$(run_hab automation-trigger create "$AUTOMATION_ID" -d "$TRIGGER_CONFIG")
+        OUTPUT=$(run_hab automation trigger create "$AUTOMATION_ID" -d "$TRIGGER_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-trigger create"
+            pass "automation trigger create"
         else
-            fail "automation-trigger create: $OUTPUT"
+            fail "automation trigger create: $OUTPUT"
         fi
 
-        log_test "automation-trigger get"
-        OUTPUT=$(run_hab automation-trigger get "$AUTOMATION_ID" 0)
+        log_test "automation trigger get"
+        OUTPUT=$(run_hab automation trigger get "$AUTOMATION_ID" 0)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-trigger get"
+            pass "automation trigger get"
         else
-            fail "automation-trigger get: $OUTPUT"
+            fail "automation trigger get: $OUTPUT"
         fi
 
-        log_test "automation-trigger update"
+        log_test "automation trigger update"
         TRIGGER_UPDATE_CONFIG='{"trigger":"state","entity_id":"sun.sun","to":"above_horizon"}'
-        OUTPUT=$(run_hab automation-trigger update "$AUTOMATION_ID" 0 -d "$TRIGGER_UPDATE_CONFIG")
+        OUTPUT=$(run_hab automation trigger update "$AUTOMATION_ID" 0 -d "$TRIGGER_UPDATE_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-trigger update"
+            pass "automation trigger update"
         else
-            fail "automation-trigger update: $OUTPUT"
+            fail "automation trigger update: $OUTPUT"
         fi
 
-        log_test "automation-trigger delete"
-        OUTPUT=$(run_hab automation-trigger delete "$AUTOMATION_ID" 0 --force)
+        log_test "automation trigger delete"
+        OUTPUT=$(run_hab automation trigger delete "$AUTOMATION_ID" 0 --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-trigger delete"
+            pass "automation trigger delete"
         else
-            fail "automation-trigger delete: $OUTPUT"
+            fail "automation trigger delete: $OUTPUT"
         fi
 
-        # Test: automation-condition CRUD
-        log_test "automation-condition list (empty)"
-        OUTPUT=$(run_hab automation-condition list "$AUTOMATION_ID")
+        # Test: automation condition CRUD
+        log_test "automation condition list (empty)"
+        OUTPUT=$(run_hab automation condition list "$AUTOMATION_ID")
         if echo "$OUTPUT" | jq -e '.success == true and (.data | length) == 0' > /dev/null 2>&1; then
-            pass "automation-condition list (empty)"
+            pass "automation condition list (empty)"
         else
-            fail "automation-condition list (empty): $OUTPUT"
+            fail "automation condition list (empty): $OUTPUT"
         fi
 
-        log_test "automation-condition create"
+        log_test "automation condition create"
         CONDITION_CONFIG='{"condition":"state","entity_id":"sun.sun","state":"above_horizon"}'
-        OUTPUT=$(run_hab automation-condition create "$AUTOMATION_ID" -d "$CONDITION_CONFIG")
+        OUTPUT=$(run_hab automation condition create "$AUTOMATION_ID" -d "$CONDITION_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-condition create"
+            pass "automation condition create"
         else
-            fail "automation-condition create: $OUTPUT"
+            fail "automation condition create: $OUTPUT"
         fi
 
-        log_test "automation-condition get"
-        OUTPUT=$(run_hab automation-condition get "$AUTOMATION_ID" 0)
+        log_test "automation condition get"
+        OUTPUT=$(run_hab automation condition get "$AUTOMATION_ID" 0)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-condition get"
+            pass "automation condition get"
         else
-            fail "automation-condition get: $OUTPUT"
+            fail "automation condition get: $OUTPUT"
         fi
 
-        log_test "automation-condition update"
+        log_test "automation condition update"
         CONDITION_UPDATE_CONFIG='{"condition":"state","entity_id":"sun.sun","state":"below_horizon"}'
-        OUTPUT=$(run_hab automation-condition update "$AUTOMATION_ID" 0 -d "$CONDITION_UPDATE_CONFIG")
+        OUTPUT=$(run_hab automation condition update "$AUTOMATION_ID" 0 -d "$CONDITION_UPDATE_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-condition update"
+            pass "automation condition update"
         else
-            fail "automation-condition update: $OUTPUT"
+            fail "automation condition update: $OUTPUT"
         fi
 
-        log_test "automation-condition delete"
-        OUTPUT=$(run_hab automation-condition delete "$AUTOMATION_ID" 0 --force)
+        log_test "automation condition delete"
+        OUTPUT=$(run_hab automation condition delete "$AUTOMATION_ID" 0 --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-condition delete"
+            pass "automation condition delete"
         else
-            fail "automation-condition delete: $OUTPUT"
+            fail "automation condition delete: $OUTPUT"
         fi
 
-        # Test: automation-action CRUD
-        log_test "automation-action list (empty)"
-        OUTPUT=$(run_hab automation-action list "$AUTOMATION_ID")
+        # Test: automation action CRUD
+        log_test "automation action list (empty)"
+        OUTPUT=$(run_hab automation action list "$AUTOMATION_ID")
         if echo "$OUTPUT" | jq -e '.success == true and (.data | length) == 0' > /dev/null 2>&1; then
-            pass "automation-action list (empty)"
+            pass "automation action list (empty)"
         else
-            fail "automation-action list (empty): $OUTPUT"
+            fail "automation action list (empty): $OUTPUT"
         fi
 
-        log_test "automation-action create"
+        log_test "automation action create"
         ACTION_CONFIG='{"action":"homeassistant.turn_on","target":{"entity_id":"sun.sun"}}'
-        OUTPUT=$(run_hab automation-action create "$AUTOMATION_ID" -d "$ACTION_CONFIG")
+        OUTPUT=$(run_hab automation action create "$AUTOMATION_ID" -d "$ACTION_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-action create"
+            pass "automation action create"
         else
-            fail "automation-action create: $OUTPUT"
+            fail "automation action create: $OUTPUT"
         fi
 
-        log_test "automation-action get"
-        OUTPUT=$(run_hab automation-action get "$AUTOMATION_ID" 0)
+        log_test "automation action get"
+        OUTPUT=$(run_hab automation action get "$AUTOMATION_ID" 0)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-action get"
+            pass "automation action get"
         else
-            fail "automation-action get: $OUTPUT"
+            fail "automation action get: $OUTPUT"
         fi
 
-        log_test "automation-action update"
+        log_test "automation action update"
         ACTION_UPDATE_CONFIG='{"action":"homeassistant.turn_off","target":{"entity_id":"sun.sun"}}'
-        OUTPUT=$(run_hab automation-action update "$AUTOMATION_ID" 0 -d "$ACTION_UPDATE_CONFIG")
+        OUTPUT=$(run_hab automation action update "$AUTOMATION_ID" 0 -d "$ACTION_UPDATE_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-action update"
+            pass "automation action update"
         else
-            fail "automation-action update: $OUTPUT"
+            fail "automation action update: $OUTPUT"
         fi
 
-        log_test "automation-action delete"
-        OUTPUT=$(run_hab automation-action delete "$AUTOMATION_ID" 0 --force)
+        log_test "automation action delete"
+        OUTPUT=$(run_hab automation action delete "$AUTOMATION_ID" 0 --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "automation-action delete"
+            pass "automation action delete"
         else
-            fail "automation-action delete: $OUTPUT"
+            fail "automation action delete: $OUTPUT"
         fi
 
         log_test "automation delete"

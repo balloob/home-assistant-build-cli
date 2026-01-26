@@ -17,11 +17,12 @@ var (
 )
 
 var scriptUpdateCmd = &cobra.Command{
-	Use:   "update <script_id>",
-	Short: "Update an existing script",
-	Long:  `Update a script with new configuration.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runScriptUpdate,
+	Use:     "update <script_id>",
+	Short:   "Update an existing script",
+	Long:    `Update a script with new configuration.`,
+	GroupID: scriptGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runScriptUpdate,
 }
 
 func init() {

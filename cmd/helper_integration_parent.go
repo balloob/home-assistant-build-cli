@@ -5,11 +5,12 @@ import (
 )
 
 var helperIntegrationParentCmd = &cobra.Command{
-	Use:   "helper-integration",
-	Short: "Manage integration (integral) sensor helpers",
-	Long:  `Create, list, and delete integration sensor helpers that calculate the Riemann sum (integral) of a source sensor.`,
+	Use:     "integration",
+	Short:   "Manage integration (integral) sensor helpers",
+	Long:    `Create, list, and delete integration sensor helpers that calculate the Riemann sum (integral) of a source sensor.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperIntegrationParentCmd)
+	helperCmd.AddCommand(helperIntegrationParentCmd)
 }

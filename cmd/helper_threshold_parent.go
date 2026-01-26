@@ -5,11 +5,12 @@ import (
 )
 
 var helperThresholdParentCmd = &cobra.Command{
-	Use:   "helper-threshold",
-	Short: "Manage threshold binary sensor helpers",
-	Long:  `Create, list, and delete threshold binary sensor helpers that monitor sensor values against thresholds.`,
+	Use:     "threshold",
+	Short:   "Manage threshold binary sensor helpers",
+	Long:    `Create, list, and delete threshold binary sensor helpers that monitor sensor values against thresholds.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperThresholdParentCmd)
+	helperCmd.AddCommand(helperThresholdParentCmd)
 }

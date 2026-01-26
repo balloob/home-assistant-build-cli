@@ -10,10 +10,11 @@ import (
 )
 
 var scriptListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all scripts",
-	Long:  `List all scripts in Home Assistant.`,
-	RunE:  runScriptList,
+	Use:     "list",
+	Short:   "List all scripts",
+	Long:    `List all scripts in Home Assistant.`,
+	GroupID: scriptGroupCommands,
+	RunE:    runScriptList,
 }
 
 func init() {

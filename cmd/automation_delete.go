@@ -15,11 +15,12 @@ import (
 var automationDeleteForce bool
 
 var automationDeleteCmd = &cobra.Command{
-	Use:   "delete <automation_id>",
-	Short: "Delete an automation",
-	Long:  `Delete an automation from Home Assistant.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runAutomationDelete,
+	Use:     "delete <automation_id>",
+	Short:   "Delete an automation",
+	Long:    `Delete an automation from Home Assistant.`,
+	GroupID: automationGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runAutomationDelete,
 }
 
 func init() {

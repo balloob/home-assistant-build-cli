@@ -4,6 +4,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	helperGroupCommands    = "commands"
+	helperGroupSubcommands = "subcommands"
+)
+
 var helperCmd = &cobra.Command{
 	Use:   "helper",
 	Short: "Manage helper entities",
@@ -12,4 +17,9 @@ var helperCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(helperCmd)
+
+	helperCmd.AddGroup(
+		&cobra.Group{ID: helperGroupCommands, Title: "Commands:"},
+		&cobra.Group{ID: helperGroupSubcommands, Title: "Helper Types:"},
+	)
 }

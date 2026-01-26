@@ -5,11 +5,12 @@ import (
 )
 
 var automationTriggerParentCmd = &cobra.Command{
-	Use:   "automation-trigger",
-	Short: "Manage automation triggers",
-	Long:  `Create, update, list, and delete triggers in an automation.`,
+	Use:     "trigger",
+	Short:   "Manage automation triggers",
+	Long:    `Create, update, list, and delete triggers in an automation.`,
+	GroupID: automationGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(automationTriggerParentCmd)
+	automationCmd.AddCommand(automationTriggerParentCmd)
 }

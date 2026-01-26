@@ -15,11 +15,12 @@ import (
 var dashboardDeleteForce bool
 
 var dashboardDeleteCmd = &cobra.Command{
-	Use:   "delete <dashboard_id>",
-	Short: "Delete a dashboard",
-	Long:  `Delete a dashboard from Home Assistant.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDashboardDelete,
+	Use:     "delete <dashboard_id>",
+	Short:   "Delete a dashboard",
+	Long:    `Delete a dashboard from Home Assistant.`,
+	GroupID: dashboardGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runDashboardDelete,
 }
 
 func init() {

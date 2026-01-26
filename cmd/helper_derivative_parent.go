@@ -5,11 +5,12 @@ import (
 )
 
 var helperDerivativeParentCmd = &cobra.Command{
-	Use:   "helper-derivative",
-	Short: "Manage derivative sensor helpers",
-	Long:  `Create, list, and delete derivative sensor helpers that calculate the rate of change of a source sensor.`,
+	Use:     "derivative",
+	Short:   "Manage derivative sensor helpers",
+	Long:    `Create, list, and delete derivative sensor helpers that calculate the rate of change of a source sensor.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperDerivativeParentCmd)
+	helperCmd.AddCommand(helperDerivativeParentCmd)
 }

@@ -17,11 +17,12 @@ var (
 )
 
 var automationCreateCmd = &cobra.Command{
-	Use:   "create <id>",
-	Short: "Create a new automation",
-	Long:  `Create a new automation from JSON or YAML. The ID is used to identify the automation.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runAutomationCreate,
+	Use:     "create <id>",
+	Short:   "Create a new automation",
+	Long:    `Create a new automation from JSON or YAML. The ID is used to identify the automation.`,
+	GroupID: automationGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runAutomationCreate,
 }
 
 func init() {

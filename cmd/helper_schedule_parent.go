@@ -5,11 +5,12 @@ import (
 )
 
 var helperScheduleParentCmd = &cobra.Command{
-	Use:   "helper-schedule",
-	Short: "Manage schedule helpers",
-	Long:  `Create, list, and delete schedule helpers for time-based automation.`,
+	Use:     "schedule",
+	Short:   "Manage schedule helpers",
+	Long:    `Create, list, and delete schedule helpers for time-based automation.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperScheduleParentCmd)
+	helperCmd.AddCommand(helperScheduleParentCmd)
 }

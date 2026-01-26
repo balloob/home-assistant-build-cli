@@ -5,11 +5,12 @@ import (
 )
 
 var automationActionCmd = &cobra.Command{
-	Use:   "automation-action",
-	Short: "Manage automation actions",
-	Long:  `Create, update, list, and delete actions in an automation.`,
+	Use:     "action",
+	Short:   "Manage automation actions",
+	Long:    `Create, update, list, and delete actions in an automation.`,
+	GroupID: automationGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(automationActionCmd)
+	automationCmd.AddCommand(automationActionCmd)
 }

@@ -5,11 +5,12 @@ import (
 )
 
 var dashboardViewCmd = &cobra.Command{
-	Use:   "dashboard-view",
-	Short: "Manage dashboard views",
-	Long:  `Create, update, list, and delete views in a dashboard.`,
+	Use:     "view",
+	Short:   "Manage dashboard views",
+	Long:    `Create, update, list, and delete views in a dashboard.`,
+	GroupID: dashboardGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(dashboardViewCmd)
+	dashboardCmd.AddCommand(dashboardViewCmd)
 }

@@ -10,11 +10,12 @@ import (
 )
 
 var scriptGetCmd = &cobra.Command{
-	Use:   "get <script_id>",
-	Short: "Get script configuration",
-	Long:  `Get the full configuration of a script.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runScriptGet,
+	Use:     "get <script_id>",
+	Short:   "Get script configuration",
+	Long:    `Get the full configuration of a script.`,
+	GroupID: scriptGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runScriptGet,
 }
 
 func init() {

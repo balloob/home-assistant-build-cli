@@ -17,11 +17,12 @@ var (
 )
 
 var automationUpdateCmd = &cobra.Command{
-	Use:   "update <automation_id>",
-	Short: "Update an existing automation",
-	Long:  `Update an automation with new configuration.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runAutomationUpdate,
+	Use:     "update <automation_id>",
+	Short:   "Update an existing automation",
+	Long:    `Update an automation with new configuration.`,
+	GroupID: automationGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runAutomationUpdate,
 }
 
 func init() {

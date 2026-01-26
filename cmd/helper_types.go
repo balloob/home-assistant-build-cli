@@ -7,10 +7,11 @@ import (
 )
 
 var helperTypesCmd = &cobra.Command{
-	Use:   "types",
-	Short: "List available helper types",
-	Long:  `List all available helper types that can be created.`,
-	RunE:  runHelperTypes,
+	Use:     "types",
+	Short:   "List available helper types",
+	Long:    `List all available helper types that can be created.`,
+	GroupID: helperGroupCommands,
+	RunE:    runHelperTypes,
 }
 
 func init() {

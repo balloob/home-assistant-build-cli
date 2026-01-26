@@ -5,11 +5,12 @@ import (
 )
 
 var automationConditionCmd = &cobra.Command{
-	Use:   "automation-condition",
-	Short: "Manage automation conditions",
-	Long:  `Create, update, list, and delete conditions in an automation.`,
+	Use:     "condition",
+	Short:   "Manage automation conditions",
+	Long:    `Create, update, list, and delete conditions in an automation.`,
+	GroupID: automationGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(automationConditionCmd)
+	automationCmd.AddCommand(automationConditionCmd)
 }

@@ -14,21 +14,21 @@ run_calendar_todo_tests() {
     # ==========================================================================
     # Local Calendar Helper Tests
     # ==========================================================================
-    log_test "helper-local-calendar list (initial)"
-    OUTPUT=$(run_hab helper-local-calendar list)
+    log_test "helper local-calendar list (initial)"
+    OUTPUT=$(run_hab helper local-calendar list)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
-        pass "helper-local-calendar list ($COUNT calendars)"
+        pass "helper local-calendar list ($COUNT calendars)"
     else
-        fail "helper-local-calendar list: $OUTPUT"
+        fail "helper local-calendar list: $OUTPUT"
     fi
 
-    log_test "helper-local-calendar create"
+    log_test "helper local-calendar create"
     CALENDAR_NAME="Test Calendar $(date +%s)"
-    OUTPUT=$(run_hab helper-local-calendar create "$CALENDAR_NAME")
+    OUTPUT=$(run_hab helper local-calendar create "$CALENDAR_NAME")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         CALENDAR_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
-        pass "helper-local-calendar create (entry_id: $CALENDAR_ENTRY_ID)"
+        pass "helper local-calendar create (entry_id: $CALENDAR_ENTRY_ID)"
 
         # Wait a moment for entity to be created
         sleep 1
@@ -69,58 +69,58 @@ run_calendar_todo_tests() {
             pass "calendar list with time range (skipped - calendar entity not found)"
         fi
 
-        log_test "helper-local-calendar delete"
-        OUTPUT=$(run_hab helper-local-calendar delete "$CALENDAR_ENTRY_ID")
+        log_test "helper local-calendar delete"
+        OUTPUT=$(run_hab helper local-calendar delete "$CALENDAR_ENTRY_ID")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "helper-local-calendar delete"
+            pass "helper local-calendar delete"
         else
-            fail "helper-local-calendar delete: $OUTPUT"
+            fail "helper local-calendar delete: $OUTPUT"
         fi
     else
-        fail "helper-local-calendar create: $OUTPUT"
+        fail "helper local-calendar create: $OUTPUT"
     fi
 
     # ==========================================================================
     # Local To-do Helper Tests
     # ==========================================================================
-    log_test "helper-local-todo list (initial)"
-    OUTPUT=$(run_hab helper-local-todo list)
+    log_test "helper local-todo list (initial)"
+    OUTPUT=$(run_hab helper local-todo list)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
-        pass "helper-local-todo list ($COUNT to-do lists)"
+        pass "helper local-todo list ($COUNT to-do lists)"
     else
-        fail "helper-local-todo list: $OUTPUT"
+        fail "helper local-todo list: $OUTPUT"
     fi
 
-    log_test "helper-local-todo create"
+    log_test "helper local-todo create"
     TODO_NAME="Test Todo $(date +%s)"
-    OUTPUT=$(run_hab helper-local-todo create "$TODO_NAME")
+    OUTPUT=$(run_hab helper local-todo create "$TODO_NAME")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         TODO_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
-        pass "helper-local-todo create (entry_id: $TODO_ENTRY_ID)"
+        pass "helper local-todo create (entry_id: $TODO_ENTRY_ID)"
 
-        log_test "helper-local-todo list (after create)"
-        OUTPUT=$(run_hab helper-local-todo list)
+        log_test "helper local-todo list (after create)"
+        OUTPUT=$(run_hab helper local-todo list)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
             if [ "$COUNT" -ge 1 ]; then
-                pass "helper-local-todo list (found $COUNT to-do lists)"
+                pass "helper local-todo list (found $COUNT to-do lists)"
             else
-                fail "helper-local-todo list: expected at least 1 to-do list"
+                fail "helper local-todo list: expected at least 1 to-do list"
             fi
         else
-            fail "helper-local-todo list: $OUTPUT"
+            fail "helper local-todo list: $OUTPUT"
         fi
 
-        log_test "helper-local-todo delete"
-        OUTPUT=$(run_hab helper-local-todo delete "$TODO_ENTRY_ID")
+        log_test "helper local-todo delete"
+        OUTPUT=$(run_hab helper local-todo delete "$TODO_ENTRY_ID")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "helper-local-todo delete"
+            pass "helper local-todo delete"
         else
-            fail "helper-local-todo delete: $OUTPUT"
+            fail "helper local-todo delete: $OUTPUT"
         fi
     else
-        fail "helper-local-todo create: $OUTPUT"
+        fail "helper local-todo create: $OUTPUT"
     fi
 }
 

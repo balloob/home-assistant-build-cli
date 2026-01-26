@@ -5,11 +5,12 @@ import (
 )
 
 var helperMinMaxParentCmd = &cobra.Command{
-	Use:   "helper-min-max",
-	Short: "Manage min/max sensor helpers",
-	Long:  `Create, list, and delete min/max sensor helpers that aggregate values from multiple sensors.`,
+	Use:     "min-max",
+	Short:   "Manage min/max sensor helpers",
+	Long:    `Create, list, and delete min/max sensor helpers that aggregate values from multiple sensors.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperMinMaxParentCmd)
+	helperCmd.AddCommand(helperMinMaxParentCmd)
 }

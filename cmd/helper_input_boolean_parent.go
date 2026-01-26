@@ -5,11 +5,12 @@ import (
 )
 
 var helperInputBooleanParentCmd = &cobra.Command{
-	Use:   "helper-input-boolean",
-	Short: "Manage input boolean helpers",
-	Long:  `Create, list, and delete input boolean (toggle) helpers.`,
+	Use:     "input-boolean",
+	Short:   "Manage input boolean helpers",
+	Long:    `Create, list, and delete input boolean (toggle) helpers.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperInputBooleanParentCmd)
+	helperCmd.AddCommand(helperInputBooleanParentCmd)
 }

@@ -24,8 +24,9 @@ var automationCreateFromBlueprintCmd = &cobra.Command{
 Example:
   hab automation create-from-blueprint my_motion_light homeassistant/motion_light \
     -d '{"alias":"Kitchen Motion Light","motion_entity":"binary_sensor.kitchen_motion","light_target":{"entity_id":"light.kitchen"}}'`,
-	Args: cobra.ExactArgs(2),
-	RunE: runAutomationCreateFromBlueprint,
+	GroupID: automationGroupCommands,
+	Args:    cobra.ExactArgs(2),
+	RunE:    runAutomationCreateFromBlueprint,
 }
 
 func init() {

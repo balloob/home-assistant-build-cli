@@ -10,11 +10,12 @@ import (
 )
 
 var helperListCmd = &cobra.Command{
-	Use:   "list [type]",
-	Short: "List helper entities",
-	Long:  `List all helper entities, optionally filtered by type.`,
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runHelperList,
+	Use:     "list [type]",
+	Short:   "List helper entities",
+	Long:    `List all helper entities, optionally filtered by type.`,
+	GroupID: helperGroupCommands,
+	Args:    cobra.MaximumNArgs(1),
+	RunE:    runHelperList,
 }
 
 var (

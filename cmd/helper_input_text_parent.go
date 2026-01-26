@@ -5,11 +5,12 @@ import (
 )
 
 var helperInputTextParentCmd = &cobra.Command{
-	Use:   "helper-input-text",
-	Short: "Manage input text helpers",
-	Long:  `Create, list, and delete input text helpers.`,
+	Use:     "input-text",
+	Short:   "Manage input text helpers",
+	Long:    `Create, list, and delete input text helpers.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperInputTextParentCmd)
+	helperCmd.AddCommand(helperInputTextParentCmd)
 }

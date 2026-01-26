@@ -14,11 +14,12 @@ import (
 var scriptRunData string
 
 var scriptRunCmd = &cobra.Command{
-	Use:   "run <script_id>",
-	Short: "Execute a script",
-	Long:  `Execute a script with optional variables.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runScriptRun,
+	Use:     "run <script_id>",
+	Short:   "Execute a script",
+	Long:    `Execute a script with optional variables.`,
+	GroupID: scriptGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runScriptRun,
 }
 
 func init() {

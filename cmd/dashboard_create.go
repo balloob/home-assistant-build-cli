@@ -14,19 +14,24 @@ var (
 	dashboardCreateIcon          string
 	dashboardCreateShowInSidebar bool
 	dashboardCreateRequireAdmin  bool
+	dashboardCreateUrlPath       string
 )
 
 var dashboardCreateCmd = &cobra.Command{
-	Use:   "create <url_path>",
+	Use:   "create [url_path]",
 	Short: "Create a new dashboard",
-	Long:  `Create a new storage-mode dashboard.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDashboardCreate,
+	Long: `Create a new storage-mode dashboard.
+
+The dashboard is initialized with a single section-based view, ready for adding cards.`,
+	GroupID: dashboardGroupCommands,
+	Args:    cobra.MaximumNArgs(1),
+	RunE:    runDashboardCreate,
 }
 
 func init() {
 	dashboardCmd.AddCommand(dashboardCreateCmd)
 	dashboardCreateCmd.Flags().StringVar(&dashboardCreateTitle, "title", "", "Dashboard title (required)")
+	dashboardCreateCmd.Flags().StringVar(&dashboardCreateUrlPath, "url-path", "", "Dashboard URL path (must contain a hyphen)")
 	dashboardCreateCmd.Flags().StringVar(&dashboardCreateIcon, "icon", "", "Dashboard icon (e.g., mdi:home)")
 	dashboardCreateCmd.Flags().BoolVar(&dashboardCreateShowInSidebar, "sidebar", true, "Show in sidebar")
 	dashboardCreateCmd.Flags().BoolVar(&dashboardCreateRequireAdmin, "require-admin", false, "Require admin access")
@@ -34,7 +39,16 @@ func init() {
 }
 
 func runDashboardCreate(cmd *cobra.Command, args []string) error {
-	urlPath := args[0]
+	// Determine url_path from flag or positional argument
+	var urlPath string
+	if dashboardCreateUrlPath != "" {
+		urlPath = dashboardCreateUrlPath
+	} else if len(args) > 0 {
+		urlPath = args[0]
+	} else {
+		return fmt.Errorf("url_path is required (provide as argument or via --url-path flag)")
+	}
+
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 
@@ -66,6 +80,30 @@ func runDashboardCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created successfully.", urlPath))
+	// Initialize the dashboard with a section-based view
+	initialConfig := map[string]interface{}{
+		"views": []map[string]interface{}{
+			{
+				"type":     "sections",
+				"title":    "Home",
+				"path":     "home",
+				"sections": []interface{}{},
+			},
+		},
+	}
+
+	saveParams := map[string]interface{}{
+		"url_path": urlPath,
+		"config":   initialConfig,
+	}
+
+	_, err = ws.SendCommand("lovelace/config/save", saveParams)
+	if err != nil {
+		// Dashboard was created but config failed - warn but don't fail
+		client.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created, but initial config failed: %v", urlPath, err))
+		return nil
+	}
+
+	client.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created with initial view.", urlPath))
 	return nil
 }

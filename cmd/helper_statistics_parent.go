@@ -5,11 +5,12 @@ import (
 )
 
 var helperStatisticsParentCmd = &cobra.Command{
-	Use:   "helper-statistics",
-	Short: "Manage statistics sensor helpers",
-	Long:  `Create, list, and delete statistics sensor helpers that provide statistical analysis of sensor history.`,
+	Use:     "statistics",
+	Short:   "Manage statistics sensor helpers",
+	Long:    `Create, list, and delete statistics sensor helpers that provide statistical analysis of sensor history.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperStatisticsParentCmd)
+	helperCmd.AddCommand(helperStatisticsParentCmd)
 }

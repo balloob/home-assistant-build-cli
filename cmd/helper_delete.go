@@ -23,8 +23,9 @@ Examples:
   hab helper delete input_boolean.my_toggle
   hab helper delete counter.page_views
   hab helper delete light.living_room_group`,
-	Args: cobra.ExactArgs(1),
-	RunE: runHelperDelete,
+	GroupID: helperGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runHelperDelete,
 }
 
 func init() {

@@ -5,11 +5,12 @@ import (
 )
 
 var dashboardBadgeCmd = &cobra.Command{
-	Use:   "dashboard-badge",
-	Short: "Manage view badges",
-	Long:  `Create, update, list, and delete badges in a dashboard view.`,
+	Use:     "badge",
+	Short:   "Manage view badges",
+	Long:    `Create, update, list, and delete badges in a dashboard view.`,
+	GroupID: dashboardGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(dashboardBadgeCmd)
+	dashboardCmd.AddCommand(dashboardBadgeCmd)
 }

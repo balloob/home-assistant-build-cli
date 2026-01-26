@@ -8,10 +8,11 @@ import (
 )
 
 var dashboardListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all dashboards",
-	Long:  `List all dashboards in Home Assistant.`,
-	RunE:  runDashboardList,
+	Use:     "list",
+	Short:   "List all dashboards",
+	Long:    `List all dashboards in Home Assistant.`,
+	GroupID: dashboardGroupCommands,
+	RunE:    runDashboardList,
 }
 
 var (

@@ -12,11 +12,12 @@ import (
 var automationTraceRunID string
 
 var automationTraceCmd = &cobra.Command{
-	Use:   "trace <automation_id>",
-	Short: "Get execution traces for debugging",
-	Long:  `Get execution traces for an automation.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runAutomationTrace,
+	Use:     "trace <automation_id>",
+	Short:   "Get execution traces for debugging",
+	Long:    `Get execution traces for an automation.`,
+	GroupID: automationGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runAutomationTrace,
 }
 
 func init() {

@@ -12,10 +12,11 @@ import (
 const maxDescriptionLength = 200
 
 var automationListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all automations",
-	Long:  `List all automations in Home Assistant.`,
-	RunE:  runAutomationList,
+	Use:     "list",
+	Short:   "List all automations",
+	Long:    `List all automations in Home Assistant.`,
+	GroupID: automationGroupCommands,
+	RunE:    runAutomationList,
 }
 
 func init() {

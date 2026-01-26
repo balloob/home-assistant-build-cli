@@ -10,11 +10,12 @@ import (
 )
 
 var automationGetCmd = &cobra.Command{
-	Use:   "get <automation_id>",
-	Short: "Get automation configuration",
-	Long:  `Get the full configuration of an automation.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runAutomationGet,
+	Use:     "get <automation_id>",
+	Short:   "Get automation configuration",
+	Long:    `Get the full configuration of an automation.`,
+	GroupID: automationGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runAutomationGet,
 }
 
 func init() {

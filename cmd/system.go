@@ -6,7 +6,7 @@ import (
 
 var systemCmd = &cobra.Command{
 	Use:   "system",
-	Short: "System operations",
+	Short: "Manage system",
 	Long:  `View system info, check config, restart, and more.`,
 }
 

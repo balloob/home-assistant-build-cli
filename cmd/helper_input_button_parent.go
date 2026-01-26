@@ -5,11 +5,12 @@ import (
 )
 
 var helperInputButtonParentCmd = &cobra.Command{
-	Use:   "helper-input-button",
-	Short: "Manage input button helpers",
-	Long:  `Create, list, and delete input button helpers.`,
+	Use:     "input-button",
+	Short:   "Manage input button helpers",
+	Long:    `Create, list, and delete input button helpers.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperInputButtonParentCmd)
+	helperCmd.AddCommand(helperInputButtonParentCmd)
 }

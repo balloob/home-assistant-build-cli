@@ -49,223 +49,223 @@ run_dashboard_tests() {
             pass "dashboard get (no config yet)"
         fi
 
-        # Test: dashboard-view CRUD
-        log_test "dashboard-view list"
-        OUTPUT=$(run_hab_optional dashboard-view list "$DASHBOARD_URL")
+        # Test: dashboard view CRUD
+        log_test "dashboard view list"
+        OUTPUT=$(run_hab_optional dashboard view list "$DASHBOARD_URL")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             VIEW_COUNT=$(echo "$OUTPUT" | jq '.data | length')
-            pass "dashboard-view list ($VIEW_COUNT views)"
+            pass "dashboard view list ($VIEW_COUNT views)"
 
-            log_test "dashboard-view get"
-            OUTPUT=$(run_hab_optional dashboard-view get "$DASHBOARD_URL" 0)
+            log_test "dashboard view get"
+            OUTPUT=$(run_hab_optional dashboard view get "$DASHBOARD_URL" 0)
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "dashboard-view get"
+                pass "dashboard view get"
             else
-                fail "dashboard-view get: $OUTPUT"
+                fail "dashboard view get: $OUTPUT"
             fi
 
-            log_test "dashboard-view create"
-            OUTPUT=$(run_hab_optional dashboard-view create "$DASHBOARD_URL" --title "Test View" --icon "mdi:test-tube")
+            log_test "dashboard view create"
+            OUTPUT=$(run_hab_optional dashboard view create "$DASHBOARD_URL" --title "Test View" --icon "mdi:test-tube")
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                 NEW_VIEW_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
-                pass "dashboard-view create (index: $NEW_VIEW_INDEX)"
+                pass "dashboard view create (index: $NEW_VIEW_INDEX)"
 
-                log_test "dashboard-view update"
-                OUTPUT=$(run_hab_optional dashboard-view update "$DASHBOARD_URL" "$NEW_VIEW_INDEX" --title "Updated View")
+                log_test "dashboard view update"
+                OUTPUT=$(run_hab_optional dashboard view update "$DASHBOARD_URL" "$NEW_VIEW_INDEX" --title "Updated View")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-view update"
+                    pass "dashboard view update"
                 else
-                    fail "dashboard-view update: $OUTPUT"
+                    fail "dashboard view update: $OUTPUT"
                 fi
 
-                log_test "dashboard-view delete"
-                OUTPUT=$(run_hab_optional dashboard-view delete "$DASHBOARD_URL" "$NEW_VIEW_INDEX" --force)
+                log_test "dashboard view delete"
+                OUTPUT=$(run_hab_optional dashboard view delete "$DASHBOARD_URL" "$NEW_VIEW_INDEX" --force)
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-view delete"
+                    pass "dashboard view delete"
                 else
-                    fail "dashboard-view delete: $OUTPUT"
+                    fail "dashboard view delete: $OUTPUT"
                 fi
             else
-                fail "dashboard-view create: $OUTPUT"
+                fail "dashboard view create: $OUTPUT"
             fi
         else
-            pass "dashboard-view list (not available)"
+            pass "dashboard view list (not available)"
         fi
 
-        # Test: dashboard-badge CRUD
-        log_test "dashboard-badge list"
-        OUTPUT=$(run_hab_optional dashboard-badge list "$DASHBOARD_URL" 0)
+        # Test: dashboard badge CRUD
+        log_test "dashboard badge list"
+        OUTPUT=$(run_hab_optional dashboard badge list "$DASHBOARD_URL" 0)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             BADGE_COUNT=$(echo "$OUTPUT" | jq '.data | length')
-            pass "dashboard-badge list ($BADGE_COUNT badges)"
+            pass "dashboard badge list ($BADGE_COUNT badges)"
 
-            log_test "dashboard-badge create"
-            OUTPUT=$(run_hab_optional dashboard-badge create "$DASHBOARD_URL" 0 --entity "sun.sun")
+            log_test "dashboard badge create"
+            OUTPUT=$(run_hab_optional dashboard badge create "$DASHBOARD_URL" 0 --entity "sun.sun")
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                 NEW_BADGE_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
-                pass "dashboard-badge create (index: $NEW_BADGE_INDEX)"
+                pass "dashboard badge create (index: $NEW_BADGE_INDEX)"
 
-                log_test "dashboard-badge get"
-                OUTPUT=$(run_hab_optional dashboard-badge get "$DASHBOARD_URL" 0 "$NEW_BADGE_INDEX")
+                log_test "dashboard badge get"
+                OUTPUT=$(run_hab_optional dashboard badge get "$DASHBOARD_URL" 0 "$NEW_BADGE_INDEX")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-badge get"
+                    pass "dashboard badge get"
                 else
-                    fail "dashboard-badge get: $OUTPUT"
+                    fail "dashboard badge get: $OUTPUT"
                 fi
 
-                log_test "dashboard-badge update"
-                OUTPUT=$(run_hab_optional dashboard-badge update "$DASHBOARD_URL" 0 "$NEW_BADGE_INDEX" --entity "person.test")
+                log_test "dashboard badge update"
+                OUTPUT=$(run_hab_optional dashboard badge update "$DASHBOARD_URL" 0 "$NEW_BADGE_INDEX" --entity "person.test")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-badge update"
+                    pass "dashboard badge update"
                 else
-                    fail "dashboard-badge update: $OUTPUT"
+                    fail "dashboard badge update: $OUTPUT"
                 fi
 
-                log_test "dashboard-badge delete"
-                OUTPUT=$(run_hab_optional dashboard-badge delete "$DASHBOARD_URL" 0 "$NEW_BADGE_INDEX" --force)
+                log_test "dashboard badge delete"
+                OUTPUT=$(run_hab_optional dashboard badge delete "$DASHBOARD_URL" 0 "$NEW_BADGE_INDEX" --force)
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-badge delete"
+                    pass "dashboard badge delete"
                 else
-                    fail "dashboard-badge delete: $OUTPUT"
+                    fail "dashboard badge delete: $OUTPUT"
                 fi
             else
-                fail "dashboard-badge create: $OUTPUT"
+                fail "dashboard badge create: $OUTPUT"
             fi
         else
-            pass "dashboard-badge list (not available)"
+            pass "dashboard badge list (not available)"
         fi
 
-        # Test: dashboard-section CRUD
-        log_test "dashboard-section list"
-        OUTPUT=$(run_hab_optional dashboard-section list "$DASHBOARD_URL" 0)
+        # Test: dashboard section CRUD
+        log_test "dashboard section list"
+        OUTPUT=$(run_hab_optional dashboard section list "$DASHBOARD_URL" 0)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             SECTION_COUNT=$(echo "$OUTPUT" | jq '.data | length')
-            pass "dashboard-section list ($SECTION_COUNT sections)"
+            pass "dashboard section list ($SECTION_COUNT sections)"
 
-            log_test "dashboard-section create"
-            OUTPUT=$(run_hab_optional dashboard-section create "$DASHBOARD_URL" 0 --title "Test Section" --type "grid")
+            log_test "dashboard section create"
+            OUTPUT=$(run_hab_optional dashboard section create "$DASHBOARD_URL" 0 --title "Test Section" --type "grid")
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                 NEW_SECTION_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
-                pass "dashboard-section create (index: $NEW_SECTION_INDEX)"
+                pass "dashboard section create (index: $NEW_SECTION_INDEX)"
 
-                log_test "dashboard-section get"
-                OUTPUT=$(run_hab_optional dashboard-section get "$DASHBOARD_URL" 0 "$NEW_SECTION_INDEX")
+                log_test "dashboard section get"
+                OUTPUT=$(run_hab_optional dashboard section get "$DASHBOARD_URL" 0 "$NEW_SECTION_INDEX")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-section get"
+                    pass "dashboard section get"
                 else
-                    fail "dashboard-section get: $OUTPUT"
+                    fail "dashboard section get: $OUTPUT"
                 fi
 
-                log_test "dashboard-section update"
-                OUTPUT=$(run_hab_optional dashboard-section update "$DASHBOARD_URL" 0 "$NEW_SECTION_INDEX" --title "Updated Section")
+                log_test "dashboard section update"
+                OUTPUT=$(run_hab_optional dashboard section update "$DASHBOARD_URL" 0 "$NEW_SECTION_INDEX" --title "Updated Section")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-section update"
+                    pass "dashboard section update"
                 else
-                    fail "dashboard-section update: $OUTPUT"
+                    fail "dashboard section update: $OUTPUT"
                 fi
 
-                # Test: dashboard-card CRUD within section
-                log_test "dashboard-card list (in section)"
-                OUTPUT=$(run_hab_optional dashboard-card list "$DASHBOARD_URL" 0 --section "$NEW_SECTION_INDEX")
+                # Test: dashboard card CRUD within section
+                log_test "dashboard card list (in section)"
+                OUTPUT=$(run_hab_optional dashboard card list "$DASHBOARD_URL" 0 --section "$NEW_SECTION_INDEX")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                     CARD_COUNT=$(echo "$OUTPUT" | jq '.data | length')
-                    pass "dashboard-card list in section ($CARD_COUNT cards)"
+                    pass "dashboard card list in section ($CARD_COUNT cards)"
 
-                    log_test "dashboard-card create (in section)"
+                    log_test "dashboard card create (in section)"
                     CARD_CONFIG='{"type":"markdown","content":"Test card"}'
-                    OUTPUT=$(run_hab_optional dashboard-card create "$DASHBOARD_URL" 0 --section "$NEW_SECTION_INDEX" -d "$CARD_CONFIG")
+                    OUTPUT=$(run_hab_optional dashboard card create "$DASHBOARD_URL" 0 --section "$NEW_SECTION_INDEX" -d "$CARD_CONFIG")
                     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                         NEW_CARD_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
-                        pass "dashboard-card create in section (index: $NEW_CARD_INDEX)"
+                        pass "dashboard card create in section (index: $NEW_CARD_INDEX)"
 
-                        log_test "dashboard-card get (in section)"
-                        OUTPUT=$(run_hab_optional dashboard-card get "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --section "$NEW_SECTION_INDEX")
+                        log_test "dashboard card get (in section)"
+                        OUTPUT=$(run_hab_optional dashboard card get "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --section "$NEW_SECTION_INDEX")
                         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                            pass "dashboard-card get in section"
+                            pass "dashboard card get in section"
                         else
-                            fail "dashboard-card get in section: $OUTPUT"
+                            fail "dashboard card get in section: $OUTPUT"
                         fi
 
-                        log_test "dashboard-card update (in section)"
+                        log_test "dashboard card update (in section)"
                         CARD_UPDATE_CONFIG='{"type":"markdown","content":"Updated content"}'
-                        OUTPUT=$(run_hab_optional dashboard-card update "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --section "$NEW_SECTION_INDEX" -d "$CARD_UPDATE_CONFIG")
+                        OUTPUT=$(run_hab_optional dashboard card update "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --section "$NEW_SECTION_INDEX" -d "$CARD_UPDATE_CONFIG")
                         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                            pass "dashboard-card update in section"
+                            pass "dashboard card update in section"
                         else
-                            fail "dashboard-card update in section: $OUTPUT"
+                            fail "dashboard card update in section: $OUTPUT"
                         fi
 
-                        log_test "dashboard-card delete (in section)"
-                        OUTPUT=$(run_hab_optional dashboard-card delete "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --section "$NEW_SECTION_INDEX" --force)
+                        log_test "dashboard card delete (in section)"
+                        OUTPUT=$(run_hab_optional dashboard card delete "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --section "$NEW_SECTION_INDEX" --force)
                         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                            pass "dashboard-card delete in section"
+                            pass "dashboard card delete in section"
                         else
-                            fail "dashboard-card delete in section: $OUTPUT"
+                            fail "dashboard card delete in section: $OUTPUT"
                         fi
                     else
-                        fail "dashboard-card create in section: $OUTPUT"
+                        fail "dashboard card create in section: $OUTPUT"
                     fi
                 else
-                    pass "dashboard-card list in section (not available)"
+                    pass "dashboard card list in section (not available)"
                 fi
 
-                log_test "dashboard-section delete"
-                OUTPUT=$(run_hab_optional dashboard-section delete "$DASHBOARD_URL" 0 "$NEW_SECTION_INDEX" --force)
+                log_test "dashboard section delete"
+                OUTPUT=$(run_hab_optional dashboard section delete "$DASHBOARD_URL" 0 "$NEW_SECTION_INDEX" --force)
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-section delete"
+                    pass "dashboard section delete"
                 else
-                    fail "dashboard-section delete: $OUTPUT"
+                    fail "dashboard section delete: $OUTPUT"
                 fi
             else
-                fail "dashboard-section create: $OUTPUT"
+                fail "dashboard section create: $OUTPUT"
             fi
         else
-            pass "dashboard-section list (not available)"
+            pass "dashboard section list (not available)"
         fi
 
-        # Test: dashboard-card CRUD (directly in view)
-        log_test "dashboard-card list (in view)"
-        OUTPUT=$(run_hab_optional dashboard-card list "$DASHBOARD_URL" 0)
+        # Test: dashboard card CRUD (directly in view)
+        log_test "dashboard card list (in view)"
+        OUTPUT=$(run_hab_optional dashboard card list "$DASHBOARD_URL" 0)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             CARD_COUNT=$(echo "$OUTPUT" | jq '.data | length')
-            pass "dashboard-card list in view ($CARD_COUNT cards)"
+            pass "dashboard card list in view ($CARD_COUNT cards)"
 
-            log_test "dashboard-card create (in view)"
+            log_test "dashboard card create (in view)"
             CARD_CONFIG='{"type":"entities","entities":["sun.sun"]}'
-            OUTPUT=$(run_hab_optional dashboard-card create "$DASHBOARD_URL" 0 -d "$CARD_CONFIG")
+            OUTPUT=$(run_hab_optional dashboard card create "$DASHBOARD_URL" 0 -d "$CARD_CONFIG")
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                 NEW_CARD_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
-                pass "dashboard-card create in view (index: $NEW_CARD_INDEX)"
+                pass "dashboard card create in view (index: $NEW_CARD_INDEX)"
 
-                log_test "dashboard-card get (in view)"
-                OUTPUT=$(run_hab_optional dashboard-card get "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX")
+                log_test "dashboard card get (in view)"
+                OUTPUT=$(run_hab_optional dashboard card get "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-card get in view"
+                    pass "dashboard card get in view"
                 else
-                    fail "dashboard-card get in view: $OUTPUT"
+                    fail "dashboard card get in view: $OUTPUT"
                 fi
 
-                log_test "dashboard-card update (in view)"
+                log_test "dashboard card update (in view)"
                 CARD_UPDATE_CONFIG='{"type":"entities","title":"Updated","entities":["sun.sun"]}'
-                OUTPUT=$(run_hab_optional dashboard-card update "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" -d "$CARD_UPDATE_CONFIG")
+                OUTPUT=$(run_hab_optional dashboard card update "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" -d "$CARD_UPDATE_CONFIG")
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-card update in view"
+                    pass "dashboard card update in view"
                 else
-                    fail "dashboard-card update in view: $OUTPUT"
+                    fail "dashboard card update in view: $OUTPUT"
                 fi
 
-                log_test "dashboard-card delete (in view)"
-                OUTPUT=$(run_hab_optional dashboard-card delete "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --force)
+                log_test "dashboard card delete (in view)"
+                OUTPUT=$(run_hab_optional dashboard card delete "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --force)
                 if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard-card delete in view"
+                    pass "dashboard card delete in view"
                 else
-                    fail "dashboard-card delete in view: $OUTPUT"
+                    fail "dashboard card delete in view: $OUTPUT"
                 fi
             else
-                fail "dashboard-card create in view: $OUTPUT"
+                fail "dashboard card create in view: $OUTPUT"
             fi
         else
-            pass "dashboard-card list in view (not available)"
+            pass "dashboard card list in view (not available)"
         fi
 
         log_test "dashboard update"

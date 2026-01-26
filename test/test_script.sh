@@ -66,47 +66,47 @@ run_script_tests() {
             pass "script run with variables (script may not have valid actions)"
         fi
 
-        # Test: script-action CRUD
-        log_test "script-action list (empty)"
-        OUTPUT=$(run_hab script-action list "$SCRIPT_ID")
+        # Test: script action CRUD
+        log_test "script action list (empty)"
+        OUTPUT=$(run_hab script action list "$SCRIPT_ID")
         if echo "$OUTPUT" | jq -e '.success == true and (.data | length) == 0' > /dev/null 2>&1; then
-            pass "script-action list (empty)"
+            pass "script action list (empty)"
         else
-            fail "script-action list (empty): $OUTPUT"
+            fail "script action list (empty): $OUTPUT"
         fi
 
-        log_test "script-action create"
+        log_test "script action create"
         ACTION_CONFIG='{"action":"homeassistant.turn_on","target":{"entity_id":"sun.sun"}}'
-        OUTPUT=$(run_hab script-action create "$SCRIPT_ID" -d "$ACTION_CONFIG")
+        OUTPUT=$(run_hab script action create "$SCRIPT_ID" -d "$ACTION_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "script-action create"
+            pass "script action create"
         else
-            fail "script-action create: $OUTPUT"
+            fail "script action create: $OUTPUT"
         fi
 
-        log_test "script-action get"
-        OUTPUT=$(run_hab script-action get "$SCRIPT_ID" 0)
+        log_test "script action get"
+        OUTPUT=$(run_hab script action get "$SCRIPT_ID" 0)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "script-action get"
+            pass "script action get"
         else
-            fail "script-action get: $OUTPUT"
+            fail "script action get: $OUTPUT"
         fi
 
-        log_test "script-action update"
+        log_test "script action update"
         ACTION_UPDATE_CONFIG='{"action":"homeassistant.turn_off","target":{"entity_id":"sun.sun"}}'
-        OUTPUT=$(run_hab script-action update "$SCRIPT_ID" 0 -d "$ACTION_UPDATE_CONFIG")
+        OUTPUT=$(run_hab script action update "$SCRIPT_ID" 0 -d "$ACTION_UPDATE_CONFIG")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "script-action update"
+            pass "script action update"
         else
-            fail "script-action update: $OUTPUT"
+            fail "script action update: $OUTPUT"
         fi
 
-        log_test "script-action delete"
-        OUTPUT=$(run_hab script-action delete "$SCRIPT_ID" 0 --force)
+        log_test "script action delete"
+        OUTPUT=$(run_hab script action delete "$SCRIPT_ID" 0 --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "script-action delete"
+            pass "script action delete"
         else
-            fail "script-action delete: $OUTPUT"
+            fail "script action delete: $OUTPUT"
         fi
 
         log_test "script delete"

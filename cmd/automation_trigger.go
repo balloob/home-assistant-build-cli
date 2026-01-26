@@ -13,11 +13,12 @@ import (
 var automationTriggerSkipCondition bool
 
 var automationTriggerCmd = &cobra.Command{
-	Use:   "trigger <automation_id>",
-	Short: "Manually trigger an automation",
-	Long:  `Manually trigger an automation.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runAutomationTrigger,
+	Use:     "run <automation_id>",
+	Short:   "Manually run an automation",
+	Long:    `Manually run an automation (triggers it).`,
+	GroupID: automationGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runAutomationTrigger,
 }
 
 func init() {

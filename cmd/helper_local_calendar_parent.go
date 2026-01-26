@@ -5,11 +5,12 @@ import (
 )
 
 var helperLocalCalendarParentCmd = &cobra.Command{
-	Use:   "helper-local-calendar",
-	Short: "Manage local calendar helpers",
-	Long:  `Create, list, and delete local calendar helpers for storing calendar events locally.`,
+	Use:     "local-calendar",
+	Short:   "Manage local calendar helpers",
+	Long:    `Create, list, and delete local calendar helpers for storing calendar events locally.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperLocalCalendarParentCmd)
+	helperCmd.AddCommand(helperLocalCalendarParentCmd)
 }

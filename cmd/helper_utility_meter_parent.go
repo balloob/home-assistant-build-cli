@@ -5,11 +5,12 @@ import (
 )
 
 var helperUtilityMeterParentCmd = &cobra.Command{
-	Use:   "helper-utility-meter",
-	Short: "Manage utility meter helpers",
-	Long:  `Create, list, and delete utility meter helpers that track consumption across billing cycles.`,
+	Use:     "utility-meter",
+	Short:   "Manage utility meter helpers",
+	Long:    `Create, list, and delete utility meter helpers that track consumption across billing cycles.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperUtilityMeterParentCmd)
+	helperCmd.AddCommand(helperUtilityMeterParentCmd)
 }

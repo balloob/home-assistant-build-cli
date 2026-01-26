@@ -4,6 +4,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	dashboardGroupCommands    = "commands"
+	dashboardGroupSubcommands = "subcommands"
+)
+
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
 	Short: "Manage dashboards",
@@ -12,4 +17,9 @@ var dashboardCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(dashboardCmd)
+
+	dashboardCmd.AddGroup(
+		&cobra.Group{ID: dashboardGroupCommands, Title: "Commands:"},
+		&cobra.Group{ID: dashboardGroupSubcommands, Title: "Subcommands:"},
+	)
 }

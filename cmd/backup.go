@@ -6,7 +6,7 @@ import (
 
 var backupCmd = &cobra.Command{
 	Use:   "backup",
-	Short: "Backup and restore",
+	Short: "Manage backups",
 	Long:  `Create, restore, and manage backups.`,
 }
 

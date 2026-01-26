@@ -6,7 +6,7 @@ import (
 
 var deviceCmd = &cobra.Command{
 	Use:   "device",
-	Short: "Device management",
+	Short: "Manage devices",
 	Long:  `List, view, and manage devices.`,
 }
 

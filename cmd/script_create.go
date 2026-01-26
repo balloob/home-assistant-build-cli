@@ -17,11 +17,12 @@ var (
 )
 
 var scriptCreateCmd = &cobra.Command{
-	Use:   "create <id>",
-	Short: "Create a new script",
-	Long:  `Create a new script from JSON or YAML. The ID is used to identify the script.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runScriptCreate,
+	Use:     "create <id>",
+	Short:   "Create a new script",
+	Long:    `Create a new script from JSON or YAML. The ID is used to identify the script.`,
+	GroupID: scriptGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runScriptCreate,
 }
 
 func init() {

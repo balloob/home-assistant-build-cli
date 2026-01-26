@@ -5,11 +5,12 @@ import (
 )
 
 var scriptActionCmd = &cobra.Command{
-	Use:   "script-action",
-	Short: "Manage script actions",
-	Long:  `Create, update, list, and delete actions in a script's sequence.`,
+	Use:     "action",
+	Short:   "Manage script actions",
+	Long:    `Create, update, list, and delete actions in a script's sequence.`,
+	GroupID: scriptGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(scriptActionCmd)
+	scriptCmd.AddCommand(scriptActionCmd)
 }

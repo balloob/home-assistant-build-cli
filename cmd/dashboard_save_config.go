@@ -17,11 +17,12 @@ var (
 )
 
 var dashboardSaveConfigCmd = &cobra.Command{
-	Use:   "save-config <url_path>",
-	Short: "Save dashboard configuration",
-	Long:  `Save the Lovelace configuration for a dashboard.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDashboardSaveConfig,
+	Use:     "save-config <url_path>",
+	Short:   "Save dashboard configuration",
+	Long:    `Save the Lovelace configuration for a dashboard.`,
+	GroupID: dashboardGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runDashboardSaveConfig,
 }
 
 func init() {

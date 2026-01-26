@@ -15,11 +15,12 @@ import (
 var scriptDeleteForce bool
 
 var scriptDeleteCmd = &cobra.Command{
-	Use:   "delete <script_id>",
-	Short: "Delete a script",
-	Long:  `Delete a script from Home Assistant.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runScriptDelete,
+	Use:     "delete <script_id>",
+	Short:   "Delete a script",
+	Long:    `Delete a script from Home Assistant.`,
+	GroupID: scriptGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runScriptDelete,
 }
 
 func init() {

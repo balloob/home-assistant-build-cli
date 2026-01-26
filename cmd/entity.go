@@ -6,7 +6,7 @@ import (
 
 var entityCmd = &cobra.Command{
 	Use:   "entity",
-	Short: "Entity operations",
+	Short: "Manage entities",
 	Long:  `List, get, search, and manage entities.`,
 }
 

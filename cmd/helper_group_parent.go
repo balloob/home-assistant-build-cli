@@ -5,11 +5,12 @@ import (
 )
 
 var helperGroupParentCmd = &cobra.Command{
-	Use:   "helper-group",
-	Short: "Manage group helpers",
-	Long:  `Create, list, and delete group helpers.`,
+	Use:     "group",
+	Short:   "Manage group helpers",
+	Long:    `Create, list, and delete group helpers.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperGroupParentCmd)
+	helperCmd.AddCommand(helperGroupParentCmd)
 }

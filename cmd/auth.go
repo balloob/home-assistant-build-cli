@@ -6,7 +6,7 @@ import (
 
 var authCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "Authentication management",
+	Short: "Manage authentication",
 	Long:  `Manage authentication with Home Assistant.`,
 }
 

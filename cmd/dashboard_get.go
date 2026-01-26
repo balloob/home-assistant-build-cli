@@ -8,11 +8,12 @@ import (
 )
 
 var dashboardGetCmd = &cobra.Command{
-	Use:   "get <url_path>",
-	Short: "Get dashboard configuration",
-	Long:  `Get the full configuration of a dashboard.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDashboardGet,
+	Use:     "get <url_path>",
+	Short:   "Get dashboard configuration",
+	Long:    `Get the full configuration of a dashboard.`,
+	GroupID: dashboardGroupCommands,
+	Args:    cobra.ExactArgs(1),
+	RunE:    runDashboardGet,
 }
 
 func init() {

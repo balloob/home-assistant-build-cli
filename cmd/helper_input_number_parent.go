@@ -5,11 +5,12 @@ import (
 )
 
 var helperInputNumberParentCmd = &cobra.Command{
-	Use:   "helper-input-number",
-	Short: "Manage input number helpers",
-	Long:  `Create, list, and delete input number helpers.`,
+	Use:     "input-number",
+	Short:   "Manage input number helpers",
+	Long:    `Create, list, and delete input number helpers.`,
+	GroupID: helperGroupSubcommands,
 }
 
 func init() {
-	rootCmd.AddCommand(helperInputNumberParentCmd)
+	helperCmd.AddCommand(helperInputNumberParentCmd)
 }
