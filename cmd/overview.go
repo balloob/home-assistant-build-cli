@@ -182,6 +182,9 @@ func printOverviewText(data map[string]interface{}) {
 	state, _ := data["state"].(string)
 	timeZone, _ := data["time_zone"].(string)
 	tempUnit, _ := data["temperature_unit"].(string)
+	latitude, hasLat := data["latitude"].(float64)
+	longitude, hasLon := data["longitude"].(float64)
+	elevation, hasElev := data["elevation"].(float64)
 
 	if locationName != "" {
 		fmt.Printf("%s\n", locationName)
@@ -204,8 +207,15 @@ func printOverviewText(data map[string]interface{}) {
 	if timeZone != "" {
 		fmt.Printf("Timezone: %s\n", timeZone)
 	}
+	if hasLat && hasLon {
+		fmt.Printf("Location: %.4f, %.4f", latitude, longitude)
+		if hasElev && elevation != 0 {
+			fmt.Printf(" (elevation: %.0fm)", elevation)
+		}
+		fmt.Println()
+	}
 	if tempUnit != "" {
-		fmt.Printf("Temperature: %s\n", tempUnit)
+		fmt.Printf("Unit system: %s\n", tempUnit)
 	}
 
 	fmt.Println()
