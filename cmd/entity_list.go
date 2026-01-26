@@ -71,6 +71,24 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Get device registry for device names
+	deviceMap := make(map[string]string) // device_id -> name
+	devices, err := ws.DeviceRegistryList()
+	if err == nil {
+		for _, d := range devices {
+			if device, ok := d.(map[string]interface{}); ok {
+				deviceID, _ := device["id"].(string)
+				name, _ := device["name"].(string)
+				nameByUser, _ := device["name_by_user"].(string)
+				if nameByUser != "" {
+					deviceMap[deviceID] = nameByUser
+				} else if name != "" {
+					deviceMap[deviceID] = name
+				}
+			}
+		}
+	}
+
 	// Build area-to-floor map if floor filter is used
 	var areaFloorMap map[string]string
 	if entityListFloor != "" {
@@ -241,14 +259,14 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 			fmt.Println("No entities.")
 			return nil
 		}
-		printEntitiesGroupedByDevice(entities)
+		printEntitiesGroupedByDevice(entities, deviceMap)
 	} else {
 		client.PrintOutput(entities, false, "")
 	}
 	return nil
 }
 
-func printEntitiesGroupedByDevice(entities []map[string]interface{}) {
+func printEntitiesGroupedByDevice(entities []map[string]interface{}, deviceNames map[string]string) {
 	// Group by device_id
 	byDevice := make(map[string][]map[string]interface{})
 	var deviceOrder []string
@@ -277,7 +295,11 @@ func printEntitiesGroupedByDevice(entities []map[string]interface{}) {
 		}
 		deviceEntities := byDevice[deviceID]
 
-		fmt.Printf("Device: %s\n", deviceID)
+		if name, ok := deviceNames[deviceID]; ok && name != "" {
+			fmt.Printf("%s:\n", name)
+		} else {
+			fmt.Printf("Device %s:\n", deviceID)
+		}
 		for _, e := range deviceEntities {
 			printEntityText(e, "  ")
 		}
