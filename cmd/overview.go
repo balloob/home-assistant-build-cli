@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/home-assistant/hab/auth"
@@ -30,14 +31,37 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Get REST client for config
+	restClient, err := manager.GetRestClient()
+	if err != nil {
+		return err
+	}
+
 	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
 	if err := ws.Connect(); err != nil {
 		return err
 	}
 	defer ws.Close()
 
-	// Gather all counts
+	// Gather all data
 	result := make(map[string]interface{})
+
+	// Get system config
+	configData, err := restClient.Get("config")
+	if err == nil {
+		if config, ok := configData.(map[string]interface{}); ok {
+			result["location_name"] = config["location_name"]
+			result["version"] = config["version"]
+			result["state"] = config["state"]
+			result["time_zone"] = config["time_zone"]
+			result["elevation"] = config["elevation"]
+			result["latitude"] = config["latitude"]
+			result["longitude"] = config["longitude"]
+			if unitSystem, ok := config["unit_system"].(map[string]interface{}); ok {
+				result["temperature_unit"] = unitSystem["temperature"]
+			}
+		}
+	}
 
 	// Count floors
 	floors, err := ws.FloorRegistryList()
@@ -143,6 +167,109 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		result["helpers"] = helperCount
 	}
 
-	client.PrintOutput(result, textMode, "")
+	if textMode {
+		printOverviewText(result)
+	} else {
+		client.PrintOutput(result, false, "")
+	}
 	return nil
+}
+
+func printOverviewText(data map[string]interface{}) {
+	// Instance info
+	locationName, _ := data["location_name"].(string)
+	version, _ := data["version"].(string)
+	state, _ := data["state"].(string)
+	timeZone, _ := data["time_zone"].(string)
+	tempUnit, _ := data["temperature_unit"].(string)
+
+	if locationName != "" {
+		fmt.Printf("%s\n", locationName)
+		fmt.Println(strings.Repeat("=", len(locationName)))
+	} else {
+		fmt.Println("Home Assistant")
+		fmt.Println("==============")
+	}
+
+	fmt.Println()
+
+	// System info
+	if version != "" {
+		fmt.Printf("Version: %s", version)
+		if state != "" && state != "RUNNING" {
+			fmt.Printf(" (%s)", state)
+		}
+		fmt.Println()
+	}
+	if timeZone != "" {
+		fmt.Printf("Timezone: %s\n", timeZone)
+	}
+	if tempUnit != "" {
+		fmt.Printf("Temperature: %s\n", tempUnit)
+	}
+
+	fmt.Println()
+
+	// Registry counts
+	fmt.Println("Registry:")
+	if floors, ok := data["floors"].(int); ok {
+		fmt.Printf("  Floors: %d\n", floors)
+	}
+	if areas, ok := data["areas"].(int); ok {
+		fmt.Printf("  Areas: %d\n", areas)
+	}
+	if devices, ok := data["devices"].(int); ok {
+		fmt.Printf("  Devices: %d\n", devices)
+	}
+	if labels, ok := data["labels"].(int); ok {
+		fmt.Printf("  Labels: %d\n", labels)
+	}
+
+	fmt.Println()
+
+	// Entities
+	fmt.Println("Entities:")
+	if entities, ok := data["entities"].(int); ok {
+		fmt.Printf("  Total: %d\n", entities)
+	}
+	if byDomain, ok := data["entities_by_domain"].(map[string]int); ok && len(byDomain) > 0 {
+		// Show top domains
+		fmt.Print("  By domain: ")
+		count := 0
+		for domain, cnt := range byDomain {
+			if count > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Printf("%s (%d)", domain, cnt)
+			count++
+			if count >= 5 {
+				if len(byDomain) > 5 {
+					fmt.Printf(", ... +%d more", len(byDomain)-5)
+				}
+				break
+			}
+		}
+		fmt.Println()
+	}
+
+	fmt.Println()
+
+	// Automations & Scripts
+	fmt.Println("Automation:")
+	if automations, ok := data["automations"].(int); ok {
+		fmt.Printf("  Automations: %d\n", automations)
+	}
+	if scripts, ok := data["scripts"].(int); ok {
+		fmt.Printf("  Scripts: %d\n", scripts)
+	}
+	if helpers, ok := data["helpers"].(int); ok {
+		fmt.Printf("  Helpers: %d\n", helpers)
+	}
+
+	fmt.Println()
+
+	// Dashboards
+	if dashboards, ok := data["dashboards"].(int); ok {
+		fmt.Printf("Dashboards: %d\n", dashboards)
+	}
 }
