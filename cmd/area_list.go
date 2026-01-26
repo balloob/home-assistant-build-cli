@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -76,7 +78,11 @@ func runAreaList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if areaListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		if textMode {
+			fmt.Printf("Count: %d\n", len(result))
+		} else {
+			client.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
+		}
 		return nil
 	}
 
@@ -87,17 +93,43 @@ func runAreaList(cmd *cobra.Command, args []string) error {
 
 	// Handle brief mode
 	if areaListBrief {
-		var brief []map[string]interface{}
-		for _, item := range result {
-			brief = append(brief, map[string]interface{}{
-				"area_id": item["area_id"],
-				"name":    item["name"],
-			})
+		if textMode {
+			for _, item := range result {
+				name, _ := item["name"].(string)
+				areaID, _ := item["area_id"].(string)
+				fmt.Printf("%s (%s)\n", name, areaID)
+			}
+		} else {
+			var brief []map[string]interface{}
+			for _, item := range result {
+				brief = append(brief, map[string]interface{}{
+					"area_id": item["area_id"],
+					"name":    item["name"],
+				})
+			}
+			client.PrintOutput(brief, false, "")
 		}
-		client.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(result, textMode, "")
+	// Full output
+	if textMode {
+		if len(result) == 0 {
+			fmt.Println("No areas.")
+			return nil
+		}
+		for _, item := range result {
+			name, _ := item["name"].(string)
+			areaID, _ := item["area_id"].(string)
+			floorID, _ := item["floor_id"].(string)
+
+			fmt.Printf("%s (%s):\n", name, areaID)
+			if floorID != "" {
+				fmt.Printf("  floor: %s\n", floorID)
+			}
+		}
+	} else {
+		client.PrintOutput(result, false, "")
+	}
 	return nil
 }

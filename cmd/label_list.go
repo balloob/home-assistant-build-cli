@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -50,7 +52,11 @@ func runLabelList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if labelListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(labels)}, textMode, "")
+		if textMode {
+			fmt.Printf("Count: %d\n", len(labels))
+		} else {
+			client.PrintOutput(map[string]interface{}{"count": len(labels)}, false, "")
+		}
 		return nil
 	}
 
@@ -61,19 +67,50 @@ func runLabelList(cmd *cobra.Command, args []string) error {
 
 	// Handle brief mode
 	if labelListBrief {
-		var brief []map[string]interface{}
-		for _, l := range labels {
-			if label, ok := l.(map[string]interface{}); ok {
-				brief = append(brief, map[string]interface{}{
-					"label_id": label["label_id"],
-					"name":     label["name"],
-				})
+		if textMode {
+			for _, l := range labels {
+				if label, ok := l.(map[string]interface{}); ok {
+					name, _ := label["name"].(string)
+					labelID, _ := label["label_id"].(string)
+					fmt.Printf("%s (%s)\n", name, labelID)
+				}
 			}
+		} else {
+			var brief []map[string]interface{}
+			for _, l := range labels {
+				if label, ok := l.(map[string]interface{}); ok {
+					brief = append(brief, map[string]interface{}{
+						"label_id": label["label_id"],
+						"name":     label["name"],
+					})
+				}
+			}
+			client.PrintOutput(brief, false, "")
 		}
-		client.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(labels, textMode, "")
+	// Full output
+	if textMode {
+		if len(labels) == 0 {
+			fmt.Println("No labels.")
+			return nil
+		}
+		for _, l := range labels {
+			if label, ok := l.(map[string]interface{}); ok {
+				name, _ := label["name"].(string)
+				labelID, _ := label["label_id"].(string)
+				color, _ := label["color"].(string)
+
+				if color != "" {
+					fmt.Printf("%s (%s): %s\n", name, labelID, color)
+				} else {
+					fmt.Printf("%s (%s)\n", name, labelID)
+				}
+			}
+		}
+	} else {
+		client.PrintOutput(labels, false, "")
+	}
 	return nil
 }

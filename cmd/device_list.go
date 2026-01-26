@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -108,7 +110,11 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if deviceListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		if textMode {
+			fmt.Printf("Count: %d\n", len(result))
+		} else {
+			client.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
+		}
 		return nil
 	}
 
@@ -119,17 +125,54 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 
 	// Handle brief mode
 	if deviceListBrief {
-		var brief []map[string]interface{}
-		for _, item := range result {
-			brief = append(brief, map[string]interface{}{
-				"id":   item["id"],
-				"name": item["name"],
-			})
+		if textMode {
+			for _, item := range result {
+				name, _ := item["name"].(string)
+				id, _ := item["id"].(string)
+				fmt.Printf("%s (%s)\n", name, id)
+			}
+		} else {
+			var brief []map[string]interface{}
+			for _, item := range result {
+				brief = append(brief, map[string]interface{}{
+					"id":   item["id"],
+					"name": item["name"],
+				})
+			}
+			client.PrintOutput(brief, false, "")
 		}
-		client.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(result, textMode, "")
+	// Full output
+	if textMode {
+		if len(result) == 0 {
+			fmt.Println("No devices.")
+			return nil
+		}
+		for _, item := range result {
+			name, _ := item["name"].(string)
+			id, _ := item["id"].(string)
+			manufacturer, _ := item["manufacturer"].(string)
+			model, _ := item["model"].(string)
+			areaID, _ := item["area_id"].(string)
+
+			fmt.Printf("%s (%s):\n", name, id)
+			if manufacturer != "" || model != "" {
+				if manufacturer != "" && model != "" {
+					fmt.Printf("  %s %s\n", manufacturer, model)
+				} else if manufacturer != "" {
+					fmt.Printf("  %s\n", manufacturer)
+				} else {
+					fmt.Printf("  %s\n", model)
+				}
+			}
+			if areaID != "" {
+				fmt.Printf("  area: %s\n", areaID)
+			}
+		}
+	} else {
+		client.PrintOutput(result, false, "")
+	}
 	return nil
 }

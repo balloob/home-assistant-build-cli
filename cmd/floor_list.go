@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -50,7 +52,11 @@ func runFloorList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if floorListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(floors)}, textMode, "")
+		if textMode {
+			fmt.Printf("Count: %d\n", len(floors))
+		} else {
+			client.PrintOutput(map[string]interface{}{"count": len(floors)}, false, "")
+		}
 		return nil
 	}
 
@@ -61,19 +67,50 @@ func runFloorList(cmd *cobra.Command, args []string) error {
 
 	// Handle brief mode
 	if floorListBrief {
-		var brief []map[string]interface{}
-		for _, f := range floors {
-			if floor, ok := f.(map[string]interface{}); ok {
-				brief = append(brief, map[string]interface{}{
-					"floor_id": floor["floor_id"],
-					"name":     floor["name"],
-				})
+		if textMode {
+			for _, f := range floors {
+				if floor, ok := f.(map[string]interface{}); ok {
+					name, _ := floor["name"].(string)
+					floorID, _ := floor["floor_id"].(string)
+					fmt.Printf("%s (%s)\n", name, floorID)
+				}
 			}
+		} else {
+			var brief []map[string]interface{}
+			for _, f := range floors {
+				if floor, ok := f.(map[string]interface{}); ok {
+					brief = append(brief, map[string]interface{}{
+						"floor_id": floor["floor_id"],
+						"name":     floor["name"],
+					})
+				}
+			}
+			client.PrintOutput(brief, false, "")
 		}
-		client.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(floors, textMode, "")
+	// Full output
+	if textMode {
+		if len(floors) == 0 {
+			fmt.Println("No floors.")
+			return nil
+		}
+		for _, f := range floors {
+			if floor, ok := f.(map[string]interface{}); ok {
+				name, _ := floor["name"].(string)
+				floorID, _ := floor["floor_id"].(string)
+				level, hasLevel := floor["level"].(float64)
+
+				if hasLevel {
+					fmt.Printf("%s (%s): level %.0f\n", name, floorID, level)
+				} else {
+					fmt.Printf("%s (%s)\n", name, floorID)
+				}
+			}
+		}
+	} else {
+		client.PrintOutput(floors, false, "")
+	}
 	return nil
 }

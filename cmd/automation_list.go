@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/home-assistant/hab/auth"
@@ -131,7 +132,11 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if listCount {
-		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		if textMode {
+			fmt.Printf("Count: %d\n", len(result))
+		} else {
+			client.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
+		}
 		return nil
 	}
 
@@ -142,17 +147,52 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 
 	// Handle brief mode
 	if listBrief {
-		var brief []map[string]interface{}
-		for _, item := range result {
-			brief = append(brief, map[string]interface{}{
-				"entity_id": item["entity_id"],
-				"alias":     item["alias"],
-			})
+		if textMode {
+			for _, item := range result {
+				alias, _ := item["alias"].(string)
+				entityID, _ := item["entity_id"].(string)
+				fmt.Printf("%s (%s)\n", alias, entityID)
+			}
+		} else {
+			var brief []map[string]interface{}
+			for _, item := range result {
+				brief = append(brief, map[string]interface{}{
+					"entity_id": item["entity_id"],
+					"alias":     item["alias"],
+				})
+			}
+			client.PrintOutput(brief, false, "")
 		}
-		client.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(result, textMode, "")
+	// Full output
+	if textMode {
+		if len(result) == 0 {
+			fmt.Println("No automations.")
+			return nil
+		}
+		for _, item := range result {
+			alias, _ := item["alias"].(string)
+			entityID, _ := item["entity_id"].(string)
+			state, _ := item["state"].(string)
+			lastTriggered, _ := item["last_triggered"].(string)
+			description, _ := item["description"].(string)
+			blueprint, _ := item["blueprint"].(string)
+
+			fmt.Printf("%s (%s): %s\n", alias, entityID, state)
+			if lastTriggered != "" {
+				fmt.Printf("  last_triggered: %s\n", lastTriggered)
+			}
+			if description != "" {
+				fmt.Printf("  description: %s\n", description)
+			}
+			if blueprint != "" {
+				fmt.Printf("  blueprint: %s\n", blueprint)
+			}
+		}
+	} else {
+		client.PrintOutput(result, false, "")
+	}
 	return nil
 }
