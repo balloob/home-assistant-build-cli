@@ -113,6 +113,53 @@ Use `--text` for human-readable output:
 hab entity get light.living_room --text
 ```
 
+## Input Formats
+
+Commands that accept data (automations, dashboards, scripts, etc.) support both **JSON** and **YAML** input. The format is auto-detected based on file extension or content structure.
+
+### Input Methods
+
+| Method | Flag | Description |
+|--------|------|-------------|
+| File | `-f`, `--file` | Read from a file (`.yaml`, `.yml`, or `.json`) |
+| Inline | `-d`, `--data` | Pass data as a string argument |
+| Stdin | (none) | Pipe data or use heredocs |
+
+### Multi-line YAML with Heredocs
+
+For multi-line YAML where whitespace matters, use a heredoc:
+
+```bash
+hab automation create my-automation <<'EOF'
+alias: Motion Light
+trigger:
+  - platform: state
+    entity_id: binary_sensor.motion
+    to: "on"
+action:
+  - service: light.turn_on
+    target:
+      entity_id: light.living_room
+EOF
+```
+
+The `<<'EOF'` syntax (with quotes) preserves exact whitespace and prevents shell variable expansion.
+
+### File Input
+
+```bash
+hab automation create my-automation -f automation.yaml
+hab dashboard view create my-dashboard -f view.yaml
+```
+
+### Inline YAML (short configs)
+
+Use `$'...'` syntax for short inline YAML with newlines:
+
+```bash
+hab automation create test -d $'alias: Test\ntrigger:\n  - platform: state\n    entity_id: sensor.test'
+```
+
 ## Configuration
 
 Configuration is stored in `~/.config/home-assistant-builder/`:

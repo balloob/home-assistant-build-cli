@@ -2,6 +2,66 @@
 
 This guide provides best practices for building effective Home Assistant dashboards.
 
+## Creating a Complete View at Once
+
+Instead of creating sections and cards one by one, you can create an entire view with all its contents in a single command using YAML and a heredoc:
+
+```bash
+hab dashboard view create my-dashboard <<'EOF'
+title: Living Room
+icon: mdi:sofa
+path: living-room
+sections:
+  - type: grid
+    title: Lights
+    cards:
+      - type: tile
+        entity: light.living_room_ceiling
+        features:
+          - type: light-brightness
+      - type: tile
+        entity: light.floor_lamp
+      - type: tile
+        entity: light.reading_lamp
+  - type: grid
+    title: Climate
+    cards:
+      - type: thermostat
+        entity: climate.living_room
+      - type: tile
+        entity: sensor.living_room_temperature
+      - type: tile
+        entity: sensor.living_room_humidity
+  - type: grid
+    title: Media
+    cards:
+      - type: tile
+        entity: media_player.tv
+        features:
+          - type: media-player-volume
+      - type: tile
+        entity: media_player.speaker
+  - type: grid
+    title: Maintenance
+    cards:
+      - type: tile
+        entity: sensor.motion_sensor_battery
+      - type: tile
+        entity: sensor.temperature_sensor_battery
+EOF
+```
+
+This approach is useful when:
+- Building a new dashboard from scratch
+- Migrating an existing dashboard configuration
+- Creating templated views that can be reused
+
+You can also save the view configuration to a file and use `-f`:
+
+```bash
+hab dashboard view create my-dashboard -f living-room-view.yaml
+```
+
 ## Look Beyond Entities - Explore Devices
 
 When creating a dashboard for a specific purpose (e.g., a room, a function like "security"), don't limit yourself to searching for entities by name. Use `hab device list` to explore the devices in the system. Devices contain rich information including:
