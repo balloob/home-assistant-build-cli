@@ -18,6 +18,7 @@ var (
 	cardCreateFormat  string
 	cardCreateType    string
 	cardCreateEntity  string
+	cardCreateName    string
 	cardCreateSection int
 )
 
@@ -40,6 +41,7 @@ func init() {
 	cardCreateCmd.Flags().StringVar(&cardCreateFormat, "format", "", "Input format (json, yaml)")
 	cardCreateCmd.Flags().StringVar(&cardCreateType, "type", "", "Card type (e.g., entities, button, markdown)")
 	cardCreateCmd.Flags().StringVar(&cardCreateEntity, "entity", "", "Entity ID (for simple entity cards)")
+	cardCreateCmd.Flags().StringVar(&cardCreateName, "name", "", "Card name/title")
 	cardCreateCmd.Flags().IntVarP(&cardCreateSection, "section", "s", -1, "Section index (if card should be in a section)")
 }
 
@@ -78,6 +80,9 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 	}
 	if cardCreateEntity != "" {
 		cardConfig["entity"] = cardCreateEntity
+	}
+	if cardCreateName != "" {
+		cardConfig["name"] = cardCreateName
 	}
 
 	// Default type to "tile" if not set

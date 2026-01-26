@@ -261,6 +261,29 @@ run_dashboard_tests() {
             fail "dashboard card create with defaults: $OUTPUT"
         fi
 
+        # Test: dashboard card create with --name flag
+        log_test "dashboard card create (with name)"
+        OUTPUT=$(run_hab dashboard card create "$DASHBOARD_URL" --entity "sun.sun" --name "Sun Card")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            NEW_CARD_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
+            CARD_NAME=$(echo "$OUTPUT" | jq -r '.data.name')
+            if [ "$CARD_NAME" = "Sun Card" ]; then
+                pass "dashboard card create with name (index: $NEW_CARD_INDEX, name: $CARD_NAME)"
+            else
+                fail "dashboard card create with name: expected name 'Sun Card', got '$CARD_NAME'"
+            fi
+
+            log_test "dashboard card delete (with name)"
+            OUTPUT=$(run_hab dashboard card delete "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "dashboard card delete with name"
+            else
+                fail "dashboard card delete with name: $OUTPUT"
+            fi
+        else
+            fail "dashboard card create with name: $OUTPUT"
+        fi
+
         log_test "dashboard update"
         OUTPUT=$(run_hab dashboard update "$DASHBOARD_ID" --title "Updated Dashboard")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
