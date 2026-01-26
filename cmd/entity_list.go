@@ -296,7 +296,7 @@ func printEntitiesGroupedByDevice(entities []map[string]interface{}, deviceNames
 		deviceEntities := byDevice[deviceID]
 
 		if name, ok := deviceNames[deviceID]; ok && name != "" {
-			fmt.Printf("%s:\n", name)
+			fmt.Printf("%s (%s):\n", name, deviceID)
 		} else {
 			fmt.Printf("Device %s:\n", deviceID)
 		}
