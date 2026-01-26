@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/home-assistant/hab/auth"
@@ -196,7 +197,11 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if entityListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(entities)}, textMode, "")
+		if textMode {
+			fmt.Printf("Count: %d\n", len(entities))
+		} else {
+			client.PrintOutput(map[string]interface{}{"count": len(entities)}, false, "")
+		}
 		return nil
 	}
 
@@ -207,17 +212,48 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 
 	// Handle brief mode
 	if entityListBrief {
-		var brief []map[string]interface{}
-		for _, item := range entities {
-			brief = append(brief, map[string]interface{}{
-				"entity_id": item["entity_id"],
-				"name":      item["name"],
-			})
+		if textMode {
+			for _, item := range entities {
+				entityID, _ := item["entity_id"].(string)
+				name, _ := item["name"].(string)
+				if name != "" && name != entityID {
+					fmt.Printf("%s (%s)\n", name, entityID)
+				} else {
+					fmt.Println(entityID)
+				}
+			}
+		} else {
+			var brief []map[string]interface{}
+			for _, item := range entities {
+				brief = append(brief, map[string]interface{}{
+					"entity_id": item["entity_id"],
+					"name":      item["name"],
+				})
+			}
+			client.PrintOutput(brief, false, "")
 		}
-		client.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(entities, textMode, "")
+	// Full output
+	if textMode {
+		if len(entities) == 0 {
+			fmt.Println("No entities.")
+			return nil
+		}
+		for _, item := range entities {
+			entityID, _ := item["entity_id"].(string)
+			state, _ := item["state"].(string)
+			name, _ := item["name"].(string)
+
+			if name != "" && name != entityID {
+				fmt.Printf("%s (%s): %s\n", name, entityID, state)
+			} else {
+				fmt.Printf("%s: %s\n", entityID, state)
+			}
+		}
+	} else {
+		client.PrintOutput(entities, false, "")
+	}
 	return nil
 }
