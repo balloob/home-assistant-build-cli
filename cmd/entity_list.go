@@ -241,19 +241,65 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 			fmt.Println("No entities.")
 			return nil
 		}
-		for _, item := range entities {
-			entityID, _ := item["entity_id"].(string)
-			state, _ := item["state"].(string)
-			name, _ := item["name"].(string)
-
-			if name != "" && name != entityID {
-				fmt.Printf("%s (%s): %s\n", name, entityID, state)
-			} else {
-				fmt.Printf("%s: %s\n", entityID, state)
-			}
-		}
+		printEntitiesGroupedByDevice(entities)
 	} else {
 		client.PrintOutput(entities, false, "")
 	}
 	return nil
+}
+
+func printEntitiesGroupedByDevice(entities []map[string]interface{}) {
+	// Group by device_id
+	byDevice := make(map[string][]map[string]interface{})
+	var deviceOrder []string
+
+	for _, e := range entities {
+		deviceID, _ := e["device_id"].(string)
+		if _, exists := byDevice[deviceID]; !exists {
+			deviceOrder = append(deviceOrder, deviceID)
+		}
+		byDevice[deviceID] = append(byDevice[deviceID], e)
+	}
+
+	// Print entities without device first
+	if noDevice, ok := byDevice[""]; ok {
+		fmt.Println("No device:")
+		for _, e := range noDevice {
+			printEntityText(e, "  ")
+		}
+		fmt.Println()
+	}
+
+	// Print each device group
+	for _, deviceID := range deviceOrder {
+		if deviceID == "" {
+			continue
+		}
+		deviceEntities := byDevice[deviceID]
+
+		fmt.Printf("Device: %s\n", deviceID)
+		for _, e := range deviceEntities {
+			printEntityText(e, "  ")
+		}
+		fmt.Println()
+	}
+}
+
+func printEntityText(e map[string]interface{}, indent string) {
+	entityID, _ := e["entity_id"].(string)
+	state, _ := e["state"].(string)
+	name, _ := e["name"].(string)
+	areaID, _ := e["area_id"].(string)
+
+	// First line: entity with state
+	if name != "" && name != entityID {
+		fmt.Printf("%s%s (%s): %s\n", indent, name, entityID, state)
+	} else {
+		fmt.Printf("%s%s: %s\n", indent, entityID, state)
+	}
+
+	// Additional details
+	if areaID != "" {
+		fmt.Printf("%s  area: %s\n", indent, areaID)
+	}
 }
