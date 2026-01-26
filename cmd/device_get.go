@@ -9,23 +9,33 @@ import (
 	"github.com/spf13/viper"
 )
 
-var deviceGetRelated bool
+var (
+	deviceGetRelated bool
+	deviceGetID      string
+)
 
 var deviceGetCmd = &cobra.Command{
-	Use:   "get <device_id>",
+	Use:   "get [device_id]",
 	Short: "Get device details",
 	Long:  `Get detailed information about a device. Use --related to also show related automations, scripts, scenes, and entities.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runDeviceGet,
 }
 
 func init() {
 	deviceCmd.AddCommand(deviceGetCmd)
+	deviceGetCmd.Flags().StringVar(&deviceGetID, "device", "", "Device ID to get")
 	deviceGetCmd.Flags().BoolVarP(&deviceGetRelated, "related", "r", false, "Include related items (automations, scripts, scenes, entities)")
 }
 
 func runDeviceGet(cmd *cobra.Command, args []string) error {
-	deviceID := args[0]
+	deviceID := deviceGetID
+	if deviceID == "" && len(args) > 0 {
+		deviceID = args[0]
+	}
+	if deviceID == "" {
+		return fmt.Errorf("device ID is required (use --device flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

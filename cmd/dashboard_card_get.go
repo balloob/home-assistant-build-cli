@@ -10,32 +10,62 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cardGetSection int
+var (
+	cardGetDashboard string
+	cardGetView      int
+	cardGetIndex     int
+	cardGetSection   int
+)
 
 var cardGetCmd = &cobra.Command{
-	Use:   "get <dashboard_url_path> <view_index> <card_index>",
+	Use:   "get [dashboard_url_path] [view_index] [card_index]",
 	Short: "Get a specific card",
 	Long: `Get a specific card from a section by index.
 
 If section is not specified, uses the last section.`,
-	Args: cobra.ExactArgs(3),
+	Args: cobra.MaximumNArgs(3),
 	RunE: runCardGet,
 }
 
 func init() {
 	dashboardCardCmd.AddCommand(cardGetCmd)
+	cardGetCmd.Flags().StringVar(&cardGetDashboard, "dashboard", "", "Dashboard URL path")
+	cardGetCmd.Flags().IntVar(&cardGetView, "view", -1, "View index")
+	cardGetCmd.Flags().IntVar(&cardGetIndex, "index", -1, "Card index")
 	cardGetCmd.Flags().IntVarP(&cardGetSection, "section", "s", -1, "Section index (if card is in a section)")
 }
 
 func runCardGet(cmd *cobra.Command, args []string) error {
-	urlPath := args[0]
-	viewIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid view index: %s", args[1])
+	urlPath := cardGetDashboard
+	if urlPath == "" && len(args) > 0 {
+		urlPath = args[0]
 	}
-	cardIndex, err := strconv.Atoi(args[2])
-	if err != nil {
-		return fmt.Errorf("invalid card index: %s", args[2])
+	if urlPath == "" {
+		return fmt.Errorf("dashboard URL path is required (use --dashboard flag or first positional argument)")
+	}
+
+	viewIndex := cardGetView
+	if viewIndex < 0 && len(args) > 1 {
+		var err error
+		viewIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid view index: %s", args[1])
+		}
+	}
+	if viewIndex < 0 {
+		return fmt.Errorf("view index is required (use --view flag or second positional argument)")
+	}
+
+	cardIndex := cardGetIndex
+	if cardIndex < 0 && len(args) > 2 {
+		var err error
+		cardIndex, err = strconv.Atoi(args[2])
+		if err != nil {
+			return fmt.Errorf("invalid card index: %s", args[2])
+		}
+	}
+	if cardIndex < 0 {
+		return fmt.Errorf("card index is required (use --index flag or third positional argument)")
 	}
 
 	configDir := viper.GetString("config")

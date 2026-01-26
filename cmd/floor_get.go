@@ -9,23 +9,33 @@ import (
 	"github.com/spf13/viper"
 )
 
-var floorGetRelated bool
+var (
+	floorGetRelated bool
+	floorGetID      string
+)
 
 var floorGetCmd = &cobra.Command{
-	Use:   "get <floor_id>",
+	Use:   "get [floor_id]",
 	Short: "Get floor details",
 	Long:  `Get detailed information about a floor. Use --related to also show related areas, devices, entities, automations, and scripts.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runFloorGet,
 }
 
 func init() {
 	floorCmd.AddCommand(floorGetCmd)
+	floorGetCmd.Flags().StringVar(&floorGetID, "floor", "", "Floor ID to get")
 	floorGetCmd.Flags().BoolVarP(&floorGetRelated, "related", "r", false, "Include related items (areas, devices, entities, automations, scripts)")
 }
 
 func runFloorGet(cmd *cobra.Command, args []string) error {
-	floorID := args[0]
+	floorID := floorGetID
+	if floorID == "" && len(args) > 0 {
+		floorID = args[0]
+	}
+	if floorID == "" {
+		return fmt.Errorf("floor ID is required (use --floor flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

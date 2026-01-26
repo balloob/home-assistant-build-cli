@@ -1,27 +1,38 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+var blueprintGetPath string
+
 var blueprintGetCmd = &cobra.Command{
-	Use:   "get <path>",
+	Use:   "get [path]",
 	Short: "Get blueprint details",
 	Long:  `Get details and inputs for a blueprint by its path. Use --domain to specify the domain (default: automation).`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runBlueprintGet,
 }
 
 func init() {
 	blueprintCmd.AddCommand(blueprintGetCmd)
+	blueprintGetCmd.Flags().StringVar(&blueprintGetPath, "path", "", "Blueprint path to get")
 	blueprintGetCmd.Flags().String("domain", "automation", "Domain of the blueprint (automation/script)")
 }
 
 func runBlueprintGet(cmd *cobra.Command, args []string) error {
-	path := args[0]
+	path := blueprintGetPath
+	if path == "" && len(args) > 0 {
+		path = args[0]
+	}
+	if path == "" {
+		return fmt.Errorf("blueprint path is required (use --path flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 	domain, _ := cmd.Flags().GetString("domain")

@@ -9,23 +9,33 @@ import (
 	"github.com/spf13/viper"
 )
 
-var areaGetRelated bool
+var (
+	areaGetRelated bool
+	areaGetID      string
+)
 
 var areaGetCmd = &cobra.Command{
-	Use:   "get <area_id>",
+	Use:   "get [area_id]",
 	Short: "Get area details",
 	Long:  `Get detailed information about an area. Use --related to also show related devices, entities, automations, and scripts.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runAreaGet,
 }
 
 func init() {
 	areaCmd.AddCommand(areaGetCmd)
+	areaGetCmd.Flags().StringVar(&areaGetID, "area", "", "Area ID to get")
 	areaGetCmd.Flags().BoolVarP(&areaGetRelated, "related", "r", false, "Include related items (devices, entities, automations, scripts)")
 }
 
 func runAreaGet(cmd *cobra.Command, args []string) error {
-	areaID := args[0]
+	areaID := areaGetID
+	if areaID == "" && len(args) > 0 {
+		areaID = args[0]
+	}
+	if areaID == "" {
+		return fmt.Errorf("area ID is required (use --area flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

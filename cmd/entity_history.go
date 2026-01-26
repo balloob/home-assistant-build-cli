@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -10,24 +12,32 @@ import (
 var (
 	entityHistoryStart string
 	entityHistoryEnd   string
+	entityHistoryID    string
 )
 
 var entityHistoryCmd = &cobra.Command{
-	Use:   "history <entity_id>",
+	Use:   "history [entity_id]",
 	Short: "Get state history",
 	Long:  `Get the state history for an entity.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runEntityHistory,
 }
 
 func init() {
 	entityCmd.AddCommand(entityHistoryCmd)
+	entityHistoryCmd.Flags().StringVar(&entityHistoryID, "entity", "", "Entity ID to get history for")
 	entityHistoryCmd.Flags().StringVarP(&entityHistoryStart, "start", "s", "", "Start time (ISO format)")
 	entityHistoryCmd.Flags().StringVarP(&entityHistoryEnd, "end", "e", "", "End time (ISO format)")
 }
 
 func runEntityHistory(cmd *cobra.Command, args []string) error {
-	entityID := args[0]
+	entityID := entityHistoryID
+	if entityID == "" && len(args) > 0 {
+		entityID = args[0]
+	}
+	if entityID == "" {
+		return fmt.Errorf("entity ID is required (use --entity flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

@@ -9,21 +9,40 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	labelRemoveLabelID  string
+	labelRemoveEntityID string
+)
+
 var labelRemoveCmd = &cobra.Command{
-	Use:   "remove <label_id> <entity_id>",
+	Use:   "remove [label_id] [entity_id]",
 	Short: "Remove label from entity",
 	Long:  `Remove a label from an entity.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MaximumNArgs(2),
 	RunE:  runLabelRemove,
 }
 
 func init() {
 	labelCmd.AddCommand(labelRemoveCmd)
+	labelRemoveCmd.Flags().StringVar(&labelRemoveLabelID, "label", "", "Label ID to remove")
+	labelRemoveCmd.Flags().StringVar(&labelRemoveEntityID, "entity", "", "Entity ID to remove the label from")
 }
 
 func runLabelRemove(cmd *cobra.Command, args []string) error {
-	labelID := args[0]
-	entityID := args[1]
+	labelID := labelRemoveLabelID
+	if labelID == "" && len(args) > 0 {
+		labelID = args[0]
+	}
+	if labelID == "" {
+		return fmt.Errorf("label ID is required (use --label flag or first positional argument)")
+	}
+	entityID := labelRemoveEntityID
+	if entityID == "" && len(args) > 1 {
+		entityID = args[1]
+	}
+	if entityID == "" {
+		return fmt.Errorf("entity ID is required (use --entity flag or second positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

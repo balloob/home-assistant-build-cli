@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/home-assistant/hab/auth"
@@ -9,24 +10,34 @@ import (
 	"github.com/spf13/viper"
 )
 
-var automationTraceRunID string
+var (
+	automationTraceRunID string
+	automationTraceID    string
+)
 
 var automationTraceCmd = &cobra.Command{
-	Use:     "trace <automation_id>",
+	Use:     "trace [automation_id]",
 	Short:   "Get execution traces for debugging",
 	Long:    `Get execution traces for an automation.`,
 	GroupID: automationGroupCommands,
-	Args:    cobra.ExactArgs(1),
+	Args:    cobra.MaximumNArgs(1),
 	RunE:    runAutomationTrace,
 }
 
 func init() {
 	automationCmd.AddCommand(automationTraceCmd)
+	automationTraceCmd.Flags().StringVar(&automationTraceID, "automation", "", "Automation ID to get traces for")
 	automationTraceCmd.Flags().StringVar(&automationTraceRunID, "run-id", "", "Specific run ID to get trace for")
 }
 
 func runAutomationTrace(cmd *cobra.Command, args []string) error {
-	automationID := args[0]
+	automationID := automationTraceID
+	if automationID == "" && len(args) > 0 {
+		automationID = args[0]
+	}
+	if automationID == "" {
+		return fmt.Errorf("automation ID is required (use --automation flag or positional argument)")
+	}
 	if !strings.HasPrefix(automationID, "automation.") {
 		automationID = "automation." + automationID
 	}

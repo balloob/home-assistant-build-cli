@@ -11,24 +11,45 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	automationConditionGetAutomationID string
+	automationConditionGetIndex        int
+)
+
 var automationConditionGetCmd = &cobra.Command{
-	Use:   "get <automation_id> <condition_index>",
+	Use:   "get [automation_id] [condition_index]",
 	Short: "Get a specific condition",
 	Long:  `Get a specific condition from an automation by index.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MaximumNArgs(2),
 	RunE:  runAutomationConditionGet,
 }
 
 func init() {
 	automationConditionCmd.AddCommand(automationConditionGetCmd)
+	automationConditionGetCmd.Flags().StringVar(&automationConditionGetAutomationID, "automation", "", "Automation ID")
+	automationConditionGetCmd.Flags().IntVar(&automationConditionGetIndex, "index", -1, "Condition index")
 }
 
 func runAutomationConditionGet(cmd *cobra.Command, args []string) error {
-	automationID := args[0]
+	automationID := automationConditionGetAutomationID
+	if automationID == "" && len(args) > 0 {
+		automationID = args[0]
+	}
+	if automationID == "" {
+		return fmt.Errorf("automation ID is required (use --automation flag or first positional argument)")
+	}
 	automationID = strings.TrimPrefix(automationID, "automation.")
-	conditionIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid condition index: %s", args[1])
+
+	conditionIndex := automationConditionGetIndex
+	if conditionIndex < 0 && len(args) > 1 {
+		var err error
+		conditionIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid condition index: %s", args[1])
+		}
+	}
+	if conditionIndex < 0 {
+		return fmt.Errorf("condition index is required (use --index flag or second positional argument)")
 	}
 
 	configDir := viper.GetString("config")

@@ -1,26 +1,37 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+var deviceEntitiesID string
+
 var deviceEntitiesCmd = &cobra.Command{
-	Use:   "entities <device_id>",
+	Use:   "entities [device_id]",
 	Short: "List entities for a device",
 	Long:  `List all entities that belong to a device.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runDeviceEntities,
 }
 
 func init() {
 	deviceCmd.AddCommand(deviceEntitiesCmd)
+	deviceEntitiesCmd.Flags().StringVar(&deviceEntitiesID, "device", "", "Device ID to list entities for")
 }
 
 func runDeviceEntities(cmd *cobra.Command, args []string) error {
-	deviceID := args[0]
+	deviceID := deviceEntitiesID
+	if deviceID == "" && len(args) > 0 {
+		deviceID = args[0]
+	}
+	if deviceID == "" {
+		return fmt.Errorf("device ID is required (use --device flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

@@ -12,23 +12,33 @@ import (
 	"github.com/spf13/viper"
 )
 
-var threadDeleteForce bool
+var (
+	threadDeleteForce     bool
+	threadDeleteDatasetID string
+)
 
 var threadDeleteCmd = &cobra.Command{
-	Use:   "delete <dataset_id>",
+	Use:   "delete [dataset_id]",
 	Short: "Delete a Thread dataset",
 	Long:  `Delete a Thread dataset.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runThreadDelete,
 }
 
 func init() {
 	threadCmd.AddCommand(threadDeleteCmd)
+	threadDeleteCmd.Flags().StringVar(&threadDeleteDatasetID, "dataset", "", "Thread dataset ID to delete")
 	threadDeleteCmd.Flags().BoolVarP(&threadDeleteForce, "force", "f", false, "Skip confirmation")
 }
 
 func runThreadDelete(cmd *cobra.Command, args []string) error {
-	datasetID := args[0]
+	datasetID := threadDeleteDatasetID
+	if datasetID == "" && len(args) > 0 {
+		datasetID = args[0]
+	}
+	if datasetID == "" {
+		return fmt.Errorf("dataset ID is required (use --dataset flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

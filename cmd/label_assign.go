@@ -9,21 +9,40 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	labelAssignLabelID  string
+	labelAssignEntityID string
+)
+
 var labelAssignCmd = &cobra.Command{
-	Use:   "assign <label_id> <entity_id>",
+	Use:   "assign [label_id] [entity_id]",
 	Short: "Assign label to entity",
 	Long:  `Assign a label to an entity.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MaximumNArgs(2),
 	RunE:  runLabelAssign,
 }
 
 func init() {
 	labelCmd.AddCommand(labelAssignCmd)
+	labelAssignCmd.Flags().StringVar(&labelAssignLabelID, "label", "", "Label ID to assign")
+	labelAssignCmd.Flags().StringVar(&labelAssignEntityID, "entity", "", "Entity ID to assign the label to")
 }
 
 func runLabelAssign(cmd *cobra.Command, args []string) error {
-	labelID := args[0]
-	entityID := args[1]
+	labelID := labelAssignLabelID
+	if labelID == "" && len(args) > 0 {
+		labelID = args[0]
+	}
+	if labelID == "" {
+		return fmt.Errorf("label ID is required (use --label flag or first positional argument)")
+	}
+	entityID := labelAssignEntityID
+	if entityID == "" && len(args) > 1 {
+		entityID = args[1]
+	}
+	if entityID == "" {
+		return fmt.Errorf("entity ID is required (use --entity flag or second positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

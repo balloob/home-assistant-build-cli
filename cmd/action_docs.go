@@ -10,20 +10,29 @@ import (
 	"github.com/spf13/viper"
 )
 
+var actionDocsName string
+
 var actionDocsCmd = &cobra.Command{
-	Use:   "docs <domain.action>",
+	Use:   "docs [domain.action]",
 	Short: "Show action documentation",
 	Long:  `Show the documentation for a specific action including available fields.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runActionDocs,
 }
 
 func init() {
 	actionCmd.AddCommand(actionDocsCmd)
+	actionDocsCmd.Flags().StringVar(&actionDocsName, "action", "", "Action name in domain.action format")
 }
 
 func runActionDocs(cmd *cobra.Command, args []string) error {
-	actionName := args[0]
+	actionName := actionDocsName
+	if actionName == "" && len(args) > 0 {
+		actionName = args[0]
+	}
+	if actionName == "" {
+		return fmt.Errorf("action name is required (use --action flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

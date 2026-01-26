@@ -10,23 +10,44 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	viewGetDashboard string
+	viewGetIndex     int
+)
+
 var viewGetCmd = &cobra.Command{
-	Use:   "get <dashboard_url_path> <view_index>",
+	Use:   "get [dashboard_url_path] [view_index]",
 	Short: "Get a specific view",
 	Long:  `Get a specific view from a dashboard by index.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MaximumNArgs(2),
 	RunE:  runViewGet,
 }
 
 func init() {
 	dashboardViewCmd.AddCommand(viewGetCmd)
+	viewGetCmd.Flags().StringVar(&viewGetDashboard, "dashboard", "", "Dashboard URL path")
+	viewGetCmd.Flags().IntVar(&viewGetIndex, "index", -1, "View index")
 }
 
 func runViewGet(cmd *cobra.Command, args []string) error {
-	urlPath := args[0]
-	viewIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid view index: %s", args[1])
+	urlPath := viewGetDashboard
+	if urlPath == "" && len(args) > 0 {
+		urlPath = args[0]
+	}
+	if urlPath == "" {
+		return fmt.Errorf("dashboard URL path is required (use --dashboard flag or first positional argument)")
+	}
+
+	viewIndex := viewGetIndex
+	if viewIndex < 0 && len(args) > 1 {
+		var err error
+		viewIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid view index: %s", args[1])
+		}
+	}
+	if viewIndex < 0 {
+		return fmt.Errorf("view index is required (use --index flag or second positional argument)")
 	}
 
 	configDir := viper.GetString("config")

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -10,27 +12,35 @@ import (
 var (
 	entityGetRelated bool
 	entityGetDevice  bool
+	entityGetID      string
 )
 
 var entityGetCmd = &cobra.Command{
-	Use:   "get <entity_id>",
+	Use:   "get [entity_id]",
 	Short: "Get entity state, attributes, and registry data",
 	Long: `Get the current state, attributes, and registry data of an entity.
 
 Use --related to show related automations, scripts, scenes, and devices.
 Use --device to include the parent device information.`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runEntityGet,
 }
 
 func init() {
 	entityCmd.AddCommand(entityGetCmd)
+	entityGetCmd.Flags().StringVar(&entityGetID, "entity", "", "Entity ID to get")
 	entityGetCmd.Flags().BoolVarP(&entityGetRelated, "related", "r", false, "Include related items (automations, scripts, scenes, devices)")
 	entityGetCmd.Flags().BoolVarP(&entityGetDevice, "device", "D", false, "Include parent device information")
 }
 
 func runEntityGet(cmd *cobra.Command, args []string) error {
-	entityID := args[0]
+	entityID := entityGetID
+	if entityID == "" && len(args) > 0 {
+		entityID = args[0]
+	}
+	if entityID == "" {
+		return fmt.Errorf("entity ID is required (use --entity flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

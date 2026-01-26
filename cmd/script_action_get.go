@@ -11,24 +11,45 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	scriptActionGetScriptID string
+	scriptActionGetIndex    int
+)
+
 var scriptActionGetCmd = &cobra.Command{
-	Use:   "get <script_id> <action_index>",
+	Use:   "get [script_id] [action_index]",
 	Short: "Get a specific action",
 	Long:  `Get a specific action from a script by index.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MaximumNArgs(2),
 	RunE:  runScriptActionGet,
 }
 
 func init() {
 	scriptActionCmd.AddCommand(scriptActionGetCmd)
+	scriptActionGetCmd.Flags().StringVar(&scriptActionGetScriptID, "script", "", "Script ID")
+	scriptActionGetCmd.Flags().IntVar(&scriptActionGetIndex, "index", -1, "Action index")
 }
 
 func runScriptActionGet(cmd *cobra.Command, args []string) error {
-	scriptID := args[0]
+	scriptID := scriptActionGetScriptID
+	if scriptID == "" && len(args) > 0 {
+		scriptID = args[0]
+	}
+	if scriptID == "" {
+		return fmt.Errorf("script ID is required (use --script flag or first positional argument)")
+	}
 	scriptID = strings.TrimPrefix(scriptID, "script.")
-	actionIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid action index: %s", args[1])
+
+	actionIndex := scriptActionGetIndex
+	if actionIndex < 0 && len(args) > 1 {
+		var err error
+		actionIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid action index: %s", args[1])
+		}
+	}
+	if actionIndex < 0 {
+		return fmt.Errorf("action index is required (use --index flag or second positional argument)")
 	}
 
 	configDir := viper.GetString("config")

@@ -11,24 +11,45 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	automationActionGetAutomationID string
+	automationActionGetIndex        int
+)
+
 var automationActionGetCmd = &cobra.Command{
-	Use:   "get <automation_id> <action_index>",
+	Use:   "get [automation_id] [action_index]",
 	Short: "Get a specific action",
 	Long:  `Get a specific action from an automation by index.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MaximumNArgs(2),
 	RunE:  runAutomationActionGet,
 }
 
 func init() {
 	automationActionCmd.AddCommand(automationActionGetCmd)
+	automationActionGetCmd.Flags().StringVar(&automationActionGetAutomationID, "automation", "", "Automation ID")
+	automationActionGetCmd.Flags().IntVar(&automationActionGetIndex, "index", -1, "Action index")
 }
 
 func runAutomationActionGet(cmd *cobra.Command, args []string) error {
-	automationID := args[0]
+	automationID := automationActionGetAutomationID
+	if automationID == "" && len(args) > 0 {
+		automationID = args[0]
+	}
+	if automationID == "" {
+		return fmt.Errorf("automation ID is required (use --automation flag or first positional argument)")
+	}
 	automationID = strings.TrimPrefix(automationID, "automation.")
-	actionIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid action index: %s", args[1])
+
+	actionIndex := automationActionGetIndex
+	if actionIndex < 0 && len(args) > 1 {
+		var err error
+		actionIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid action index: %s", args[1])
+		}
+	}
+	if actionIndex < 0 {
+		return fmt.Errorf("action index is required (use --index flag or second positional argument)")
 	}
 
 	configDir := viper.GetString("config")

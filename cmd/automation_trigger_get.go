@@ -11,24 +11,45 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	automationTriggerGetAutomationID string
+	automationTriggerGetIndex        int
+)
+
 var automationTriggerGetCmd = &cobra.Command{
-	Use:   "get <automation_id> <trigger_index>",
+	Use:   "get [automation_id] [trigger_index]",
 	Short: "Get a specific trigger",
 	Long:  `Get a specific trigger from an automation by index.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.MaximumNArgs(2),
 	RunE:  runAutomationTriggerGet,
 }
 
 func init() {
 	automationTriggerParentCmd.AddCommand(automationTriggerGetCmd)
+	automationTriggerGetCmd.Flags().StringVar(&automationTriggerGetAutomationID, "automation", "", "Automation ID")
+	automationTriggerGetCmd.Flags().IntVar(&automationTriggerGetIndex, "index", -1, "Trigger index")
 }
 
 func runAutomationTriggerGet(cmd *cobra.Command, args []string) error {
-	automationID := args[0]
+	automationID := automationTriggerGetAutomationID
+	if automationID == "" && len(args) > 0 {
+		automationID = args[0]
+	}
+	if automationID == "" {
+		return fmt.Errorf("automation ID is required (use --automation flag or first positional argument)")
+	}
 	automationID = strings.TrimPrefix(automationID, "automation.")
-	triggerIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid trigger index: %s", args[1])
+
+	triggerIndex := automationTriggerGetIndex
+	if triggerIndex < 0 && len(args) > 1 {
+		var err error
+		triggerIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid trigger index: %s", args[1])
+		}
+	}
+	if triggerIndex < 0 {
+		return fmt.Errorf("trigger index is required (use --index flag or second positional argument)")
 	}
 
 	configDir := viper.GetString("config")

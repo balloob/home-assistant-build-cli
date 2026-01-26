@@ -1,26 +1,37 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+var threadGetDatasetID string
+
 var threadGetCmd = &cobra.Command{
-	Use:   "get <dataset_id>",
+	Use:   "get [dataset_id]",
 	Short: "Get dataset details including TLV",
 	Long:  `Get full details of a Thread dataset.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runThreadGet,
 }
 
 func init() {
 	threadCmd.AddCommand(threadGetCmd)
+	threadGetCmd.Flags().StringVar(&threadGetDatasetID, "dataset", "", "Thread dataset ID to get")
 }
 
 func runThreadGet(cmd *cobra.Command, args []string) error {
-	datasetID := args[0]
+	datasetID := threadGetDatasetID
+	if datasetID == "" && len(args) > 0 {
+		datasetID = args[0]
+	}
+	if datasetID == "" {
+		return fmt.Errorf("dataset ID is required (use --dataset flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

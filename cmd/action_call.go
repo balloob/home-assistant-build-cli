@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	actionCallName           string
 	actionCallData           string
 	actionCallEntity         string
 	actionCallArea           string
@@ -19,15 +20,16 @@ var (
 )
 
 var actionCallCmd = &cobra.Command{
-	Use:   "call <domain.action>",
+	Use:   "call [domain.action]",
 	Short: "Call an action with data",
 	Long:  `Call a Home Assistant action (service) with optional data.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runActionCall,
 }
 
 func init() {
 	actionCmd.AddCommand(actionCallCmd)
+	actionCallCmd.Flags().StringVar(&actionCallName, "action", "", "Action name in domain.action format")
 	actionCallCmd.Flags().StringVarP(&actionCallData, "data", "d", "", "Action data as JSON")
 	actionCallCmd.Flags().StringVarP(&actionCallEntity, "entity", "e", "", "Target entity ID")
 	actionCallCmd.Flags().StringVarP(&actionCallArea, "area", "a", "", "Target area ID")
@@ -35,7 +37,13 @@ func init() {
 }
 
 func runActionCall(cmd *cobra.Command, args []string) error {
-	actionName := args[0]
+	actionName := actionCallName
+	if actionName == "" && len(args) > 0 {
+		actionName = args[0]
+	}
+	if actionName == "" {
+		return fmt.Errorf("action name is required (use --action flag or positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 

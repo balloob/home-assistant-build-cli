@@ -10,27 +10,58 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	sectionGetDashboard    string
+	sectionGetViewIndex    int
+	sectionGetSectionIndex int
+)
+
 var sectionGetCmd = &cobra.Command{
-	Use:   "get <dashboard_url_path> <view_index> <section_index>",
+	Use:   "get [dashboard_url_path] [view_index] [section_index]",
 	Short: "Get a specific section",
 	Long:  `Get a specific section from a view by index.`,
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.MaximumNArgs(3),
 	RunE:  runSectionGet,
 }
 
 func init() {
 	dashboardSectionCmd.AddCommand(sectionGetCmd)
+	sectionGetCmd.Flags().StringVar(&sectionGetDashboard, "dashboard", "", "Dashboard URL path")
+	sectionGetCmd.Flags().IntVar(&sectionGetViewIndex, "view", -1, "View index")
+	sectionGetCmd.Flags().IntVar(&sectionGetSectionIndex, "index", -1, "Section index")
 }
 
 func runSectionGet(cmd *cobra.Command, args []string) error {
-	urlPath := args[0]
-	viewIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid view index: %s", args[1])
+	urlPath := sectionGetDashboard
+	if urlPath == "" && len(args) > 0 {
+		urlPath = args[0]
 	}
-	sectionIndex, err := strconv.Atoi(args[2])
-	if err != nil {
-		return fmt.Errorf("invalid section index: %s", args[2])
+	if urlPath == "" {
+		return fmt.Errorf("dashboard URL path is required (use --dashboard flag or first positional argument)")
+	}
+
+	viewIndex := sectionGetViewIndex
+	if viewIndex < 0 && len(args) > 1 {
+		var err error
+		viewIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid view index: %s", args[1])
+		}
+	}
+	if viewIndex < 0 {
+		return fmt.Errorf("view index is required (use --view flag or second positional argument)")
+	}
+
+	sectionIndex := sectionGetSectionIndex
+	if sectionIndex < 0 && len(args) > 2 {
+		var err error
+		sectionIndex, err = strconv.Atoi(args[2])
+		if err != nil {
+			return fmt.Errorf("invalid section index: %s", args[2])
+		}
+	}
+	if sectionIndex < 0 {
+		return fmt.Errorf("section index is required (use --index flag or third positional argument)")
 	}
 
 	configDir := viper.GetString("config")

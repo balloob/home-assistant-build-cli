@@ -9,8 +9,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	searchRelatedType string
+	searchRelatedID   string
+)
+
 var searchRelatedCmd = &cobra.Command{
-	Use:   "related <item_type> <item_id>",
+	Use:   "related [item_type] [item_id]",
 	Short: "Find related items for any item type",
 	Long: `Find all items related to a given item.
 
@@ -27,17 +32,31 @@ Supported item types:
   - group: Find items related to a group
 
 Returns related items grouped by type: areas, automations, config_entries, devices, entities, groups, scenes, scripts, etc.`,
-	Args: cobra.ExactArgs(2),
+	Args: cobra.MaximumNArgs(2),
 	RunE: runSearchRelated,
 }
 
 func init() {
 	searchCmd.AddCommand(searchRelatedCmd)
+	searchRelatedCmd.Flags().StringVar(&searchRelatedType, "type", "", "Item type (entity, device, area, floor, label, automation, scene, script, config_entry, group)")
+	searchRelatedCmd.Flags().StringVar(&searchRelatedID, "id", "", "Item ID to search for related items")
 }
 
 func runSearchRelated(cmd *cobra.Command, args []string) error {
-	itemType := args[0]
-	itemID := args[1]
+	itemType := searchRelatedType
+	if itemType == "" && len(args) > 0 {
+		itemType = args[0]
+	}
+	if itemType == "" {
+		return fmt.Errorf("item type is required (use --type flag or first positional argument)")
+	}
+	itemID := searchRelatedID
+	if itemID == "" && len(args) > 1 {
+		itemID = args[1]
+	}
+	if itemID == "" {
+		return fmt.Errorf("item ID is required (use --id flag or second positional argument)")
+	}
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 
