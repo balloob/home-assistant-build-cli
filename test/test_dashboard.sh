@@ -8,6 +8,15 @@ source "$SCRIPT_DIR/lib/common.sh"
 run_dashboard_tests() {
     log_section "Dashboard Tests"
 
+    # Test: dashboard guide (no auth required)
+    log_test "dashboard guide"
+    OUTPUT=$(run_hab dashboard guide 2>&1)
+    if echo "$OUTPUT" | grep -q "Dashboard Creation Guide"; then
+        pass "dashboard guide"
+    else
+        fail "dashboard guide: $OUTPUT"
+    fi
+
     # Ensure we're authenticated
     do_auth_login
 
