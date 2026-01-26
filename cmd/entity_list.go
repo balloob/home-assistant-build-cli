@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	entityListID     string
 	entityListDomain string
 	entityListArea   string
 	entityListFloor  string
@@ -30,6 +31,7 @@ var entityListCmd = &cobra.Command{
 
 func init() {
 	entityCmd.AddCommand(entityListCmd)
+	entityListCmd.Flags().StringVar(&entityListID, "entity-id", "", "Filter by entity ID")
 	entityListCmd.Flags().StringVarP(&entityListDomain, "domain", "d", "", "Filter by domain (e.g., light, switch)")
 	entityListCmd.Flags().StringVarP(&entityListArea, "area", "a", "", "Filter by area ID")
 	entityListCmd.Flags().StringVarP(&entityListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
@@ -125,6 +127,11 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		entityDomain := ""
 		if len(parts) > 0 {
 			entityDomain = parts[0]
+		}
+
+		// Apply entity ID filter
+		if entityListID != "" && entityID != entityListID {
+			continue
 		}
 
 		// Apply domain filter

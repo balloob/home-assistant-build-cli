@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	areaListID    string
 	areaListFloor string
 	areaListCount bool
 	areaListBrief bool
@@ -25,6 +26,7 @@ var areaListCmd = &cobra.Command{
 
 func init() {
 	areaCmd.AddCommand(areaListCmd)
+	areaListCmd.Flags().StringVar(&areaListID, "area-id", "", "Filter by area ID")
 	areaListCmd.Flags().StringVarP(&areaListFloor, "floor", "f", "", "Filter by floor ID")
 	areaListCmd.Flags().BoolVarP(&areaListCount, "count", "c", false, "Return only the count of items")
 	areaListCmd.Flags().BoolVarP(&areaListBrief, "brief", "b", false, "Return minimal fields (area_id and name only)")
@@ -56,6 +58,13 @@ func runAreaList(cmd *cobra.Command, args []string) error {
 	for _, a := range areas {
 		area, ok := a.(map[string]interface{})
 		if !ok {
+			continue
+		}
+
+		areaID, _ := area["area_id"].(string)
+
+		// Apply area ID filter
+		if areaListID != "" && areaID != areaListID {
 			continue
 		}
 

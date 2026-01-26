@@ -17,6 +17,7 @@ var labelListCmd = &cobra.Command{
 }
 
 var (
+	labelListID    string
 	labelListCount bool
 	labelListBrief bool
 	labelListLimit int
@@ -24,6 +25,7 @@ var (
 
 func init() {
 	labelCmd.AddCommand(labelListCmd)
+	labelListCmd.Flags().StringVar(&labelListID, "label-id", "", "Filter by label ID")
 	labelListCmd.Flags().BoolVarP(&labelListCount, "count", "c", false, "Return only the count of items")
 	labelListCmd.Flags().BoolVarP(&labelListBrief, "brief", "b", false, "Return minimal fields (label_id and name only)")
 	labelListCmd.Flags().IntVarP(&labelListLimit, "limit", "n", 0, "Limit results to N items")
@@ -48,6 +50,20 @@ func runLabelList(cmd *cobra.Command, args []string) error {
 	labels, err := ws.LabelRegistryList()
 	if err != nil {
 		return err
+	}
+
+	// Apply label ID filter
+	if labelListID != "" {
+		var filtered []interface{}
+		for _, l := range labels {
+			if label, ok := l.(map[string]interface{}); ok {
+				labelID, _ := label["label_id"].(string)
+				if labelID == labelListID {
+					filtered = append(filtered, l)
+				}
+			}
+		}
+		labels = filtered
 	}
 
 	// Handle count mode

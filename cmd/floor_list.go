@@ -17,6 +17,7 @@ var floorListCmd = &cobra.Command{
 }
 
 var (
+	floorListID    string
 	floorListCount bool
 	floorListBrief bool
 	floorListLimit int
@@ -24,6 +25,7 @@ var (
 
 func init() {
 	floorCmd.AddCommand(floorListCmd)
+	floorListCmd.Flags().StringVar(&floorListID, "floor-id", "", "Filter by floor ID")
 	floorListCmd.Flags().BoolVarP(&floorListCount, "count", "c", false, "Return only the count of items")
 	floorListCmd.Flags().BoolVarP(&floorListBrief, "brief", "b", false, "Return minimal fields (floor_id and name only)")
 	floorListCmd.Flags().IntVarP(&floorListLimit, "limit", "n", 0, "Limit results to N items")
@@ -48,6 +50,20 @@ func runFloorList(cmd *cobra.Command, args []string) error {
 	floors, err := ws.FloorRegistryList()
 	if err != nil {
 		return err
+	}
+
+	// Apply floor ID filter
+	if floorListID != "" {
+		var filtered []interface{}
+		for _, f := range floors {
+			if floor, ok := f.(map[string]interface{}); ok {
+				floorID, _ := floor["floor_id"].(string)
+				if floorID == floorListID {
+					filtered = append(filtered, f)
+				}
+			}
+		}
+		floors = filtered
 	}
 
 	// Handle count mode

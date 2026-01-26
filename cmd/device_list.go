@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	deviceListID    string
 	deviceListArea  string
 	deviceListFloor string
 	deviceListCount bool
@@ -26,6 +27,7 @@ var deviceListCmd = &cobra.Command{
 
 func init() {
 	deviceCmd.AddCommand(deviceListCmd)
+	deviceListCmd.Flags().StringVar(&deviceListID, "device-id", "", "Filter by device ID")
 	deviceListCmd.Flags().StringVarP(&deviceListArea, "area", "a", "", "Filter by area ID")
 	deviceListCmd.Flags().StringVarP(&deviceListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
 	deviceListCmd.Flags().BoolVarP(&deviceListCount, "count", "c", false, "Return only the count of items")
@@ -79,7 +81,13 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
+		deviceID, _ := device["id"].(string)
 		areaID, _ := device["area_id"].(string)
+
+		// Apply device ID filter
+		if deviceListID != "" && deviceID != deviceListID {
+			continue
+		}
 
 		// Apply area filter
 		if deviceListArea != "" {
