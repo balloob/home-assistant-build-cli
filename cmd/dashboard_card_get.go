@@ -15,9 +15,11 @@ var cardGetSection int
 var cardGetCmd = &cobra.Command{
 	Use:   "get <dashboard_url_path> <view_index> <card_index>",
 	Short: "Get a specific card",
-	Long:  `Get a specific card from a view or section by index.`,
-	Args:  cobra.ExactArgs(3),
-	RunE:  runCardGet,
+	Long: `Get a specific card from a section by index.
+
+If section is not specified, uses the last section.`,
+	Args: cobra.ExactArgs(3),
+	RunE: runCardGet,
 }
 
 func init() {
@@ -80,27 +82,28 @@ func runCardGet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid view at index %d", viewIndex)
 	}
 
-	var cards []interface{}
-
-	if cardGetSection >= 0 {
-		// Get cards from section
-		sections, ok := view["sections"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no sections in view")
-		}
-		if cardGetSection >= len(sections) {
-			return fmt.Errorf("section index %d out of range (0-%d)", cardGetSection, len(sections)-1)
-		}
-		section, ok := sections[cardGetSection].(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("invalid section at index %d", cardGetSection)
-		}
-		cards, _ = section["cards"].([]interface{})
-	} else {
-		// Get cards directly from view
-		cards, _ = view["cards"].([]interface{})
+	// Get sections
+	sections, _ := view["sections"].([]interface{})
+	if sections == nil || len(sections) == 0 {
+		return fmt.Errorf("no sections in view")
 	}
 
+	// Determine section index: use provided value or default to last section
+	sectionIndex := cardGetSection
+	if sectionIndex < 0 {
+		sectionIndex = len(sections) - 1
+	}
+
+	if sectionIndex >= len(sections) {
+		return fmt.Errorf("section index %d out of range (0-%d)", sectionIndex, len(sections)-1)
+	}
+
+	section, ok := sections[sectionIndex].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid section at index %d", sectionIndex)
+	}
+
+	cards, _ := section["cards"].([]interface{})
 	if cards == nil {
 		return fmt.Errorf("no cards found")
 	}

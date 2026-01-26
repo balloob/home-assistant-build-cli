@@ -21,9 +21,11 @@ var (
 var cardDeleteCmd = &cobra.Command{
 	Use:   "delete <dashboard_url_path> <view_index> <card_index>",
 	Short: "Delete a card",
-	Long:  `Delete a card from a view or section by index.`,
-	Args:  cobra.ExactArgs(3),
-	RunE:  runCardDelete,
+	Long: `Delete a card from a section by index.
+
+If section is not specified, uses the last section.`,
+	Args: cobra.ExactArgs(3),
+	RunE: runCardDelete,
 }
 
 func init() {
@@ -88,29 +90,28 @@ func runCardDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid view at index %d", viewIndex)
 	}
 
-	var cards []interface{}
-	var section map[string]interface{}
-	var sections []interface{}
-
-	if cardDeleteSection >= 0 {
-		// Get cards from section
-		sections, ok = view["sections"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no sections in view")
-		}
-		if cardDeleteSection >= len(sections) {
-			return fmt.Errorf("section index %d out of range (0-%d)", cardDeleteSection, len(sections)-1)
-		}
-		section, ok = sections[cardDeleteSection].(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("invalid section at index %d", cardDeleteSection)
-		}
-		cards, _ = section["cards"].([]interface{})
-	} else {
-		// Get cards directly from view
-		cards, _ = view["cards"].([]interface{})
+	// Get sections
+	sections, _ := view["sections"].([]interface{})
+	if sections == nil || len(sections) == 0 {
+		return fmt.Errorf("no sections in view")
 	}
 
+	// Determine section index: use provided value or default to last section
+	sectionIndex := cardDeleteSection
+	if sectionIndex < 0 {
+		sectionIndex = len(sections) - 1
+	}
+
+	if sectionIndex >= len(sections) {
+		return fmt.Errorf("section index %d out of range (0-%d)", sectionIndex, len(sections)-1)
+	}
+
+	section, ok := sections[sectionIndex].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid section at index %d", sectionIndex)
+	}
+
+	cards, _ := section["cards"].([]interface{})
 	if cards == nil {
 		return fmt.Errorf("no cards found")
 	}
@@ -141,13 +142,9 @@ func runCardDelete(cmd *cobra.Command, args []string) error {
 	// Remove the card
 	cards = append(cards[:cardIndex], cards[cardIndex+1:]...)
 
-	if cardDeleteSection >= 0 {
-		section["cards"] = cards
-		sections[cardDeleteSection] = section
-		view["sections"] = sections
-	} else {
-		view["cards"] = cards
-	}
+	section["cards"] = cards
+	sections[sectionIndex] = section
+	view["sections"] = sections
 
 	views[viewIndex] = view
 	config["views"] = views

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
@@ -21,11 +22,15 @@ var (
 )
 
 var cardCreateCmd = &cobra.Command{
-	Use:   "create <dashboard_url_path> <view_index>",
+	Use:   "create <dashboard_url_path> [view_index]",
 	Short: "Create a new card",
-	Long:  `Create a new card in a dashboard view or section.`,
-	Args:  cobra.ExactArgs(2),
-	RunE:  runCardCreate,
+	Long: `Create a new card in a dashboard view or section.
+
+If view_index is not specified, uses the last view. If no views exist, creates one.
+If section is not specified, uses the last section. If no sections exist, creates one.
+If type is not specified, defaults to "tile".`,
+	Args: cobra.RangeArgs(1, 2),
+	RunE: runCardCreate,
 }
 
 func init() {
@@ -40,15 +45,22 @@ func init() {
 
 func runCardCreate(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
-	viewIndex, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid view index: %s", args[1])
+
+	// View index is optional - will default to last view
+	viewIndex := -1
+	if len(args) > 1 {
+		var err error
+		viewIndex, err = strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("invalid view index: %s", args[1])
+		}
 	}
 
 	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
 
 	var cardConfig map[string]interface{}
+	var err error
 
 	// If data or file provided, parse it
 	if cardCreateData != "" || cardCreateFile != "" {
@@ -68,9 +80,9 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 		cardConfig["entity"] = cardCreateEntity
 	}
 
-	// Ensure type is set
+	// Default type to "tile" if not set
 	if _, ok := cardConfig["type"]; !ok {
-		return fmt.Errorf("card type is required (use --type or provide in data)")
+		cardConfig["type"] = "tile"
 	}
 
 	manager := auth.NewManager(configDir)
@@ -98,15 +110,33 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 
 	config, ok := result.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("invalid dashboard config")
+		config = map[string]interface{}{
+			"views": []interface{}{},
+		}
 	}
 
 	views, ok := config["views"].([]interface{})
 	if !ok {
-		return fmt.Errorf("no views in dashboard")
+		views = []interface{}{}
 	}
 
-	if viewIndex < 0 || viewIndex >= len(views) {
+	// If no views exist, create one
+	viewCreated := false
+	if len(views) == 0 {
+		newView := map[string]interface{}{
+			"title":    "Home",
+			"sections": []interface{}{},
+		}
+		views = append(views, newView)
+		viewCreated = true
+	}
+
+	// Default to last view if not specified
+	if viewIndex < 0 {
+		viewIndex = len(views) - 1
+	}
+
+	if viewIndex >= len(views) {
 		return fmt.Errorf("view index %d out of range (0-%d)", viewIndex, len(views)-1)
 	}
 
@@ -115,42 +145,48 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid view at index %d", viewIndex)
 	}
 
-	var cards []interface{}
-	var newCardIndex int
-
-	if cardCreateSection >= 0 {
-		// Add card to section
-		sections, ok := view["sections"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no sections in view")
-		}
-		if cardCreateSection >= len(sections) {
-			return fmt.Errorf("section index %d out of range (0-%d)", cardCreateSection, len(sections)-1)
-		}
-		section, ok := sections[cardCreateSection].(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("invalid section at index %d", cardCreateSection)
-		}
-
-		cards, _ = section["cards"].([]interface{})
-		if cards == nil {
-			cards = []interface{}{}
-		}
-		cards = append(cards, cardConfig)
-		newCardIndex = len(cards) - 1
-		section["cards"] = cards
-		sections[cardCreateSection] = section
-		view["sections"] = sections
-	} else {
-		// Add card directly to view
-		cards, _ = view["cards"].([]interface{})
-		if cards == nil {
-			cards = []interface{}{}
-		}
-		cards = append(cards, cardConfig)
-		newCardIndex = len(cards) - 1
-		view["cards"] = cards
+	// Get or create sections
+	sections, _ := view["sections"].([]interface{})
+	if sections == nil {
+		sections = []interface{}{}
 	}
+
+	// If no sections exist, create one
+	sectionCreated := false
+	if len(sections) == 0 {
+		newSection := map[string]interface{}{
+			"type":  "grid",
+			"cards": []interface{}{},
+		}
+		sections = append(sections, newSection)
+		view["sections"] = sections
+		sectionCreated = true
+	}
+
+	// Determine section index: use provided value or default to last section
+	sectionIndex := cardCreateSection
+	if sectionIndex < 0 {
+		sectionIndex = len(sections) - 1
+	}
+
+	if sectionIndex >= len(sections) {
+		return fmt.Errorf("section index %d out of range (0-%d)", sectionIndex, len(sections)-1)
+	}
+
+	section, ok := sections[sectionIndex].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid section at index %d", sectionIndex)
+	}
+
+	cards, _ := section["cards"].([]interface{})
+	if cards == nil {
+		cards = []interface{}{}
+	}
+	cards = append(cards, cardConfig)
+	newCardIndex := len(cards) - 1
+	section["cards"] = cards
+	sections[sectionIndex] = section
+	view["sections"] = sections
 
 	views[viewIndex] = view
 	config["views"] = views
@@ -169,10 +205,32 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	cardConfig["index"] = newCardIndex
-	location := "view"
-	if cardCreateSection >= 0 {
-		location = fmt.Sprintf("section %d", cardCreateSection)
+
+	// Build descriptive message
+	var msgParts []string
+	if viewCreated {
+		msgParts = append(msgParts, fmt.Sprintf("view %d created", viewIndex))
 	}
-	client.PrintSuccess(cardConfig, textMode, fmt.Sprintf("Card created at index %d in %s.", newCardIndex, location))
+	if sectionCreated {
+		msgParts = append(msgParts, fmt.Sprintf("section %d created", sectionIndex))
+	}
+	msgParts = append(msgParts, fmt.Sprintf("card created at index %d in view %d section %d", newCardIndex, viewIndex, sectionIndex))
+
+	var msg string
+	if len(msgParts) > 1 {
+		msg = ""
+		for i, part := range msgParts {
+			if i == 0 {
+				msg = strings.ToUpper(part[:1]) + part[1:]
+			} else {
+				msg += ", " + part
+			}
+		}
+		msg += "."
+	} else {
+		msg = "Card created at index " + strconv.Itoa(newCardIndex) + " in view " + strconv.Itoa(viewIndex) + " section " + strconv.Itoa(sectionIndex) + "."
+	}
+
+	client.PrintSuccess(cardConfig, textMode, msg)
 	return nil
 }

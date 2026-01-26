@@ -223,49 +223,33 @@ run_dashboard_tests() {
             pass "dashboard section list (not available)"
         fi
 
-        # Test: dashboard card CRUD (directly in view)
-        log_test "dashboard card list (in view)"
-        OUTPUT=$(run_hab_optional dashboard card list "$DASHBOARD_URL" 0)
+        # Test: dashboard card create with defaults (auto-creates section)
+        log_test "dashboard card create (with defaults)"
+        # Create a card without specifying section - should create section automatically
+        OUTPUT=$(run_hab_optional dashboard card create "$DASHBOARD_URL" --entity "sun.sun")
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            CARD_COUNT=$(echo "$OUTPUT" | jq '.data | length')
-            pass "dashboard card list in view ($CARD_COUNT cards)"
+            NEW_CARD_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
+            CARD_TYPE=$(echo "$OUTPUT" | jq -r '.data.type')
+            pass "dashboard card create with defaults (index: $NEW_CARD_INDEX, type: $CARD_TYPE)"
 
-            log_test "dashboard card create (in view)"
-            CARD_CONFIG='{"type":"entities","entities":["sun.sun"]}'
-            OUTPUT=$(run_hab_optional dashboard card create "$DASHBOARD_URL" 0 -d "$CARD_CONFIG")
+            # Verify card was created in a section (view 0, last section)
+            log_test "dashboard card get (with defaults)"
+            OUTPUT=$(run_hab_optional dashboard card get "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX")
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                NEW_CARD_INDEX=$(echo "$OUTPUT" | jq -r '.data.index')
-                pass "dashboard card create in view (index: $NEW_CARD_INDEX)"
-
-                log_test "dashboard card get (in view)"
-                OUTPUT=$(run_hab_optional dashboard card get "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX")
-                if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard card get in view"
-                else
-                    fail "dashboard card get in view: $OUTPUT"
-                fi
-
-                log_test "dashboard card update (in view)"
-                CARD_UPDATE_CONFIG='{"type":"entities","title":"Updated","entities":["sun.sun"]}'
-                OUTPUT=$(run_hab_optional dashboard card update "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" -d "$CARD_UPDATE_CONFIG")
-                if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard card update in view"
-                else
-                    fail "dashboard card update in view: $OUTPUT"
-                fi
-
-                log_test "dashboard card delete (in view)"
-                OUTPUT=$(run_hab_optional dashboard card delete "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --force)
-                if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                    pass "dashboard card delete in view"
-                else
-                    fail "dashboard card delete in view: $OUTPUT"
-                fi
+                pass "dashboard card get with defaults"
             else
-                fail "dashboard card create in view: $OUTPUT"
+                fail "dashboard card get with defaults: $OUTPUT"
+            fi
+
+            log_test "dashboard card delete (with defaults)"
+            OUTPUT=$(run_hab_optional dashboard card delete "$DASHBOARD_URL" 0 "$NEW_CARD_INDEX" --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "dashboard card delete with defaults"
+            else
+                fail "dashboard card delete with defaults: $OUTPUT"
             fi
         else
-            pass "dashboard card list in view (not available)"
+            fail "dashboard card create with defaults: $OUTPUT"
         fi
 
         log_test "dashboard update"

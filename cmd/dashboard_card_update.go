@@ -23,9 +23,11 @@ var (
 var cardUpdateCmd = &cobra.Command{
 	Use:   "update <dashboard_url_path> <view_index> <card_index>",
 	Short: "Update a card",
-	Long:  `Update a card in a view or section by index.`,
-	Args:  cobra.ExactArgs(3),
-	RunE:  runCardUpdate,
+	Long: `Update a card in a section by index.
+
+If section is not specified, uses the last section.`,
+	Args: cobra.ExactArgs(3),
+	RunE: runCardUpdate,
 }
 
 func init() {
@@ -94,29 +96,28 @@ func runCardUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid view at index %d", viewIndex)
 	}
 
-	var cards []interface{}
-	var section map[string]interface{}
-	var sections []interface{}
-
-	if cardUpdateSection >= 0 {
-		// Get cards from section
-		sections, ok = view["sections"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no sections in view")
-		}
-		if cardUpdateSection >= len(sections) {
-			return fmt.Errorf("section index %d out of range (0-%d)", cardUpdateSection, len(sections)-1)
-		}
-		section, ok = sections[cardUpdateSection].(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("invalid section at index %d", cardUpdateSection)
-		}
-		cards, _ = section["cards"].([]interface{})
-	} else {
-		// Get cards directly from view
-		cards, _ = view["cards"].([]interface{})
+	// Get sections
+	sections, _ := view["sections"].([]interface{})
+	if sections == nil || len(sections) == 0 {
+		return fmt.Errorf("no sections in view")
 	}
 
+	// Determine section index: use provided value or default to last section
+	sectionIndex := cardUpdateSection
+	if sectionIndex < 0 {
+		sectionIndex = len(sections) - 1
+	}
+
+	if sectionIndex >= len(sections) {
+		return fmt.Errorf("section index %d out of range (0-%d)", sectionIndex, len(sections)-1)
+	}
+
+	section, ok := sections[sectionIndex].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid section at index %d", sectionIndex)
+	}
+
+	cards, _ := section["cards"].([]interface{})
 	if cards == nil {
 		return fmt.Errorf("no cards found")
 	}
@@ -149,14 +150,9 @@ func runCardUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	cards[cardIndex] = existingCard
-
-	if cardUpdateSection >= 0 {
-		section["cards"] = cards
-		sections[cardUpdateSection] = section
-		view["sections"] = sections
-	} else {
-		view["cards"] = cards
-	}
+	section["cards"] = cards
+	sections[sectionIndex] = section
+	view["sections"] = sections
 
 	views[viewIndex] = view
 	config["views"] = views
