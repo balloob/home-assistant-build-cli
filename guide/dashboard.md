@@ -13,6 +13,18 @@ When creating a dashboard for a specific purpose (e.g., a room, a function like 
 
 This helps you discover related entities you might otherwise miss and understand the full capabilities of each device.
 
+## Task-Focused Dashboards
+
+When creating a dashboard focused on a specific task that involves a few devices (e.g., "Home Office", "Coffee Station", "Media Center"), include a **Maintenance section** alongside the primary controls. This section should contain:
+
+- Battery levels for wireless devices
+- Signal strength indicators
+- Firmware update status
+- Device connectivity states
+- Any diagnostic entities relevant to the devices
+
+This approach keeps users informed about the health of the devices supporting their task without cluttering the main interface. When something stops working, the maintenance section provides immediate visibility into potential issues.
+
 ## Respect Entity Categories
 
 Entities have categories that indicate their intended purpose:
