@@ -14,7 +14,7 @@ type Settings struct {
 
 // InitDefaults sets the default values for configuration
 func InitDefaults() {
-	viper.SetDefault("text", false)
+	viper.SetDefault("text", true) // Text mode is the default for human-readable output
 	viper.SetDefault("verbose", false)
 }
 

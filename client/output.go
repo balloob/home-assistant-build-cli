@@ -89,6 +89,7 @@ func formatText(data interface{}, message string) string {
 		return "Done."
 	}
 
+	// Try to convert to generic type first for smart formatting
 	switch v := data.(type) {
 	case string:
 		return v
@@ -100,11 +101,11 @@ func formatText(data interface{}, message string) string {
 	case int, int64, float64:
 		return fmt.Sprintf("%v", v)
 	case []interface{}:
-		return formatList(v)
+		return SmartFormat(v)
 	case map[string]interface{}:
-		return formatDict(v)
+		return SmartFormat(v)
 	default:
-		// Try to marshal and re-parse as generic type
+		// Try to marshal and re-parse as generic type for smart formatting
 		b, err := json.Marshal(v)
 		if err != nil {
 			return fmt.Sprintf("%v", v)
@@ -113,7 +114,7 @@ func formatText(data interface{}, message string) string {
 		if err := json.Unmarshal(b, &parsed); err != nil {
 			return string(b)
 		}
-		return formatText(parsed, "")
+		return SmartFormat(parsed)
 	}
 }
 

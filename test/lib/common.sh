@@ -89,12 +89,17 @@ fail() {
 }
 
 run_hab() {
+    "$HAB" --config "$HAB_TEST_CONFIG_DIR" --json "$@"
+}
+
+# Run hab with text output (for testing text mode)
+run_hab_text() {
     "$HAB" --config "$HAB_TEST_CONFIG_DIR" "$@"
 }
 
 # Run command that might fail or not be supported
 run_hab_optional() {
-    "$HAB" --config "$HAB_TEST_CONFIG_DIR" "$@" 2>&1 || echo '{"success":false,"error":{"message":"command failed"}}'
+    "$HAB" --config "$HAB_TEST_CONFIG_DIR" --json "$@" 2>&1 || echo '{"success":false,"error":{"message":"command failed"}}'
 }
 
 wait_for_hass() {

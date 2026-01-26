@@ -45,9 +45,9 @@ run_core_tests() {
         fail "system health: $OUTPUT"
     fi
 
-    # Test: --text output
+    # Test: text output mode (now the default)
     log_test "text output mode"
-    OUTPUT=$(run_hab --text system info)
+    OUTPUT=$(run_hab_text system info)
     if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
         # Not valid JSON, which is what we expect for text mode
         if echo "$OUTPUT" | grep -qi "version"; then
