@@ -5,9 +5,10 @@ import (
 )
 
 var backupCmd = &cobra.Command{
-	Use:   "backup",
-	Short: "Manage backups",
-	Long:  `Create, restore, and manage backups.`,
+	Use:     "backup",
+	Short:   "Manage backups",
+	Long:    `Create, restore, and manage backups.`,
+	GroupID: "other",
 }
 
 func init() {

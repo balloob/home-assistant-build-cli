@@ -5,9 +5,10 @@ import (
 )
 
 var deviceCmd = &cobra.Command{
-	Use:   "device",
-	Short: "Manage devices",
-	Long:  `List, view, and manage devices.`,
+	Use:     "device",
+	Short:   "Manage devices",
+	Long:    `List, view, and manage devices.`,
+	GroupID: "registry",
 }
 
 func init() {

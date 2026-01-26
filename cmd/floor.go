@@ -5,9 +5,10 @@ import (
 )
 
 var floorCmd = &cobra.Command{
-	Use:   "floor",
-	Short: "Manage floors",
-	Long:  `Create, update, and delete floors.`,
+	Use:     "floor",
+	Short:   "Manage floors",
+	Long:    `Create, update, and delete floors.`,
+	GroupID: "registry",
 }
 
 func init() {

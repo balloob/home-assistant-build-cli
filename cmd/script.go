@@ -10,9 +10,10 @@ const (
 )
 
 var scriptCmd = &cobra.Command{
-	Use:   "script",
-	Short: "Manage scripts",
-	Long:  `Create, update, delete, and run scripts.`,
+	Use:     "script",
+	Short:   "Manage scripts",
+	Long:    `Create, update, delete, and run scripts.`,
+	GroupID: "automation",
 }
 
 func init() {

@@ -12,10 +12,11 @@ import (
 var Version = "dev"
 
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show version information",
-	Long:  `Display the current version of hab and build information.`,
-	Run:   runVersion,
+	Use:     "version",
+	Short:   "Show version information",
+	Long:    `Display the current version of hab and build information.`,
+	Run:     runVersion,
+	GroupID: "other",
 }
 
 func init() {

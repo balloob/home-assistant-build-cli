@@ -10,9 +10,10 @@ const (
 )
 
 var automationCmd = &cobra.Command{
-	Use:   "automation",
-	Short: "Manage automations",
-	Long:  `Create, update, delete, and trigger automations.`,
+	Use:     "automation",
+	Short:   "Manage automations",
+	Long:    `Create, update, delete, and trigger automations.`,
+	GroupID: "automation",
 }
 
 func init() {

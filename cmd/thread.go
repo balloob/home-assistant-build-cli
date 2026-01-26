@@ -5,9 +5,10 @@ import (
 )
 
 var threadCmd = &cobra.Command{
-	Use:   "thread",
-	Short: "Manage Thread credentials",
-	Long:  `List, add, and manage Thread network credentials.`,
+	Use:     "thread",
+	Short:   "Manage Thread credentials",
+	Long:    `List, add, and manage Thread network credentials.`,
+	GroupID: "other",
 }
 
 func init() {

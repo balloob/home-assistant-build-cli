@@ -22,7 +22,8 @@ var updateCmd = &cobra.Command{
 
 By default, this command will download and install the latest release if a newer
 version is available. Use --check to only check without installing.`,
-	RunE: runUpdate,
+	RunE:    runUpdate,
+	GroupID: "other",
 }
 
 func init() {

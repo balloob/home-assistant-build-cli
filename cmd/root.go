@@ -77,6 +77,16 @@ func init() {
 	rootCmd.SilenceUsage = true
 	rootCmd.SilenceErrors = true
 
+	// Disable shell completion command (not useful for LLM usage)
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
+	// Add command groups for better organization
+	rootCmd.AddGroup(&cobra.Group{ID: "start", Title: "Getting Started:"})
+	rootCmd.AddGroup(&cobra.Group{ID: "registry", Title: "Registry:"})
+	rootCmd.AddGroup(&cobra.Group{ID: "automation", Title: "Automation:"})
+	rootCmd.AddGroup(&cobra.Group{ID: "dashboard", Title: "Dashboard:"})
+	rootCmd.AddGroup(&cobra.Group{ID: "other", Title: "Other:"})
+
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgDir, "config", "", "Path to config directory (default: ~/.config/home-assistant-builder)")
 	rootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "Use JSON output instead of human-readable text")

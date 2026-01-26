@@ -15,6 +15,7 @@ var dashboardCmd = &cobra.Command{
 	Long: `Create, update, and delete dashboards.
 
 If you are new to creating Home Assistant dashboards, you MUST run 'hab dashboard guide' first.`,
+	GroupID: "dashboard",
 }
 
 func init() {

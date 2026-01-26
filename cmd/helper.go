@@ -10,9 +10,10 @@ const (
 )
 
 var helperCmd = &cobra.Command{
-	Use:   "helper",
-	Short: "Manage helper entities",
-	Long:  `Create, update, and delete helper entities.`,
+	Use:     "helper",
+	Short:   "Manage groups, templates, and other helpers",
+	Long:    `Create, update, and delete helper entities like input booleans, counters, timers, groups, templates, and more.`,
+	GroupID: "automation",
 }
 
 func init() {

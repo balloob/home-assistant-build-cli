@@ -5,9 +5,10 @@ import (
 )
 
 var blueprintCmd = &cobra.Command{
-	Use:   "blueprint",
-	Short: "Manage blueprints",
-	Long:  `List, import, and manage blueprints.`,
+	Use:     "blueprint",
+	Short:   "Manage blueprints",
+	Long:    `List, import, and manage blueprints.`,
+	GroupID: "automation",
 }
 
 func init() {

@@ -5,9 +5,10 @@ import (
 )
 
 var areaCmd = &cobra.Command{
-	Use:   "area",
-	Short: "Manage areas",
-	Long:  `Create, update, and delete areas.`,
+	Use:     "area",
+	Short:   "Manage areas",
+	Long:    `Create, update, and delete areas.`,
+	GroupID: "registry",
 }
 
 func init() {

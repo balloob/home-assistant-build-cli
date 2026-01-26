@@ -5,9 +5,10 @@ import (
 )
 
 var authCmd = &cobra.Command{
-	Use:   "auth",
-	Short: "Manage authentication",
-	Long:  `Manage authentication with Home Assistant.`,
+	Use:     "auth",
+	Short:   "Manage authentication",
+	Long:    `Manage authentication with Home Assistant.`,
+	GroupID: "start",
 }
 
 func init() {

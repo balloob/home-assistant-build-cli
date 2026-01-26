@@ -5,9 +5,10 @@ import (
 )
 
 var calendarCmd = &cobra.Command{
-	Use:   "calendar",
-	Short: "Manage calendar events",
-	Long:  `List, create, update, and delete calendar events.`,
+	Use:     "calendar",
+	Short:   "Manage calendar events",
+	Long:    `List, create, update, and delete calendar events.`,
+	GroupID: "other",
 }
 
 func init() {
