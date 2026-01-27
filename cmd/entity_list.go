@@ -11,21 +11,22 @@ import (
 )
 
 var (
-	entityListID     string
-	entityListDomain string
-	entityListArea   string
-	entityListFloor  string
-	entityListLabel  string
-	entityListDevice string
-	entityListCount  bool
-	entityListBrief  bool
-	entityListLimit  int
+	entityListID          string
+	entityListDomain      string
+	entityListArea        string
+	entityListFloor       string
+	entityListLabel       string
+	entityListDevice      string
+	entityListDeviceClass string
+	entityListCount       bool
+	entityListBrief       bool
+	entityListLimit       int
 )
 
 var entityListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List entities with optional filtering",
-	Long:  `List all entities with optional filtering by domain, area, floor, label, or device.`,
+	Long:  `List all entities with optional filtering by domain, area, floor, label, device, or device class.`,
 	RunE:  runEntityList,
 }
 
@@ -37,6 +38,7 @@ func init() {
 	entityListCmd.Flags().StringVarP(&entityListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
 	entityListCmd.Flags().StringVarP(&entityListLabel, "label", "l", "", "Filter by label ID")
 	entityListCmd.Flags().StringVar(&entityListDevice, "device", "", "Filter by device ID")
+	entityListCmd.Flags().StringVar(&entityListDeviceClass, "device-class", "", "Filter by device class (e.g., temperature, motion, door)")
 	entityListCmd.Flags().BoolVarP(&entityListCount, "count", "c", false, "Return only the count of items")
 	entityListCmd.Flags().BoolVarP(&entityListBrief, "brief", "b", false, "Return minimal fields (entity_id and name only)")
 	entityListCmd.Flags().IntVarP(&entityListLimit, "limit", "n", 0, "Limit results to N items")
@@ -196,27 +198,63 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		}
 
 		attrs, _ := state["attributes"].(map[string]interface{})
+
+		// Apply device class filter
+		if entityListDeviceClass != "" {
+			// Check registry entry first (original_device_class takes precedence)
+			var deviceClass string
+			if regEntry != nil {
+				if dc, ok := regEntry["original_device_class"].(string); ok && dc != "" {
+					deviceClass = dc
+				} else if dc, ok := regEntry["device_class"].(string); ok && dc != "" {
+					deviceClass = dc
+				}
+			}
+			// Fall back to state attributes if not in registry
+			if deviceClass == "" {
+				if dc, ok := attrs["device_class"].(string); ok {
+					deviceClass = dc
+				}
+			}
+			if deviceClass != entityListDeviceClass {
+				continue
+			}
+		}
 		friendlyName, _ := attrs["friendly_name"].(string)
 
 		var areaID string
 		var deviceID string
 		var labels []interface{}
 		var disabled bool
+		var deviceClass string
 		if regEntry != nil {
 			areaID, _ = regEntry["area_id"].(string)
 			deviceID, _ = regEntry["device_id"].(string)
 			labels, _ = regEntry["labels"].([]interface{})
 			disabled = regEntry["disabled_by"] != nil
+			// Get device class from registry (original_device_class takes precedence)
+			if dc, ok := regEntry["original_device_class"].(string); ok && dc != "" {
+				deviceClass = dc
+			} else if dc, ok := regEntry["device_class"].(string); ok && dc != "" {
+				deviceClass = dc
+			}
+		}
+		// Fall back to state attributes if not in registry
+		if deviceClass == "" {
+			if dc, ok := attrs["device_class"].(string); ok {
+				deviceClass = dc
+			}
 		}
 
 		entities = append(entities, map[string]interface{}{
-			"entity_id": entityID,
-			"state":     state["state"],
-			"name":      friendlyName,
-			"area_id":   areaID,
-			"device_id": deviceID,
-			"labels":    labels,
-			"disabled":  disabled,
+			"entity_id":    entityID,
+			"state":        state["state"],
+			"name":         friendlyName,
+			"area_id":      areaID,
+			"device_id":    deviceID,
+			"device_class": deviceClass,
+			"labels":       labels,
+			"disabled":     disabled,
 		})
 	}
 
@@ -319,6 +357,7 @@ func printEntityText(e map[string]interface{}, indent string) {
 	state, _ := e["state"].(string)
 	name, _ := e["name"].(string)
 	areaID, _ := e["area_id"].(string)
+	deviceClass, _ := e["device_class"].(string)
 
 	// First line: entity with state
 	if name != "" && name != entityID {
@@ -328,6 +367,9 @@ func printEntityText(e map[string]interface{}, indent string) {
 	}
 
 	// Additional details
+	if deviceClass != "" {
+		fmt.Printf("%s  device_class: %s\n", indent, deviceClass)
+	}
 	if areaID != "" {
 		fmt.Printf("%s  area: %s\n", indent, areaID)
 	}

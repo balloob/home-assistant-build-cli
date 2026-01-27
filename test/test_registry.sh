@@ -443,6 +443,27 @@ run_registry_tests() {
         fi
     fi
 
+    # Test: entity list --device-class
+    log_test "entity list --device-class"
+    # First check if there are any entities with device_class
+    FIRST_DEVICE_CLASS=$(run_hab entity list | jq -r '.data[] | select(.device_class != null and .device_class != "") | .device_class' | head -1)
+    if [ -n "$FIRST_DEVICE_CLASS" ]; then
+        OUTPUT=$(run_hab entity list --device-class "$FIRST_DEVICE_CLASS")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "entity list --device-class ($COUNT entities with device_class=$FIRST_DEVICE_CLASS)"
+        else
+            fail "entity list --device-class: $OUTPUT"
+        fi
+    else
+        OUTPUT=$(run_hab entity list --device-class "nonexistent")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "entity list --device-class (filter works, no matching entities)"
+        else
+            fail "entity list --device-class: $OUTPUT"
+        fi
+    fi
+
     # Test: entity get --device
     log_test "entity get --device"
     if [ -n "$FIRST_ENTITY" ]; then
