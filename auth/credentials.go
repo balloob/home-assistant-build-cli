@@ -52,14 +52,6 @@ func (c *Credentials) NeedsRefresh() bool {
 
 // LoadCredentials loads credentials from storage
 func LoadCredentials(configDir string) (*Credentials, error) {
-	// Check for Home Assistant Supervisor environment (add-on/app)
-	if token := GetSupervisorToken(); token != "" {
-		return &Credentials{
-			URL:         SupervisorURL,
-			AccessToken: token,
-		}, nil
-	}
-
 	// Check environment variables
 	envURL := os.Getenv("HAB_URL")
 	envToken := os.Getenv("HAB_TOKEN")
@@ -86,24 +78,35 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 	data, err := os.ReadFile(credsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			// Fall through to supervisor check
+		} else {
+			return nil, err
 		}
-		return nil, err
+	} else {
+		// Decrypt
+		key := deriveKey()
+		decrypted, err := decrypt(data, key)
+		if err != nil {
+			return nil, err
+		}
+
+		var creds Credentials
+		if err := json.Unmarshal(decrypted, &creds); err != nil {
+			return nil, err
+		}
+
+		return &creds, nil
 	}
 
-	// Decrypt
-	key := deriveKey()
-	decrypted, err := decrypt(data, key)
-	if err != nil {
-		return nil, err
+	// Fall back to Home Assistant Supervisor environment (add-on/app)
+	if token := GetSupervisorToken(); token != "" {
+		return &Credentials{
+			URL:         SupervisorURL,
+			AccessToken: token,
+		}, nil
 	}
 
-	var creds Credentials
-	if err := json.Unmarshal(decrypted, &creds); err != nil {
-		return nil, err
-	}
-
-	return &creds, nil
+	return nil, nil
 }
 
 // SaveCredentials saves credentials to encrypted storage

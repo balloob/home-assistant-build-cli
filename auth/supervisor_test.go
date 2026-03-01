@@ -88,7 +88,7 @@ func TestLoadCredentials_SupervisorToken(t *testing.T) {
 	}
 }
 
-func TestLoadCredentials_SupervisorTakesPriority(t *testing.T) {
+func TestLoadCredentials_HABEnvTakesPriorityOverSupervisor(t *testing.T) {
 	// Save and restore original env vars
 	origSupervisor := os.Getenv(SupervisorTokenEnv)
 	origURL := os.Getenv("HAB_URL")
@@ -111,11 +111,11 @@ func TestLoadCredentials_SupervisorTakesPriority(t *testing.T) {
 	if creds == nil {
 		t.Fatal("expected non-nil credentials")
 	}
-	// Supervisor should take priority
-	if creds.URL != SupervisorURL {
-		t.Errorf("expected supervisor URL '%s', got '%s'", SupervisorURL, creds.URL)
+	// HAB_URL/HAB_TOKEN should take priority over SUPERVISOR_TOKEN
+	if creds.URL != "http://custom:8123" {
+		t.Errorf("expected URL 'http://custom:8123', got '%s'", creds.URL)
 	}
-	if creds.AccessToken != "supervisor-token" {
-		t.Errorf("expected 'supervisor-token', got '%s'", creds.AccessToken)
+	if creds.AccessToken != "custom-token" {
+		t.Errorf("expected 'custom-token', got '%s'", creds.AccessToken)
 	}
 }
