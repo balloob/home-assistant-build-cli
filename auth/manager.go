@@ -142,7 +142,9 @@ func (m *Manager) GetAuthStatus() map[string]interface{} {
 	}
 
 	authType := "token"
-	if creds.IsOAuth() {
+	if IsSupervisorEnvironment() {
+		authType = "supervisor"
+	} else if creds.IsOAuth() {
 		authType = "oauth"
 	}
 

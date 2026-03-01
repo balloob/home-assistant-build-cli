@@ -52,7 +52,15 @@ func (c *Credentials) NeedsRefresh() bool {
 
 // LoadCredentials loads credentials from storage
 func LoadCredentials(configDir string) (*Credentials, error) {
-	// First check environment variables
+	// Check for Home Assistant Supervisor environment (add-on/app)
+	if token := GetSupervisorToken(); token != "" {
+		return &Credentials{
+			URL:         SupervisorURL,
+			AccessToken: token,
+		}, nil
+	}
+
+	// Check environment variables
 	envURL := os.Getenv("HAB_URL")
 	envToken := os.Getenv("HAB_TOKEN")
 
