@@ -281,3 +281,188 @@ func TestFormatSuccess(t *testing.T) {
 		t.Errorf("expected message 'created', got %q", resp.Message)
 	}
 }
+
+// Additional coverage tests
+
+func TestFormatText_Int64(t *testing.T) {
+	got := formatText(int64(999), "")
+	if got != "999" {
+		t.Errorf("formatText(int64) = %q, want %q", got, "999")
+	}
+}
+
+func TestFormatText_MapData(t *testing.T) {
+	data := map[string]interface{}{
+		"name": "test",
+		"id":   "abc",
+	}
+	got := formatText(data, "")
+	// Should call formatDict — verify keys appear
+	if !strings.Contains(got, "Id:") || !strings.Contains(got, "Name:") {
+		t.Errorf("formatText(map) should format as dict, got %q", got)
+	}
+}
+
+func TestFormatText_CustomStructViaMarshal(t *testing.T) {
+	// The default branch in formatText marshals to JSON and re-parses
+	type custom struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
+	}
+	got := formatText(custom{Name: "alice", Age: 30}, "")
+	// Should contain formatted output from the re-parsed map
+	if got == "" {
+		t.Error("expected non-empty output for custom struct")
+	}
+}
+
+func TestFormatList_MixedItems(t *testing.T) {
+	// A list where not all items are maps — triggers the simple list path
+	data := []interface{}{"hello", 42, true}
+	got := formatList(data)
+	if !strings.Contains(got, "- hello") {
+		t.Errorf("expected '- hello' in output, got %q", got)
+	}
+	if !strings.Contains(got, "- 42") {
+		t.Errorf("expected '- 42' in output, got %q", got)
+	}
+}
+
+func TestFormatList_MapItemsInSimpleList(t *testing.T) {
+	// Simple list with a map item that isn't allMaps
+	data := []interface{}{
+		map[string]interface{}{"name": "lamp"},
+		"plain string",
+	}
+	got := formatList(data)
+	if !strings.Contains(got, "- lamp") {
+		t.Errorf("expected map display name 'lamp', got %q", got)
+	}
+	if !strings.Contains(got, "- plain string") {
+		t.Errorf("expected plain string item, got %q", got)
+	}
+}
+
+func TestFormatDictList_MaxRows(t *testing.T) {
+	// Create >50 items to trigger the "and N more" truncation
+	var data []interface{}
+	for i := 0; i < 55; i++ {
+		data = append(data, map[string]interface{}{"id": i})
+	}
+	got := formatDictList(data)
+	if !strings.Contains(got, "... and 5 more items") {
+		t.Errorf("expected truncation message, got %q", got)
+	}
+}
+
+func TestFormatDictList_LongValues(t *testing.T) {
+	// Values >30 chars should be truncated
+	data := []interface{}{
+		map[string]interface{}{
+			"desc": "This is a very long description that exceeds thirty characters",
+		},
+	}
+	got := formatDictList(data)
+	if !strings.Contains(got, "...") {
+		t.Errorf("expected truncated value, got %q", got)
+	}
+}
+
+func TestFormatDictList_NonMapFirstItem(t *testing.T) {
+	data := []interface{}{"not a map"}
+	got := formatDictList(data)
+	if got != "No items." {
+		t.Errorf("expected 'No items.' for non-map first item, got %q", got)
+	}
+}
+
+func TestFormatDict_ArrayValue(t *testing.T) {
+	data := map[string]interface{}{
+		"items": []interface{}{"a", "b", "c"},
+	}
+	got := formatDict(data)
+	if !strings.Contains(got, "Items:") {
+		t.Errorf("expected 'Items:' header, got %q", got)
+	}
+	if !strings.Contains(got, "- a") {
+		t.Errorf("expected list item '- a', got %q", got)
+	}
+}
+
+func TestFormatDict_ArrayWithMapItems(t *testing.T) {
+	data := map[string]interface{}{
+		"devices": []interface{}{
+			map[string]interface{}{"name": "Lamp"},
+			map[string]interface{}{"name": "Switch"},
+		},
+	}
+	got := formatDict(data)
+	if !strings.Contains(got, "- Lamp") {
+		t.Errorf("expected '- Lamp', got %q", got)
+	}
+	if !strings.Contains(got, "- Switch") {
+		t.Errorf("expected '- Switch', got %q", got)
+	}
+}
+
+func TestFormatDict_ArrayTruncation(t *testing.T) {
+	// Array with >10 items should be truncated
+	var items []interface{}
+	for i := 0; i < 15; i++ {
+		items = append(items, i)
+	}
+	data := map[string]interface{}{
+		"numbers": items,
+	}
+	got := formatDict(data)
+	if !strings.Contains(got, "... and 5 more") {
+		t.Errorf("expected truncation message, got %q", got)
+	}
+}
+
+func TestFormatError_WithDetails(t *testing.T) {
+	details := map[string]interface{}{"field": "name", "reason": "required"}
+	got := FormatError("VALIDATION_ERROR", "invalid input", details)
+
+	var resp Response
+	if err := json.Unmarshal([]byte(got), &resp); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if resp.Error == nil {
+		t.Fatal("expected error detail")
+	}
+	if resp.Error.Details == nil {
+		t.Fatal("expected error details")
+	}
+	if resp.Error.Details["field"] != "name" {
+		t.Errorf("expected field=name, got %v", resp.Error.Details["field"])
+	}
+}
+
+func TestFormatOutput_JSONWithNilData(t *testing.T) {
+	got := FormatOutput(nil, false, "operation complete")
+	var resp Response
+	if err := json.Unmarshal([]byte(got), &resp); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if !resp.Success {
+		t.Error("expected success=true")
+	}
+	if resp.Message != "operation complete" {
+		t.Errorf("expected message, got %q", resp.Message)
+	}
+}
+
+func TestFormatOutput_TextWithMessage(t *testing.T) {
+	got := FormatOutput(nil, true, "All done")
+	if got != "All done" {
+		t.Errorf("FormatOutput text with message = %q, want %q", got, "All done")
+	}
+}
+
+func TestFormatOutput_TextWithNilNoMessage(t *testing.T) {
+	got := FormatOutput(nil, true, "")
+	if got != "Done." {
+		t.Errorf("FormatOutput text nil = %q, want %q", got, "Done.")
+	}
+}

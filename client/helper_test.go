@@ -33,6 +33,11 @@ func TestBuildWebSocketURL(t *testing.T) {
 			baseURL: "http://supervisor/core/",
 			want:    "ws://supervisor/core/websocket",
 		},
+		{
+			name:    "no scheme",
+			baseURL: "localhost:8123",
+			want:    "ws://localhost:8123/api/websocket",
+		},
 	}
 
 	for _, tt := range tests {
@@ -66,6 +71,30 @@ func TestBuildURL(t *testing.T) {
 			baseURL:  "http://supervisor/core",
 			endpoint: "config",
 			want:     "http://supervisor/core/api/config",
+		},
+		{
+			name:     "trailing slash on base",
+			baseURL:  "http://localhost:8123/",
+			endpoint: "states",
+			want:     "http://localhost:8123/api/states",
+		},
+		{
+			name:     "leading slash on endpoint",
+			baseURL:  "http://localhost:8123",
+			endpoint: "/config",
+			want:     "http://localhost:8123/api/config",
+		},
+		{
+			name:     "no scheme adds http",
+			baseURL:  "192.168.1.100:8123",
+			endpoint: "config",
+			want:     "http://192.168.1.100:8123/api/config",
+		},
+		{
+			name:     "https scheme",
+			baseURL:  "https://my-ha.duckdns.org",
+			endpoint: "services",
+			want:     "https://my-ha.duckdns.org/api/services",
 		},
 	}
 
