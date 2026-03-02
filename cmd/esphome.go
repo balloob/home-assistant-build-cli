@@ -6,10 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeCmd = &cobra.Command{
@@ -27,22 +25,14 @@ func init() {
 // It resolves the dashboard URL (via HAB_ESPHOME_URL or ingress auto-discovery)
 // and returns a configured ESPHomeClient.
 func getESPHomeClient() (*client.ESPHomeClient, error) {
-	configDir := viper.GetString("config")
-	manager := auth.NewManager(configDir)
-
-	creds, err := manager.GetCredentials()
+	creds, err := getCredentials()
 	if err != nil || creds == nil {
 		return nil, err
 	}
 
 	esphomeURL := os.Getenv("HAB_ESPHOME_URL")
 
-	esClient, err := client.GetESPHomeClient(esphomeURL, creds.URL, creds.AccessToken)
-	if err != nil {
-		return nil, err
-	}
-
-	return esClient, nil
+	return client.GetESPHomeClient(esphomeURL, creds.URL, creds.AccessToken)
 }
 
 // decodeESPHomeAnsi converts literal ESPHome escape sequences (e.g. the

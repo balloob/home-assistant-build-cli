@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeValidateCmd = &cobra.Command{
@@ -22,7 +21,7 @@ func init() {
 
 func runESPHomeValidate(cmd *cobra.Command, args []string) error {
 	configuration := args[0]
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	esClient, err := getESPHomeClient()
 	if err != nil {

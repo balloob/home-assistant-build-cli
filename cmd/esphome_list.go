@@ -6,7 +6,6 @@ import (
 
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeListCmd = &cobra.Command{
@@ -21,7 +20,7 @@ func init() {
 }
 
 func runESPHomeList(cmd *cobra.Command, args []string) error {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	esClient, err := getESPHomeClient()
 	if err != nil {
