@@ -110,7 +110,7 @@ func registerHelperList(parentCmd *cobra.Command, def HelperDef) {
 }
 
 // runWSList handles the list command for WS-based helpers.
-func runWSList(ws *client.WebSocketClient, def HelperDef, textMode, count, brief bool, limit int) error {
+func runWSList(ws client.WebSocketAPI, def HelperDef, textMode, count, brief bool, limit int) error {
 	helpers, err := ws.HelperList(def.TypeName)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func runWSList(ws *client.WebSocketClient, def HelperDef, textMode, count, brief
 }
 
 // runConfigFlowList handles the list command for config-flow-based helpers.
-func runConfigFlowList(ws *client.WebSocketClient, def HelperDef, textMode, count, brief bool, limit int) error {
+func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode, count, brief bool, limit int) error {
 	entries, err := ws.ConfigEntriesList(def.TypeName)
 	if err != nil {
 		return err

@@ -8,7 +8,7 @@ import (
 
 // getWSClient creates an authenticated, connected WebSocket client.
 // Caller must defer ws.Close() after a successful return.
-func getWSClient() (*client.WebSocketClient, error) {
+func getWSClient() (client.WebSocketAPI, error) {
 	configDir := viper.GetString("config")
 	manager := auth.NewManager(configDir)
 	creds, err := manager.GetCredentials()
@@ -24,7 +24,7 @@ func getWSClient() (*client.WebSocketClient, error) {
 }
 
 // getRESTClient creates an authenticated REST client.
-func getRESTClient() (*client.RestClient, error) {
+func getRESTClient() (client.RestAPI, error) {
 	configDir := viper.GetString("config")
 	manager := auth.NewManager(configDir)
 	return manager.GetRestClient()
