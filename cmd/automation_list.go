@@ -52,7 +52,7 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get REST client for extended info
-	var restClient *client.RestClient
+	var restClient client.RestAPI
 	if extended {
 		restClient, err = getRESTClient()
 		if err != nil {
