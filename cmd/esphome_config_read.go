@@ -5,7 +5,6 @@ import (
 
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeConfigReadCmd = &cobra.Command{
@@ -25,7 +24,7 @@ func init() {
 
 func runESPHomeConfigRead(cmd *cobra.Command, args []string) error {
 	configuration := args[0]
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	esClient, err := getESPHomeClient()
 	if err != nil {

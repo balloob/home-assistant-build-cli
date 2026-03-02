@@ -6,7 +6,6 @@ import (
 
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeConfigWriteFile string
@@ -31,7 +30,7 @@ func init() {
 
 func runESPHomeConfigWrite(cmd *cobra.Command, args []string) error {
 	configuration := args[0]
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	var content string
 	switch {

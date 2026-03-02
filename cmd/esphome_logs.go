@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeLogsPort string
@@ -28,7 +27,7 @@ func init() {
 
 func runESPHomeLogs(cmd *cobra.Command, args []string) error {
 	configuration := args[0]
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	esClient, err := getESPHomeClient()
 	if err != nil {
