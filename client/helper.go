@@ -49,11 +49,16 @@ func BuildWebSocketURL(baseURL string) (string, error) {
 		base = "ws://" + base
 	}
 
-	fullURL := fmt.Sprintf("%s/api/websocket", base)
-
-	parsed, err := url.Parse(fullURL)
+	parsed, err := url.Parse(base)
 	if err != nil {
 		return "", fmt.Errorf("invalid URL: %w", err)
+	}
+
+	// Supervisor proxy exposes WebSocket at /core/websocket instead of /api/websocket
+	if parsed.Hostname() == "supervisor" {
+		parsed.Path = strings.TrimRight(parsed.Path, "/") + "/websocket"
+	} else {
+		parsed.Path = strings.TrimRight(parsed.Path, "/") + "/api/websocket"
 	}
 
 	log.WithField("websocket_url", parsed.String()).Debug("Built WebSocket URL")
