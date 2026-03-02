@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -63,14 +64,6 @@ func formatJSON(data interface{}, success bool, message string, errDetail *Error
 		Metadata: map[string]interface{}{
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		},
-	}
-
-	// Remove empty fields
-	if message == "" {
-		resp.Message = ""
-	}
-	if data == nil && success {
-		resp.Data = nil
 	}
 
 	b, err := json.MarshalIndent(resp, "", "  ")
@@ -162,9 +155,10 @@ func formatDictList(data []interface{}) string {
 	var keys []string
 	for k := range first {
 		keys = append(keys, k)
-		if len(keys) >= 6 { // Limit columns
-			break
-		}
+	}
+	sort.Strings(keys)
+	if len(keys) > 6 { // Limit columns
+		keys = keys[:6]
 	}
 
 	var lines []string
@@ -210,14 +204,27 @@ func formatDictList(data []interface{}) string {
 func formatDict(data map[string]interface{}) string {
 	var lines []string
 
-	for key, value := range data {
+	// Sort keys for deterministic output
+	sortedKeys := make([]string, 0, len(data))
+	for k := range data {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Strings(sortedKeys)
+
+	for _, key := range sortedKeys {
+		value := data[key]
 		keyLabel := formatKey(key)
 
 		switch v := value.(type) {
 		case map[string]interface{}:
 			lines = append(lines, fmt.Sprintf("%s:", keyLabel))
-			for k, val := range v {
-				lines = append(lines, fmt.Sprintf("  %s: %s", k, formatValue(val)))
+			innerKeys := make([]string, 0, len(v))
+			for k := range v {
+				innerKeys = append(innerKeys, k)
+			}
+			sort.Strings(innerKeys)
+			for _, k := range innerKeys {
+				lines = append(lines, fmt.Sprintf("  %s: %s", k, formatValue(v[k])))
 			}
 		case []interface{}:
 			lines = append(lines, fmt.Sprintf("%s:", keyLabel))
@@ -280,13 +287,16 @@ func getDisplayName(m map[string]interface{}) string {
 	return fmt.Sprintf("%v", m)
 }
 
-// PrintOutput prints formatted output to stdout
+// PrintOutput prints formatted output to stdout.
+// In text mode, it formats data as human-readable text.
+// In JSON mode, it wraps data in a success response envelope.
 func PrintOutput(data interface{}, textMode bool, message string) {
 	output := FormatOutput(data, textMode, message)
 	fmt.Println(output)
 }
 
-// PrintSuccess prints a successful response
+// PrintSuccess prints a successful response with a message.
+// Behaves identically to PrintOutput — kept for semantic clarity at call sites.
 func PrintSuccess(data interface{}, textMode bool, message string) {
 	if textMode {
 		fmt.Println(formatText(data, message))

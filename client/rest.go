@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -183,8 +184,7 @@ func (c *RestClient) handleError(resp *resty.Response) error {
 }
 
 func isJSONContentType(contentType string) bool {
-	return contentType == "application/json" ||
-		len(contentType) > 16 && contentType[:16] == "application/json"
+	return strings.HasPrefix(contentType, "application/json")
 }
 
 // APIError represents an API error
