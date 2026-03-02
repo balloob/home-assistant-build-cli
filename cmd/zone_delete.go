@@ -6,10 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -39,8 +37,7 @@ func runZoneDelete(cmd *cobra.Command, args []string) error {
 	if zoneID == "" {
 		return fmt.Errorf("zone ID is required (use --zone flag or positional argument)")
 	}
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	if !zoneDeleteForce && !textMode {
 		fmt.Printf("Delete zone %s? [y/N]: ", zoneID)
@@ -53,14 +50,8 @@ func runZoneDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	manager := auth.NewManager(configDir)
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
-		return err
-	}
-
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
+	ws, err := getWSClient()
+	if err != nil {
 		return err
 	}
 	defer ws.Close()

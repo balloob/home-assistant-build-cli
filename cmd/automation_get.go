@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var automationGetID string
@@ -37,11 +35,9 @@ func runAutomationGet(cmd *cobra.Command, args []string) error {
 	// Strip "automation." prefix if provided - API expects just the ID
 	automationID = strings.TrimPrefix(automationID, "automation.")
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

@@ -6,10 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var scriptDeleteForce bool
@@ -33,8 +31,7 @@ func runScriptDelete(cmd *cobra.Command, args []string) error {
 	// Strip "script." prefix if provided - API expects just the ID
 	scriptID = strings.TrimPrefix(scriptID, "script.")
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	if !scriptDeleteForce && !textMode {
 		fmt.Printf("Delete script %s? [y/N]: ", scriptID)
@@ -47,8 +44,7 @@ func runScriptDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

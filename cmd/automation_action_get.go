@@ -5,10 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -52,11 +50,9 @@ func runAutomationActionGet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("action index is required (use --index flag or second positional argument)")
 	}
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

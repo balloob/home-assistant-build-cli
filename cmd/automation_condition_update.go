@@ -5,11 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -41,16 +39,14 @@ func runAutomationConditionUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid condition index: %s", args[1])
 	}
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	newCondition, err := input.ParseInput(automationConditionUpdateData, automationConditionUpdateFile, automationConditionUpdateFormat)
 	if err != nil {
 		return err
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}
