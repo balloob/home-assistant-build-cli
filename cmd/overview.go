@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var overviewCmd = &cobra.Command{
@@ -23,23 +21,16 @@ func init() {
 }
 
 func runOverview(cmd *cobra.Command, args []string) error {
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
-
-	manager := auth.NewManager(configDir)
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
-		return err
-	}
+	textMode := getTextMode()
 
 	// Get REST client for config
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}
 
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
+	ws, err := getWSClient()
+	if err != nil {
 		return err
 	}
 	defer ws.Close()

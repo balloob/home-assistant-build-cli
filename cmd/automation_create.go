@@ -3,11 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -34,8 +32,7 @@ func init() {
 
 func runAutomationCreate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	config, err := input.ParseInput(automationCreateData, automationCreateFile, automationCreateFormat)
 	if err != nil {
@@ -46,8 +43,7 @@ func runAutomationCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("automation must have an 'alias' field")
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

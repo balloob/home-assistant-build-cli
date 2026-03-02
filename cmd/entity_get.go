@@ -3,10 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -41,13 +39,10 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	if entityID == "" {
 		return fmt.Errorf("entity ID is required (use --entity flag or positional argument)")
 	}
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
-
-	manager := auth.NewManager(configDir)
+	textMode := getTextMode()
 
 	// Get state from REST API
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}
@@ -58,16 +53,9 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get registry data and optionally related items via WebSocket
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
+	ws, err := getWSClient()
+	if err != nil {
 		// Fall back to just state if we can't get WebSocket connection
-		client.PrintOutput(state, textMode, "")
-		return nil
-	}
-
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
-		// Fall back to just state
 		client.PrintOutput(state, textMode, "")
 		return nil
 	}

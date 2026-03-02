@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var actionDocsName string
@@ -33,8 +31,7 @@ func runActionDocs(cmd *cobra.Command, args []string) error {
 	if actionName == "" {
 		return fmt.Errorf("action name is required (use --action flag or positional argument)")
 	}
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	// Parse action name
 	parts := strings.SplitN(actionName, ".", 2)
@@ -44,8 +41,7 @@ func runActionDocs(cmd *cobra.Command, args []string) error {
 	domain := parts[0]
 	service := parts[1]
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

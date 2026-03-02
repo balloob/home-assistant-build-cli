@@ -5,11 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -58,8 +56,7 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	var cardConfig map[string]interface{}
 	var err error
@@ -90,14 +87,8 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 		cardConfig["type"] = "tile"
 	}
 
-	manager := auth.NewManager(configDir)
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
-		return err
-	}
-
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
+	ws, err := getWSClient()
+	if err != nil {
 		return err
 	}
 	defer ws.Close()

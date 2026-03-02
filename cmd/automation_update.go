@@ -3,11 +3,9 @@ package cmd
 import (
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -38,16 +36,14 @@ func runAutomationUpdate(cmd *cobra.Command, args []string) error {
 		automationID = "automation." + automationID
 	}
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	config, err := input.ParseInput(automationUpdateData, automationUpdateFile, automationUpdateFormat)
 	if err != nil {
 		return err
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}
