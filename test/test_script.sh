@@ -21,6 +21,34 @@ run_script_tests() {
         fail "script list: $OUTPUT"
     fi
 
+    # Test: script list --count
+    log_test "script list --count"
+    OUTPUT=$(run_hab script list --count)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.count != null' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data.count')
+        pass "script list --count ($COUNT)"
+    else
+        fail "script list --count: $OUTPUT"
+    fi
+
+    # Test: script list --brief
+    log_test "script list --brief"
+    OUTPUT=$(run_hab script list --brief)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "script list --brief"
+    else
+        fail "script list --brief: $OUTPUT"
+    fi
+
+    # Test: script list --limit
+    log_test "script list --limit 1"
+    OUTPUT=$(run_hab script list --limit 1)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data | length) <= 1' > /dev/null 2>&1; then
+        pass "script list --limit 1"
+    else
+        fail "script list --limit 1: $OUTPUT"
+    fi
+
     # Test: script CRUD (create, get, delete)
     log_test "script create"
     SCRIPT_ID="test_script_$(date +%s)"
