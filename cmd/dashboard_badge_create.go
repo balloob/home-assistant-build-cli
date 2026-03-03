@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -130,6 +130,6 @@ func runBadgeCreate(cmd *cobra.Command, args []string) error {
 		"index":  len(badges) - 1,
 		"config": badgeConfig,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Badge created at index %d.", len(badges)-1))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Badge created at index %d.", len(badges)-1))
 	return nil
 }

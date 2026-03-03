@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -81,7 +81,7 @@ func runAreaList(cmd *cobra.Command, args []string) error {
 		if textMode {
 			fmt.Printf("Count: %d\n", len(result))
 		} else {
-			client.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
+			output.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
 		}
 		return nil
 	}
@@ -107,7 +107,7 @@ func runAreaList(cmd *cobra.Command, args []string) error {
 					"name":    item["name"],
 				})
 			}
-			client.PrintOutput(brief, false, "")
+			output.PrintOutput(brief, false, "")
 		}
 		return nil
 	}
@@ -129,7 +129,7 @@ func runAreaList(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		client.PrintOutput(result, false, "")
+		output.PrintOutput(result, false, "")
 	}
 	return nil
 }

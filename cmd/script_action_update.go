@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -86,6 +86,6 @@ func runScriptActionUpdate(cmd *cobra.Command, args []string) error {
 		"index":  actionIndex,
 		"config": newAction,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Action at index %d updated.", actionIndex))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Action at index %d updated.", actionIndex))
 	return nil
 }

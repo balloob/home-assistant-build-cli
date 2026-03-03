@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/home-assistant/hab/auth"
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -45,14 +45,14 @@ func runAuthDiscover(cmd *cobra.Command, args []string) error {
 
 	if textMode {
 		if len(results) == 0 {
-			client.PrintOutput(nil, textMode, "No Home Assistant servers found on the network.")
+			output.PrintOutput(nil, textMode, "No Home Assistant servers found on the network.")
 		} else {
 			for _, server := range servers {
-				client.PrintOutput(nil, textMode, auth.FormatServerDisplay(server))
+				output.PrintOutput(nil, textMode, auth.FormatServerDisplay(server))
 			}
 		}
 	} else {
-		client.PrintOutput(results, textMode, "")
+		output.PrintOutput(results, textMode, "")
 	}
 
 	return nil

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -92,7 +92,7 @@ func runCardList(cmd *cobra.Command, args []string) error {
 
 	cards, _ := section["cards"].([]interface{})
 	if cards == nil {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
@@ -109,6 +109,6 @@ func runCardList(cmd *cobra.Command, args []string) error {
 		cardList[i] = cardData
 	}
 
-	client.PrintOutput(cardList, textMode, "")
+	output.PrintOutput(cardList, textMode, "")
 	return nil
 }

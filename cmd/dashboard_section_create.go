@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -129,6 +129,6 @@ func runSectionCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	sectionConfig["index"] = len(sections) - 1
-	client.PrintSuccess(sectionConfig, textMode, fmt.Sprintf("Section created at index %d.", len(sections)-1))
+	output.PrintSuccess(sectionConfig, textMode, fmt.Sprintf("Section created at index %d.", len(sections)-1))
 	return nil
 }

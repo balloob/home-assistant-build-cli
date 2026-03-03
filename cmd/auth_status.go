@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/home-assistant/hab/auth"
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -24,7 +24,7 @@ func runAuthStatus(cmd *cobra.Command, args []string) error {
 	manager := auth.NewManager(configDir)
 
 	status := manager.GetAuthStatus()
-	client.PrintOutput(status, textMode, "")
+	output.PrintOutput(status, textMode, "")
 
 	return nil
 }

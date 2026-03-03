@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -91,10 +91,10 @@ func runDashboardCreate(cmd *cobra.Command, args []string) error {
 	_, err = ws.SendCommand("lovelace/config/save", saveParams)
 	if err != nil {
 		// Dashboard was created but config failed - warn but don't fail
-		client.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created, but initial config failed: %v", urlPath, err))
+		output.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created, but initial config failed: %v", urlPath, err))
 		return nil
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created with initial view.", urlPath))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created with initial view.", urlPath))
 	return nil
 }

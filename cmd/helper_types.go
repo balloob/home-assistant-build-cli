@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -133,6 +133,6 @@ func runHelperTypes(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client.PrintOutput(result, textMode, "")
+	output.PrintOutput(result, textMode, "")
 	return nil
 }

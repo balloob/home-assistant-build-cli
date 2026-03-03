@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +66,7 @@ func runBadgeList(cmd *cobra.Command, args []string) error {
 
 	badges, ok := view["badges"].([]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
@@ -87,6 +87,6 @@ func runBadgeList(cmd *cobra.Command, args []string) error {
 		badgeList[i] = badgeData
 	}
 
-	client.PrintOutput(badgeList, textMode, "")
+	output.PrintOutput(badgeList, textMode, "")
 	return nil
 }

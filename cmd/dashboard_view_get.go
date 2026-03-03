@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -85,6 +85,6 @@ func runViewGet(cmd *cobra.Command, args []string) error {
 		viewMap["index"] = viewIndex
 	}
 
-	client.PrintOutput(view, textMode, "")
+	output.PrintOutput(view, textMode, "")
 	return nil
 }

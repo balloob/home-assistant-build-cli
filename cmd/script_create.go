@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -53,6 +53,6 @@ func runScriptCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Script %s created successfully.", scriptID))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Script %s created successfully.", scriptID))
 	return nil
 }

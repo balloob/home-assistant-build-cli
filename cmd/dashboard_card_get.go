@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -138,6 +138,6 @@ func runCardGet(cmd *cobra.Command, args []string) error {
 		cardMap["index"] = cardIndex
 	}
 
-	client.PrintOutput(card, textMode, "")
+	output.PrintOutput(card, textMode, "")
 	return nil
 }

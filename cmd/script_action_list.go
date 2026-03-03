@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -37,14 +37,14 @@ func runScriptActionList(cmd *cobra.Command, args []string) error {
 
 	config, ok := result.(map[string]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
 	// Scripts use "sequence" for actions
 	sequence, ok := config["sequence"].([]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
@@ -61,6 +61,6 @@ func runScriptActionList(cmd *cobra.Command, args []string) error {
 		actionList[i] = actionData
 	}
 
-	client.PrintOutput(actionList, textMode, "")
+	output.PrintOutput(actionList, textMode, "")
 	return nil
 }

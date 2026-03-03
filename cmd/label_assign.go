@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +61,7 @@ func runLabelAssign(cmd *cobra.Command, args []string) error {
 		if ls, ok := l.(string); ok {
 			if ls == labelID {
 				// Already has label
-				client.PrintSuccess(nil, textMode, fmt.Sprintf("Entity %s already has label %s.", entityID, labelID))
+				output.PrintSuccess(nil, textMode, fmt.Sprintf("Entity %s already has label %s.", entityID, labelID))
 				return nil
 			}
 			labels = append(labels, ls)
@@ -77,6 +77,6 @@ func runLabelAssign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Label %s assigned to %s.", labelID, entityID))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Label %s assigned to %s.", labelID, entityID))
 	return nil
 }

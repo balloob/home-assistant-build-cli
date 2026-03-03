@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/update"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -44,9 +44,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	check, err := update.CheckForUpdate(configDir, Version)
 	if err != nil {
 		if textMode {
-			fmt.Println(client.FormatErrorText("Failed to check for updates: "+err.Error(), "Check your internet connection"))
+			fmt.Println(output.FormatErrorText("Failed to check for updates: "+err.Error(), "Check your internet connection"))
 		} else {
-			fmt.Println(client.FormatError("UPDATE_CHECK_FAILED", err.Error(), nil))
+			fmt.Println(output.FormatError("UPDATE_CHECK_FAILED", err.Error(), nil))
 		}
 		return nil
 	}
@@ -70,7 +70,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 				fmt.Printf("You are on the latest version (%s)\n", Version)
 			}
 		} else {
-			client.PrintSuccess(result, false, "")
+			output.PrintSuccess(result, false, "")
 		}
 		return nil
 	}
@@ -80,7 +80,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		if textMode {
 			fmt.Printf("You are already on the latest version (%s)\n", Version)
 		} else {
-			client.PrintSuccess(map[string]interface{}{
+			output.PrintSuccess(map[string]interface{}{
 				"current_version": Version,
 				"latest_version":  check.LatestVersion,
 				"updated":         false,
@@ -94,9 +94,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if check.DownloadURL == "" {
 		errMsg := fmt.Sprintf("No binary available for your platform. Visit %s to download manually.", check.ReleaseURL)
 		if textMode {
-			fmt.Println(client.FormatErrorText(errMsg, ""))
+			fmt.Println(output.FormatErrorText(errMsg, ""))
 		} else {
-			fmt.Println(client.FormatError("NO_BINARY", errMsg, map[string]interface{}{
+			fmt.Println(output.FormatError("NO_BINARY", errMsg, map[string]interface{}{
 				"release_url": check.ReleaseURL,
 			}))
 		}
@@ -111,9 +111,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	tmpPath, err := update.DownloadUpdate(check.DownloadURL)
 	if err != nil {
 		if textMode {
-			fmt.Println(client.FormatErrorText("Failed to download update: "+err.Error(), ""))
+			fmt.Println(output.FormatErrorText("Failed to download update: "+err.Error(), ""))
 		} else {
-			fmt.Println(client.FormatError("DOWNLOAD_FAILED", err.Error(), nil))
+			fmt.Println(output.FormatError("DOWNLOAD_FAILED", err.Error(), nil))
 		}
 		return nil
 	}
@@ -126,9 +126,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if err := update.InstallUpdate(tmpPath); err != nil {
 		os.Remove(tmpPath) // Clean up temp file
 		if textMode {
-			fmt.Println(client.FormatErrorText("Failed to install update: "+err.Error(), "You may need to run with elevated permissions"))
+			fmt.Println(output.FormatErrorText("Failed to install update: "+err.Error(), "You may need to run with elevated permissions"))
 		} else {
-			fmt.Println(client.FormatError("INSTALL_FAILED", err.Error(), nil))
+			fmt.Println(output.FormatError("INSTALL_FAILED", err.Error(), nil))
 		}
 		return nil
 	}
@@ -137,7 +137,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if textMode {
 		fmt.Printf("Successfully updated to %s\n", check.LatestVersion)
 	} else {
-		client.PrintSuccess(map[string]interface{}{
+		output.PrintSuccess(map[string]interface{}{
 			"previous_version": Version,
 			"new_version":      check.LatestVersion,
 			"updated":          true,

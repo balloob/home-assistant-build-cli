@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -59,6 +59,6 @@ func runSystemUpdates(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	client.PrintOutput(updates, textMode, "")
+	output.PrintOutput(updates, textMode, "")
 	return nil
 }

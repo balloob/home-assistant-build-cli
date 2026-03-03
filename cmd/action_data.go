@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -84,6 +84,6 @@ func runActionData(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client.PrintOutput(actions, textMode, "")
+	output.PrintOutput(actions, textMode, "")
 	return nil
 }

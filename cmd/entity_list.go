@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -272,7 +272,7 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		if textMode {
 			fmt.Printf("Count: %d\n", len(entities))
 		} else {
-			client.PrintOutput(map[string]interface{}{"count": len(entities)}, false, "")
+			output.PrintOutput(map[string]interface{}{"count": len(entities)}, false, "")
 		}
 		return nil
 	}
@@ -302,7 +302,7 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 					"name":      item["name"],
 				})
 			}
-			client.PrintOutput(brief, false, "")
+			output.PrintOutput(brief, false, "")
 		}
 		return nil
 	}
@@ -315,7 +315,7 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		}
 		printEntitiesGroupedByDevice(entities, deviceMap)
 	} else {
-		client.PrintOutput(entities, false, "")
+		output.PrintOutput(entities, false, "")
 	}
 	return nil
 }

@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -76,6 +76,6 @@ func runAutomationCreateFromBlueprint(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Automation %s created from blueprint %s.", automationID, blueprintPath))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Automation %s created from blueprint %s.", automationID, blueprintPath))
 	return nil
 }

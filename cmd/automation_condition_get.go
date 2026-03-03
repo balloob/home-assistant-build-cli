@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -91,6 +91,6 @@ func runAutomationConditionGet(cmd *cobra.Command, args []string) error {
 	}
 	conditionData["index"] = conditionIndex
 
-	client.PrintOutput(conditionData, textMode, "")
+	output.PrintOutput(conditionData, textMode, "")
 	return nil
 }

@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -58,6 +58,6 @@ func runFloorUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Floor '%s' updated.", floorID))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Floor '%s' updated.", floorID))
 	return nil
 }

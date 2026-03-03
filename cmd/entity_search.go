@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -97,6 +97,6 @@ func runEntitySearch(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	client.PrintOutput(results, textMode, "")
+	output.PrintOutput(results, textMode, "")
 	return nil
 }

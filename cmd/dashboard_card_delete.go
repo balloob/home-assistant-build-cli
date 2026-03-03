@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -153,6 +153,6 @@ func runCardDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("Card at index %d deleted.", cardIndex))
+	output.PrintSuccess(nil, textMode, fmt.Sprintf("Card at index %d deleted.", cardIndex))
 	return nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +66,7 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 
 	sections, ok := view["sections"].([]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
@@ -83,6 +83,6 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 		sectionList[i] = sectionData
 	}
 
-	client.PrintOutput(sectionList, textMode, "")
+	output.PrintOutput(sectionList, textMode, "")
 	return nil
 }

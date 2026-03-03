@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -49,6 +49,6 @@ func runAutomationTrigger(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("Automation %s triggered.", automationID))
+	output.PrintSuccess(nil, textMode, fmt.Sprintf("Automation %s triggered.", automationID))
 	return nil
 }

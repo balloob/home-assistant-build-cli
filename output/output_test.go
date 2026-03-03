@@ -1,4 +1,4 @@
-package client
+package output
 
 import (
 	"encoding/json"
@@ -102,10 +102,10 @@ func TestFormatText(t *testing.T) {
 
 func TestFormatDict_DeterministicOrder(t *testing.T) {
 	data := map[string]interface{}{
-		"zebra":    "z",
-		"apple":    "a",
-		"mango":    "m",
-		"banana":   "b",
+		"zebra":  "z",
+		"apple":  "a",
+		"mango":  "m",
+		"banana": "b",
 	}
 
 	// Run multiple times to verify deterministic output

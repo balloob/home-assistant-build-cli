@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -39,13 +39,13 @@ func runViewList(cmd *cobra.Command, args []string) error {
 
 	config, ok := result.(map[string]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
 	views, ok := config["views"].([]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
@@ -62,6 +62,6 @@ func runViewList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client.PrintOutput(viewList, textMode, "")
+	output.PrintOutput(viewList, textMode, "")
 	return nil
 }

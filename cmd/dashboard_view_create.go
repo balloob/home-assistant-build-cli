@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -115,6 +115,6 @@ func runViewCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	viewConfig["index"] = len(views) - 1
-	client.PrintSuccess(viewConfig, textMode, fmt.Sprintf("View '%s' created at index %d.", viewConfig["title"], len(views)-1))
+	output.PrintSuccess(viewConfig, textMode, fmt.Sprintf("View '%s' created at index %d.", viewConfig["title"], len(views)-1))
 	return nil
 }

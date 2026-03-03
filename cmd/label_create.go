@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -54,6 +54,6 @@ func runLabelCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Label '%s' created.", name))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Label '%s' created.", name))
 	return nil
 }
