@@ -308,11 +308,9 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 	}
 }
 
-// High-level API methods
-
-// GetStates returns all entity states
-func (c *WebSocketClient) GetStates() ([]interface{}, error) {
-	result, err := c.SendCommand("get_states", nil)
+// sendListCommand sends a command and asserts the result is a []interface{}.
+func (c *WebSocketClient) sendListCommand(cmdType string, params map[string]interface{}) ([]interface{}, error) {
+	result, err := c.SendCommand(cmdType, params)
 	if err != nil {
 		return nil, err
 	}
@@ -322,9 +320,9 @@ func (c *WebSocketClient) GetStates() ([]interface{}, error) {
 	return nil, fmt.Errorf("unexpected response type")
 }
 
-// GetConfig returns the Home Assistant configuration
-func (c *WebSocketClient) GetConfig() (map[string]interface{}, error) {
-	result, err := c.SendCommand("get_config", nil)
+// sendMapCommand sends a command and asserts the result is a map[string]interface{}.
+func (c *WebSocketClient) sendMapCommand(cmdType string, params map[string]interface{}) (map[string]interface{}, error) {
+	result, err := c.SendCommand(cmdType, params)
 	if err != nil {
 		return nil, err
 	}
@@ -334,16 +332,21 @@ func (c *WebSocketClient) GetConfig() (map[string]interface{}, error) {
 	return nil, fmt.Errorf("unexpected response type")
 }
 
+// High-level API methods
+
+// GetStates returns all entity states
+func (c *WebSocketClient) GetStates() ([]interface{}, error) {
+	return c.sendListCommand("get_states", nil)
+}
+
+// GetConfig returns the Home Assistant configuration
+func (c *WebSocketClient) GetConfig() (map[string]interface{}, error) {
+	return c.sendMapCommand("get_config", nil)
+}
+
 // GetServices returns all available services
 func (c *WebSocketClient) GetServices() (map[string]interface{}, error) {
-	result, err := c.SendCommand("get_services", nil)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("get_services", nil)
 }
 
 // CallService calls a service
@@ -374,14 +377,7 @@ func (c *WebSocketClient) Ping() error {
 
 // AreaRegistryList returns all areas
 func (c *WebSocketClient) AreaRegistryList() ([]interface{}, error) {
-	result, err := c.SendCommand("config/area_registry/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand("config/area_registry/list", nil)
 }
 
 // AreaRegistryCreate creates a new area
@@ -390,14 +386,7 @@ func (c *WebSocketClient) AreaRegistryCreate(name string, params map[string]inte
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/area_registry/create", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/area_registry/create", p)
 }
 
 // AreaRegistryUpdate updates an area
@@ -406,14 +395,7 @@ func (c *WebSocketClient) AreaRegistryUpdate(areaID string, params map[string]in
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/area_registry/update", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/area_registry/update", p)
 }
 
 // AreaRegistryDelete deletes an area
@@ -426,14 +408,7 @@ func (c *WebSocketClient) AreaRegistryDelete(areaID string) error {
 
 // FloorRegistryList returns all floors
 func (c *WebSocketClient) FloorRegistryList() ([]interface{}, error) {
-	result, err := c.SendCommand("config/floor_registry/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand("config/floor_registry/list", nil)
 }
 
 // FloorRegistryCreate creates a new floor
@@ -442,14 +417,7 @@ func (c *WebSocketClient) FloorRegistryCreate(name string, params map[string]int
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/floor_registry/create", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/floor_registry/create", p)
 }
 
 // FloorRegistryUpdate updates a floor
@@ -458,14 +426,7 @@ func (c *WebSocketClient) FloorRegistryUpdate(floorID string, params map[string]
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/floor_registry/update", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/floor_registry/update", p)
 }
 
 // FloorRegistryDelete deletes a floor
@@ -478,14 +439,7 @@ func (c *WebSocketClient) FloorRegistryDelete(floorID string) error {
 
 // LabelRegistryList returns all labels
 func (c *WebSocketClient) LabelRegistryList() ([]interface{}, error) {
-	result, err := c.SendCommand("config/label_registry/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand("config/label_registry/list", nil)
 }
 
 // LabelRegistryCreate creates a new label
@@ -494,14 +448,7 @@ func (c *WebSocketClient) LabelRegistryCreate(name string, params map[string]int
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/label_registry/create", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/label_registry/create", p)
 }
 
 // LabelRegistryUpdate updates a label
@@ -510,14 +457,7 @@ func (c *WebSocketClient) LabelRegistryUpdate(labelID string, params map[string]
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/label_registry/update", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/label_registry/update", p)
 }
 
 // LabelRegistryDelete deletes a label
@@ -530,14 +470,7 @@ func (c *WebSocketClient) LabelRegistryDelete(labelID string) error {
 
 // DeviceRegistryList returns all devices
 func (c *WebSocketClient) DeviceRegistryList() ([]interface{}, error) {
-	result, err := c.SendCommand("config/device_registry/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand("config/device_registry/list", nil)
 }
 
 // DeviceRegistryUpdate updates a device
@@ -546,40 +479,19 @@ func (c *WebSocketClient) DeviceRegistryUpdate(deviceID string, params map[strin
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/device_registry/update", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/device_registry/update", p)
 }
 
 // EntityRegistryList returns all entities
 func (c *WebSocketClient) EntityRegistryList() ([]interface{}, error) {
-	result, err := c.SendCommand("config/entity_registry/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand("config/entity_registry/list", nil)
 }
 
 // EntityRegistryGet returns a specific entity
 func (c *WebSocketClient) EntityRegistryGet(entityID string) (map[string]interface{}, error) {
-	result, err := c.SendCommand("config/entity_registry/get", map[string]interface{}{
+	return c.sendMapCommand("config/entity_registry/get", map[string]interface{}{
 		"entity_id": entityID,
 	})
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
 }
 
 // EntityRegistryUpdate updates an entity
@@ -588,26 +500,12 @@ func (c *WebSocketClient) EntityRegistryUpdate(entityID string, params map[strin
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("config/entity_registry/update", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config/entity_registry/update", p)
 }
 
 // ZoneList returns all zones
 func (c *WebSocketClient) ZoneList() ([]interface{}, error) {
-	result, err := c.SendCommand("zone/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand("zone/list", nil)
 }
 
 // ZoneCreate creates a new zone
@@ -621,14 +519,7 @@ func (c *WebSocketClient) ZoneCreate(name string, latitude, longitude, radius fl
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("zone/create", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("zone/create", p)
 }
 
 // ZoneUpdate updates a zone
@@ -637,14 +528,7 @@ func (c *WebSocketClient) ZoneUpdate(zoneID string, params map[string]interface{
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand("zone/update", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("zone/update", p)
 }
 
 // ZoneDelete deletes a zone
@@ -829,27 +713,13 @@ func GetWebSocketClientForAuth(baseURL, token string) *WebSocketClient {
 // HelperList returns all helpers of a specific type
 // helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
 func (c *WebSocketClient) HelperList(helperType string) ([]interface{}, error) {
-	result, err := c.SendCommand(helperType+"/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand(helperType+"/list", nil)
 }
 
 // HelperCreate creates a new helper of a specific type
 // helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
 func (c *WebSocketClient) HelperCreate(helperType string, params map[string]interface{}) (map[string]interface{}, error) {
-	result, err := c.SendCommand(helperType+"/create", params)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand(helperType+"/create", params)
 }
 
 // HelperUpdate updates an existing helper
@@ -862,14 +732,7 @@ func (c *WebSocketClient) HelperUpdate(helperType, helperID string, params map[s
 	for k, v := range params {
 		p[k] = v
 	}
-	result, err := c.SendCommand(helperType+"/update", p)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand(helperType+"/update", p)
 }
 
 // HelperDelete deletes a helper
@@ -894,14 +757,7 @@ func (c *WebSocketClient) ConfigFlowInit(handler string, context map[string]inte
 	if context != nil {
 		params["context"] = context
 	}
-	result, err := c.SendCommand("config_entries/flow", params)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config_entries/flow", params)
 }
 
 // ConfigFlowConfigure submits data to a config flow step
@@ -914,14 +770,7 @@ func (c *WebSocketClient) ConfigFlowConfigure(flowID string, data map[string]int
 			params[k] = v
 		}
 	}
-	result, err := c.SendCommand("config_entries/flow", params)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendMapCommand("config_entries/flow", params)
 }
 
 // ConfigEntriesList returns all config entries, optionally filtered by domain
@@ -930,14 +779,7 @@ func (c *WebSocketClient) ConfigEntriesList(domain string) ([]interface{}, error
 	if domain != "" {
 		params["domain"] = domain
 	}
-	result, err := c.SendCommand("config_entries/get", params)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.sendListCommand("config_entries/get", params)
 }
 
 // ConfigEntryDelete deletes a config entry
