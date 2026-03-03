@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"net/url"
+
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 )
@@ -28,25 +31,34 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 	entityID := args[0]
 	textMode := getTextMode()
 
-	ws, err := getWSClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}
-	defer ws.Close()
 
-	params := map[string]interface{}{
-		"entity_id": entityID,
-	}
+	// Build endpoint: /api/calendars/<entity_id>?start=...&end=...
+	// The HA REST API uses /api/calendars/<entity_id> with optional time range params.
+	params := url.Values{}
 	if calendarListStart != "" {
-		params["start"] = calendarListStart
+		params.Set("start", calendarListStart)
 	}
 	if calendarListEnd != "" {
-		params["end"] = calendarListEnd
+		params.Set("end", calendarListEnd)
 	}
 
-	result, err := ws.SendCommand("calendar/event/list", params)
+	endpoint := "calendars/" + entityID
+	if len(params) > 0 {
+		endpoint = endpoint + "?" + params.Encode()
+	}
+
+	result, err := restClient.Get(endpoint)
 	if err != nil {
 		return err
+	}
+
+	if result == nil {
+		fmt.Println("No events found.")
+		return nil
 	}
 
 	client.PrintOutput(result, textMode, "")

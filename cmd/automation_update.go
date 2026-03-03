@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
@@ -32,10 +30,6 @@ func init() {
 
 func runAutomationUpdate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	if !strings.HasPrefix(automationID, "automation.") {
-		automationID = "automation." + automationID
-	}
-
 	textMode := getTextMode()
 
 	config, err := input.ParseInput(automationUpdateData, automationUpdateFile, automationUpdateFormat)
@@ -48,7 +42,12 @@ func runAutomationUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	result, err := restClient.Post("config/automation/config/"+automationID, config)
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
+
+	result, err := restClient.Post("config/automation/config/"+configID, config)
 	if err != nil {
 		return err
 	}

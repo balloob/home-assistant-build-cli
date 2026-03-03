@@ -28,10 +28,17 @@ func init() {
 
 func runAutomationDelete(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	// Strip "automation." prefix if provided - API expects just the ID
-	automationID = strings.TrimPrefix(automationID, "automation.")
-
 	textMode := getTextMode()
+
+	restClient, err := getRESTClient()
+	if err != nil {
+		return err
+	}
+
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
 
 	if !automationDeleteForce && !textMode {
 		fmt.Printf("Delete automation %s? [y/N]: ", automationID)
@@ -44,12 +51,7 @@ func runAutomationDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	restClient, err := getRESTClient()
-	if err != nil {
-		return err
-	}
-
-	_, err = restClient.Delete("config/automation/config/" + automationID)
+	_, err = restClient.Delete("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}

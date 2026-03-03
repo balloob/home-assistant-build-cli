@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
@@ -33,7 +32,6 @@ func init() {
 
 func runAutomationActionUpdate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	automationID = strings.TrimPrefix(automationID, "automation.")
 	actionIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid action index: %s", args[1])
@@ -51,8 +49,13 @@ func runAutomationActionUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
+
 	// Get current automation config
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}
@@ -84,7 +87,7 @@ func runAutomationActionUpdate(cmd *cobra.Command, args []string) error {
 	config[actionKey] = actions
 
 	// Save the config
-	_, err = restClient.Post("config/automation/config/"+automationID, config)
+	_, err = restClient.Post("config/automation/config/"+configID, config)
 	if err != nil {
 		return err
 	}

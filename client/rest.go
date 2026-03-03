@@ -271,9 +271,22 @@ func (c *RestClient) Restart() error {
 	return err
 }
 
-// GetErrorLog returns the error log
+// GetErrorLog returns the HA system error log.
+// HA 2025.10+ (with supervisor) uses /api/hassio/core/logs/latest.
+// Older installs use the now-removed /api/error_log endpoint.
+// We try the new supervisor endpoint first and fall back to the legacy one.
 func (c *RestClient) GetErrorLog() (string, error) {
-	result, err := c.Get("error_log")
+	// Try supervisor endpoint (HA 2025.10+)
+	result, err := c.Get("hassio/core/logs/latest")
+	if err == nil {
+		if s, ok := result.(string); ok {
+			return s, nil
+		}
+		return fmt.Sprintf("%v", result), nil
+	}
+
+	// Fall back to legacy endpoint (pre-2024.4)
+	result, err = c.Get("error_log")
 	if err != nil {
 		return "", err
 	}

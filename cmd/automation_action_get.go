@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -36,8 +35,6 @@ func runAutomationActionGet(cmd *cobra.Command, args []string) error {
 	if automationID == "" {
 		return fmt.Errorf("automation ID is required (use --automation flag or first positional argument)")
 	}
-	automationID = strings.TrimPrefix(automationID, "automation.")
-
 	actionIndex := automationActionGetIndex
 	if actionIndex < 0 && len(args) > 1 {
 		var err error
@@ -57,7 +54,12 @@ func runAutomationActionGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
+
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}

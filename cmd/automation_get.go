@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -32,9 +31,6 @@ func runAutomationGet(cmd *cobra.Command, args []string) error {
 	if automationID == "" {
 		return fmt.Errorf("automation ID is required (use --automation flag or positional argument)")
 	}
-	// Strip "automation." prefix if provided - API expects just the ID
-	automationID = strings.TrimPrefix(automationID, "automation.")
-
 	textMode := getTextMode()
 
 	restClient, err := getRESTClient()
@@ -42,7 +38,13 @@ func runAutomationGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	// Resolve entity slug → internal config ID (required in HA 2024.4+)
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
+
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}

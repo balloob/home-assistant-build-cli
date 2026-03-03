@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
@@ -32,8 +31,6 @@ func init() {
 
 func runAutomationConditionCreate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	automationID = strings.TrimPrefix(automationID, "automation.")
-
 	textMode := getTextMode()
 
 	conditionConfig, err := input.ParseInput(automationConditionCreateData, automationConditionCreateFile, automationConditionCreateFormat)
@@ -46,8 +43,13 @@ func runAutomationConditionCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
+
 	// Get current automation config
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,7 @@ func runAutomationConditionCreate(cmd *cobra.Command, args []string) error {
 	config[conditionKey] = conditions
 
 	// Save the config
-	_, err = restClient.Post("config/automation/config/"+automationID, config)
+	_, err = restClient.Post("config/automation/config/"+configID, config)
 	if err != nil {
 		return err
 	}

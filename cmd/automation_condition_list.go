@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 )
@@ -21,8 +19,6 @@ func init() {
 
 func runAutomationConditionList(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	automationID = strings.TrimPrefix(automationID, "automation.")
-
 	textMode := getTextMode()
 
 	restClient, err := getRESTClient()
@@ -30,7 +26,12 @@ func runAutomationConditionList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
+
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}

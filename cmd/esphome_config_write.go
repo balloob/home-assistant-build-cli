@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/home-assistant/hab/client"
@@ -34,6 +35,13 @@ func runESPHomeConfigWrite(cmd *cobra.Command, args []string) error {
 
 	var content string
 	switch {
+	case esphomeConfigWriteData == "-":
+		// Read from stdin when --data - is specified
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read from stdin: %w", err)
+		}
+		content = string(data)
 	case esphomeConfigWriteData != "":
 		content = esphomeConfigWriteData
 	case esphomeConfigWriteFile != "":
