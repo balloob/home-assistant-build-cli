@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -47,17 +45,10 @@ func runSectionUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid section index: %s", args[2])
 	}
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
-	manager := auth.NewManager(configDir)
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
-		return err
-	}
-
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
+	ws, err := getWSClient()
+	if err != nil {
 		return err
 	}
 	defer ws.Close()

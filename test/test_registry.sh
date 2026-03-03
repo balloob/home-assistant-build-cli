@@ -79,6 +79,27 @@ run_registry_tests() {
         pass "entity history (skipped - no entities)"
     fi
 
+    # Test: entity history with --start/--end time range
+    log_test "entity history --start/--end"
+    if [ -n "$FIRST_ENTITY" ]; then
+        START_TIME=$(date -u -d '1 hour ago' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -u -v-1H '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)
+        END_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+        if [ -n "$START_TIME" ] && [ -n "$END_TIME" ]; then
+            OUTPUT=$(run_hab_optional entity history "$FIRST_ENTITY" --start "$START_TIME" --end "$END_TIME")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "entity history --start/--end"
+            elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+                pass "entity history --start/--end (not available)"
+            else
+                fail "entity history --start/--end: $OUTPUT"
+            fi
+        else
+            pass "entity history --start/--end (skipped - date command not available)"
+        fi
+    else
+        pass "entity history --start/--end (skipped - no entities)"
+    fi
+
     # Test: device list
     log_test "device list"
     OUTPUT=$(run_hab device list)

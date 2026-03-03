@@ -1,10 +1,12 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/auth"
+	"fmt"
+	"net/url"
+	"time"
+
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -28,36 +30,48 @@ func init() {
 
 func runCalendarList(cmd *cobra.Command, args []string) error {
 	entityID := args[0]
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
-	manager := auth.NewManager(configDir)
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
-		return err
-	}
-
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
-		return err
-	}
-	defer ws.Close()
-
-	params := map[string]interface{}{
-		"entity_id": entityID,
-	}
-	if calendarListStart != "" {
-		params["start"] = calendarListStart
-	}
-	if calendarListEnd != "" {
-		params["end"] = calendarListEnd
-	}
-
-	result, err := ws.SendCommand("calendar/event/list", params)
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}
 
-	client.PrintOutput(result, textMode, "")
+	// Build endpoint: /api/calendars/<entity_id>?start=...&end=...
+	// The HA REST API requires start and end query parameters.
+	// Default to current time through the next 7 days when not specified.
+	now := time.Now().UTC()
+	start := calendarListStart
+	if start == "" {
+		start = now.Format(time.RFC3339)
+	}
+	end := calendarListEnd
+	if end == "" {
+		end = now.Add(7 * 24 * time.Hour).Format(time.RFC3339)
+	}
+
+	params := url.Values{}
+	params.Set("start", start)
+	params.Set("end", end)
+
+	endpoint := "calendars/" + entityID + "?" + params.Encode()
+
+	result, err := restClient.Get(endpoint)
+	if err != nil {
+		return err
+	}
+
+	if result == nil {
+		fmt.Println("No events found.")
+		return nil
+	}
+
+	// The REST API returns a plain array of events, but the original WebSocket API
+	// returned {"events": [...]}.  Wrap the result to preserve the expected structure.
+	wrapped := map[string]interface{}{
+		"events": result,
+	}
+
+	client.PrintOutput(wrapped, textMode, "")
 	return nil
 }

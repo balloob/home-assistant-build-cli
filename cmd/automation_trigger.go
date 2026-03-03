@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var automationTriggerSkipCondition bool
@@ -32,11 +30,9 @@ func runAutomationTrigger(cmd *cobra.Command, args []string) error {
 		automationID = "automation." + automationID
 	}
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

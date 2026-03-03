@@ -3,11 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -34,8 +32,7 @@ func init() {
 
 func runScriptCreate(cmd *cobra.Command, args []string) error {
 	scriptID := args[0]
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	config, err := input.ParseInput(scriptCreateData, scriptCreateFile, scriptCreateFormat)
 	if err != nil {
@@ -46,8 +43,7 @@ func runScriptCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("script must have an 'alias' field")
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

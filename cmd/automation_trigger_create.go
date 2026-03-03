@@ -2,13 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -34,24 +31,25 @@ func init() {
 
 func runAutomationTriggerCreate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	automationID = strings.TrimPrefix(automationID, "automation.")
-
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	triggerConfig, err := input.ParseInput(automationTriggerCreateData, automationTriggerCreateFile, automationTriggerCreateFormat)
 	if err != nil {
 		return err
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
+	if err != nil {
+		return err
+	}
+
+	configID, err := resolveAutomationConfigID(restClient, automationID)
 	if err != nil {
 		return err
 	}
 
 	// Get current automation config
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}
@@ -80,7 +78,7 @@ func runAutomationTriggerCreate(cmd *cobra.Command, args []string) error {
 	config[triggerKey] = triggers
 
 	// Save the config
-	_, err = restClient.Post("config/automation/config/"+automationID, config)
+	_, err = restClient.Post("config/automation/config/"+configID, config)
 	if err != nil {
 		return err
 	}

@@ -3,10 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -38,8 +36,7 @@ func init() {
 
 func runZoneUpdate(cmd *cobra.Command, args []string) error {
 	zoneID := args[0]
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	params := make(map[string]interface{})
 	if zoneUpdateName != "" {
@@ -65,14 +62,8 @@ func runZoneUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no update parameters provided")
 	}
 
-	manager := auth.NewManager(configDir)
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
-		return err
-	}
-
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
+	ws, err := getWSClient()
+	if err != nil {
 		return err
 	}
 	defer ws.Close()

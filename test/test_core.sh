@@ -131,6 +131,82 @@ run_core_tests() {
 
     # Re-login for other tests that may run after
     do_auth_login
+
+    # ==========================================================================
+    # Version command tests
+    # ==========================================================================
+    log_test "version (JSON)"
+    OUTPUT=$(run_hab version)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.version != null and .data.os != null and .data.arch != null' > /dev/null 2>&1; then
+        VERSION=$(echo "$OUTPUT" | jq -r '.data.version')
+        pass "version JSON (version: $VERSION)"
+    else
+        fail "version JSON: $OUTPUT"
+    fi
+
+    log_test "version (text)"
+    OUTPUT=$(run_hab_text version)
+    if echo "$OUTPUT" | grep -q "version"; then
+        pass "version text"
+    else
+        fail "version text: $OUTPUT"
+    fi
+
+    # ==========================================================================
+    # Text output mode tests (beyond system info)
+    # ==========================================================================
+    log_test "text mode: auth status"
+    OUTPUT=$(run_hab_text auth status)
+    if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+        # Not JSON — good, it's text mode
+        if echo "$OUTPUT" | grep -qi "authenticated\|url\|auth"; then
+            pass "text mode: auth status"
+        else
+            fail "text mode: auth status (unexpected output)"
+        fi
+    else
+        fail "text mode: auth status (got JSON instead of text)"
+    fi
+
+    log_test "text mode: entity list"
+    OUTPUT=$(run_hab_text entity list)
+    if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+        pass "text mode: entity list"
+    else
+        fail "text mode: entity list (got JSON instead of text)"
+    fi
+
+    log_test "text mode: area list"
+    OUTPUT=$(run_hab_text area list)
+    if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+        pass "text mode: area list"
+    else
+        fail "text mode: area list (got JSON instead of text)"
+    fi
+
+    log_test "text mode: action list"
+    OUTPUT=$(run_hab_text action list)
+    if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+        pass "text mode: action list"
+    else
+        fail "text mode: action list (got JSON instead of text)"
+    fi
+
+    # ==========================================================================
+    # Verbose flag test
+    # ==========================================================================
+    log_test "verbose flag"
+    OUTPUT=$("$HAB" --config "$HAB_TEST_CONFIG_DIR" --json --verbose version 2>&1)
+    if echo "$OUTPUT" | grep -q "level=debug"; then
+        # Verbose produces debug log lines AND the normal output
+        if echo "$OUTPUT" | grep -q '"success"'; then
+            pass "verbose flag (debug logs + JSON output)"
+        else
+            fail "verbose flag (debug logs but no JSON output)"
+        fi
+    else
+        fail "verbose flag: expected debug output"
+    fi
 }
 
 # Run standalone if executed directly

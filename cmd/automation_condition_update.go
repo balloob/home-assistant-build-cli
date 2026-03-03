@@ -3,13 +3,10 @@ package cmd
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -35,28 +32,30 @@ func init() {
 
 func runAutomationConditionUpdate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	automationID = strings.TrimPrefix(automationID, "automation.")
 	conditionIndex, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid condition index: %s", args[1])
 	}
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	newCondition, err := input.ParseInput(automationConditionUpdateData, automationConditionUpdateFile, automationConditionUpdateFormat)
 	if err != nil {
 		return err
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
+	if err != nil {
+		return err
+	}
+
+	configID, err := resolveAutomationConfigID(restClient, automationID)
 	if err != nil {
 		return err
 	}
 
 	// Get current automation config
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}
@@ -88,7 +87,7 @@ func runAutomationConditionUpdate(cmd *cobra.Command, args []string) error {
 	config[conditionKey] = conditions
 
 	// Save the config
-	_, err = restClient.Post("config/automation/config/"+automationID, config)
+	_, err = restClient.Post("config/automation/config/"+configID, config)
 	if err != nil {
 		return err
 	}

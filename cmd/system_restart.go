@@ -6,10 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var restartForce bool
@@ -27,8 +25,7 @@ func init() {
 }
 
 func runSystemRestart(cmd *cobra.Command, args []string) error {
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	if !restartForce {
 		fmt.Print("This will restart Home Assistant. Continue? [y/N]: ")
@@ -41,8 +38,7 @@ func runSystemRestart(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

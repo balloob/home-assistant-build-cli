@@ -6,10 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var labelDeleteForce bool
@@ -29,8 +27,7 @@ func init() {
 
 func runLabelDelete(cmd *cobra.Command, args []string) error {
 	labelID := args[0]
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	if !labelDeleteForce && !textMode {
 		fmt.Printf("Delete label %s? [y/N]: ", labelID)
@@ -43,14 +40,8 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	manager := auth.NewManager(configDir)
-	creds, err := manager.GetCredentials()
-	if err != nil || creds == nil {
-		return err
-	}
-
-	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.Connect(); err != nil {
+	ws, err := getWSClient()
+	if err != nil {
 		return err
 	}
 	defer ws.Close()

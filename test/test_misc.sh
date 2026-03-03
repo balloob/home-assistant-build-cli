@@ -52,6 +52,17 @@ run_misc_tests() {
         fail "action call: $OUTPUT"
     fi
 
+    # Test: action call with -d data flag
+    log_test "action call with -d data"
+    OUTPUT=$(run_hab_optional action call homeassistant.turn_on -d '{"entity_id":"sun.sun"}')
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "action call with -d data"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "action call with -d data (action processed, entity may not support)"
+    else
+        fail "action call with -d data: $OUTPUT"
+    fi
+
     # Test: blueprint list
     log_test "blueprint list"
     OUTPUT=$(run_hab blueprint list)

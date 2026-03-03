@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/home-assistant/hab/client"
+	log "github.com/sirupsen/logrus"
 )
 
 // ErrNotAuthenticated is returned when the user is not authenticated
@@ -43,7 +44,6 @@ func (m *Manager) GetCredentials() (*Credentials, error) {
 		return nil, err
 	}
 	if creds == nil {
-		client.PrintWarning("Not authenticated. Run 'hab auth login' to authenticate.")
 		return nil, ErrNotAuthenticated
 	}
 
@@ -56,7 +56,7 @@ func (m *Manager) GetCredentials() (*Credentials, error) {
 		m.credentials = newCreds
 		if err := SaveCredentials(newCreds, m.ConfigDir); err != nil {
 			// Log warning but continue with refreshed credentials in memory
-			client.PrintWarning("Failed to save refreshed credentials: " + err.Error())
+			log.WithError(err).Warn("Failed to save refreshed credentials")
 		}
 		return newCreds, nil
 	}

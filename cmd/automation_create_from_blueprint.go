@@ -3,11 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -39,8 +37,7 @@ func init() {
 func runAutomationCreateFromBlueprint(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
 	blueprintPath := args[1]
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	inputs, err := input.ParseInput(automationFromBlueprintData, automationFromBlueprintFile, automationFromBlueprintFormat)
 	if err != nil {
@@ -69,8 +66,7 @@ func runAutomationCreateFromBlueprint(cmd *cobra.Command, args []string) error {
 		delete(inputs, "description")
 	}
 
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}

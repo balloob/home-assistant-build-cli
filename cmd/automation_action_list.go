@@ -1,12 +1,8 @@
 package cmd
 
 import (
-	"strings"
-
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var automationActionListCmd = &cobra.Command{
@@ -23,18 +19,19 @@ func init() {
 
 func runAutomationActionList(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
-	automationID = strings.TrimPrefix(automationID, "automation.")
+	textMode := getTextMode()
 
-	configDir := viper.GetString("config")
-	textMode := viper.GetBool("text")
-
-	manager := auth.NewManager(configDir)
-	restClient, err := manager.GetRestClient()
+	restClient, err := getRESTClient()
 	if err != nil {
 		return err
 	}
 
-	result, err := restClient.Get("config/automation/config/" + automationID)
+	configID, err := resolveAutomationConfigID(restClient, automationID)
+	if err != nil {
+		return err
+	}
+
+	result, err := restClient.Get("config/automation/config/" + configID)
 	if err != nil {
 		return err
 	}

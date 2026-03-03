@@ -62,8 +62,9 @@ Output is human-readable text by default. Use --json for machine-parseable JSON 
 // Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		// Don't print auth errors again - warning was already shown
-		if !errors.Is(err, auth.ErrNotAuthenticated) {
+		if errors.Is(err, auth.ErrNotAuthenticated) {
+			fmt.Fprintln(os.Stderr, "Not authenticated. Run 'hab auth login' to authenticate.")
+		} else {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		ExitWithError = true
