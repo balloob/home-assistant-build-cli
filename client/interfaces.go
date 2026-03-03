@@ -6,77 +6,151 @@ var (
 	_ RestAPI      = (*RestClient)(nil)
 )
 
-// WebSocketAPI defines the interface for WebSocket operations against Home Assistant.
-// This enables unit-testing command handlers with mock implementations.
-type WebSocketAPI interface {
-	// Connection lifecycle
+// Compile-time assertions that WebSocketClient satisfies each sub-interface.
+var (
+	_ WebSocketConnection = (*WebSocketClient)(nil)
+	_ WebSocketCommander  = (*WebSocketClient)(nil)
+	_ StateAPI            = (*WebSocketClient)(nil)
+	_ AreaRegistryAPI     = (*WebSocketClient)(nil)
+	_ FloorRegistryAPI    = (*WebSocketClient)(nil)
+	_ LabelRegistryAPI    = (*WebSocketClient)(nil)
+	_ DeviceRegistryAPI   = (*WebSocketClient)(nil)
+	_ EntityRegistryAPI   = (*WebSocketClient)(nil)
+	_ ZoneAPI             = (*WebSocketClient)(nil)
+	_ SystemHealthAPI     = (*WebSocketClient)(nil)
+	_ SearchAPI           = (*WebSocketClient)(nil)
+	_ HelperAPI           = (*WebSocketClient)(nil)
+	_ ConfigAPI           = (*WebSocketClient)(nil)
+)
+
+// ---------------------------------------------------------------------------
+// Domain-specific WebSocket interfaces
+//
+// Each interface captures a cohesive set of operations for a single domain.
+// Commands that only need one domain can accept the narrow interface, making
+// dependencies explicit and mocks trivial.
+// ---------------------------------------------------------------------------
+
+// WebSocketConnection handles the WebSocket connection lifecycle.
+type WebSocketConnection interface {
 	Connect() error
 	Close() error
+}
 
-	// Generic command
+// WebSocketCommander provides the generic SendCommand escape hatch for
+// domains that do not yet have dedicated typed methods (dashboards, backups,
+// blueprints, threads, traces, etc.).
+type WebSocketCommander interface {
 	SendCommand(cmdType string, params map[string]interface{}) (interface{}, error)
+}
 
-	// State queries
+// StateAPI provides state and service queries.
+type StateAPI interface {
 	GetStates() ([]interface{}, error)
 	GetConfig() (map[string]interface{}, error)
 	GetServices() (map[string]interface{}, error)
 	CallService(domain, service string, data, target map[string]interface{}, returnResponse bool) (interface{}, error)
 	Ping() error
+}
 
-	// Area registry
+// AreaRegistryAPI provides CRUD operations on the area registry.
+type AreaRegistryAPI interface {
 	AreaRegistryList() ([]interface{}, error)
 	AreaRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error)
 	AreaRegistryUpdate(areaID string, params map[string]interface{}) (map[string]interface{}, error)
 	AreaRegistryDelete(areaID string) error
+}
 
-	// Floor registry
+// FloorRegistryAPI provides CRUD operations on the floor registry.
+type FloorRegistryAPI interface {
 	FloorRegistryList() ([]interface{}, error)
 	FloorRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error)
 	FloorRegistryUpdate(floorID string, params map[string]interface{}) (map[string]interface{}, error)
 	FloorRegistryDelete(floorID string) error
+}
 
-	// Label registry
+// LabelRegistryAPI provides CRUD operations on the label registry.
+type LabelRegistryAPI interface {
 	LabelRegistryList() ([]interface{}, error)
 	LabelRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error)
 	LabelRegistryUpdate(labelID string, params map[string]interface{}) (map[string]interface{}, error)
 	LabelRegistryDelete(labelID string) error
+}
 
-	// Device registry
+// DeviceRegistryAPI provides operations on the device registry.
+type DeviceRegistryAPI interface {
 	DeviceRegistryList() ([]interface{}, error)
 	DeviceRegistryUpdate(deviceID string, params map[string]interface{}) (map[string]interface{}, error)
+}
 
-	// Entity registry
+// EntityRegistryAPI provides operations on the entity registry.
+type EntityRegistryAPI interface {
 	EntityRegistryList() ([]interface{}, error)
 	EntityRegistryGet(entityID string) (map[string]interface{}, error)
 	EntityRegistryUpdate(entityID string, params map[string]interface{}) (map[string]interface{}, error)
+}
 
-	// Zones
+// ZoneAPI provides CRUD operations on zones.
+type ZoneAPI interface {
 	ZoneList() ([]interface{}, error)
 	ZoneCreate(name string, latitude, longitude, radius float64, params map[string]interface{}) (map[string]interface{}, error)
 	ZoneUpdate(zoneID string, params map[string]interface{}) (map[string]interface{}, error)
 	ZoneDelete(zoneID string) error
+}
 
-	// System
+// SystemHealthAPI provides system health information.
+type SystemHealthAPI interface {
 	SystemHealthInfo() (map[string]interface{}, error)
+}
 
-	// Search
+// SearchAPI provides cross-domain search operations.
+type SearchAPI interface {
 	SearchRelated(itemType, itemID string) (map[string][]string, error)
+}
 
-	// Helpers (WS-based)
+// HelperAPI provides CRUD operations on WebSocket-based helpers
+// (input_boolean, counter, timer, schedule, etc.).
+type HelperAPI interface {
 	HelperList(helperType string) ([]interface{}, error)
 	HelperCreate(helperType string, params map[string]interface{}) (map[string]interface{}, error)
 	HelperUpdate(helperType, helperID string, params map[string]interface{}) (map[string]interface{}, error)
 	HelperDelete(helperType, helperID string) error
 	DeleteHelperByEntityOrEntryID(id string, helperType string) error
+}
 
-	// Config flows (WS-based)
+// ConfigAPI provides config flow and config entry operations.
+type ConfigAPI interface {
 	ConfigFlowInit(handler string, context map[string]interface{}) (map[string]interface{}, error)
 	ConfigFlowConfigure(flowID string, data map[string]interface{}) (map[string]interface{}, error)
-
-	// Config entries
 	ConfigEntriesList(domain string) ([]interface{}, error)
 	ConfigEntryDelete(entryID string) error
 	ResolveEntityToConfigEntry(entityID string) (string, error)
+}
+
+// ---------------------------------------------------------------------------
+// Composed interfaces
+// ---------------------------------------------------------------------------
+
+// WebSocketAPI defines the full interface for WebSocket operations against
+// Home Assistant. It is composed from the domain-specific interfaces above.
+//
+// Commands that need the full surface area (e.g., overview) accept this type.
+// Commands that need a single domain can accept the narrower interface instead,
+// making dependencies explicit and mocks trivial to implement.
+type WebSocketAPI interface {
+	WebSocketConnection
+	WebSocketCommander
+	StateAPI
+	AreaRegistryAPI
+	FloorRegistryAPI
+	LabelRegistryAPI
+	DeviceRegistryAPI
+	EntityRegistryAPI
+	ZoneAPI
+	SystemHealthAPI
+	SearchAPI
+	HelperAPI
+	ConfigAPI
 }
 
 // RestAPI defines the interface for REST operations against Home Assistant.
