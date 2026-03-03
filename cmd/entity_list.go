@@ -66,8 +66,9 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Get device registry for device names
-	deviceMap := make(map[string]string) // device_id -> name
+	// Get device registry for device names and area inheritance
+	deviceMap := make(map[string]string)     // device_id -> display name
+	deviceAreaMap := make(map[string]string) // device_id -> area_id
 	devices, err := ws.DeviceRegistryList()
 	if err == nil {
 		for _, d := range devices {
@@ -79,6 +80,10 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 					deviceMap[deviceID] = nameByUser
 				} else if name != "" {
 					deviceMap[deviceID] = name
+				}
+				// Capture device area for area/floor filter inheritance
+				if areaID, _ := device["area_id"].(string); areaID != "" {
+					deviceAreaMap[deviceID] = areaID
 				}
 			}
 		}
@@ -145,27 +150,40 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Apply area filter
+		// Apply area filter — entity-level area_id takes precedence; if the
+		// entity has no direct area assignment, fall back to the device's area.
 		if entityListArea != "" {
 			if regEntry == nil {
 				continue
 			}
-			if areaID, _ := regEntry["area_id"].(string); areaID != entityListArea {
-				continue
+			entityAreaID, _ := regEntry["area_id"].(string)
+			if entityAreaID != "" {
+				// Entity has an explicit area override — use it directly.
+				if entityAreaID != entityListArea {
+					continue
+				}
+			} else {
+				// No entity-level area — inherit from the device.
+				deviceID, _ := regEntry["device_id"].(string)
+				if deviceAreaMap[deviceID] != entityListArea {
+					continue
+				}
 			}
 		}
 
-		// Apply floor filter (check if entity's area is on the specified floor)
+		// Apply floor filter — resolve entity area (with device fallback) then
+		// look up whether that area is on the requested floor.
 		if entityListFloor != "" {
 			if regEntry == nil {
 				continue
 			}
 			areaID, _ := regEntry["area_id"].(string)
 			if areaID == "" {
-				continue
+				// Fall back to device area
+				deviceID, _ := regEntry["device_id"].(string)
+				areaID = deviceAreaMap[deviceID]
 			}
-			floorID := areaFloorMap[areaID]
-			if floorID != entityListFloor {
+			if areaID == "" || areaFloorMap[areaID] != entityListFloor {
 				continue
 			}
 		}

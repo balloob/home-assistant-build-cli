@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -37,19 +38,23 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Build endpoint: /api/calendars/<entity_id>?start=...&end=...
-	// The HA REST API uses /api/calendars/<entity_id> with optional time range params.
-	params := url.Values{}
-	if calendarListStart != "" {
-		params.Set("start", calendarListStart)
+	// The HA REST API requires start and end query parameters.
+	// Default to current time through the next 7 days when not specified.
+	now := time.Now().UTC()
+	start := calendarListStart
+	if start == "" {
+		start = now.Format(time.RFC3339)
 	}
-	if calendarListEnd != "" {
-		params.Set("end", calendarListEnd)
+	end := calendarListEnd
+	if end == "" {
+		end = now.Add(7 * 24 * time.Hour).Format(time.RFC3339)
 	}
 
-	endpoint := "calendars/" + entityID
-	if len(params) > 0 {
-		endpoint = endpoint + "?" + params.Encode()
-	}
+	params := url.Values{}
+	params.Set("start", start)
+	params.Set("end", end)
+
+	endpoint := "calendars/" + entityID + "?" + params.Encode()
 
 	result, err := restClient.Get(endpoint)
 	if err != nil {
