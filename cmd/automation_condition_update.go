@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -96,6 +96,6 @@ func runAutomationConditionUpdate(cmd *cobra.Command, args []string) error {
 		"index":  conditionIndex,
 		"config": newCondition,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Condition at index %d updated.", conditionIndex))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Condition at index %d updated.", conditionIndex))
 	return nil
 }

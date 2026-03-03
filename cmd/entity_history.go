@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -50,9 +50,9 @@ func runEntityHistory(cmd *cobra.Command, args []string) error {
 
 	// Flatten the nested list
 	if len(history) > 0 {
-		client.PrintOutput(history[0], textMode, "")
+		output.PrintOutput(history[0], textMode, "")
 	} else {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 	}
 	return nil
 }

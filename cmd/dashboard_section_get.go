@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -113,6 +113,6 @@ func runSectionGet(cmd *cobra.Command, args []string) error {
 		sectionMap["index"] = sectionIndex
 	}
 
-	client.PrintOutput(section, textMode, "")
+	output.PrintOutput(section, textMode, "")
 	return nil
 }

@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -87,6 +87,6 @@ func runAutomationConditionCreate(cmd *cobra.Command, args []string) error {
 		"index":  len(conditions) - 1,
 		"config": conditionConfig,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Condition created at index %d.", len(conditions)-1))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Condition created at index %d.", len(conditions)-1))
 	return nil
 }

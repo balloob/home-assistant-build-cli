@@ -3,7 +3,7 @@ package cmd
 import (
 	"runtime"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -35,8 +35,8 @@ func runVersion(cmd *cobra.Command, args []string) {
 	}
 
 	if textMode {
-		client.PrintOutput(nil, true, "hab version "+Version+" ("+runtime.GOOS+"/"+runtime.GOARCH+")")
+		output.PrintOutput(nil, true, "hab version "+Version+" ("+runtime.GOOS+"/"+runtime.GOARCH+")")
 	} else {
-		client.PrintSuccess(versionInfo, false, "")
+		output.PrintSuccess(versionInfo, false, "")
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -227,6 +227,6 @@ func runCardCreate(cmd *cobra.Command, args []string) error {
 		msg = "Card created at index " + strconv.Itoa(newCardIndex) + " in view " + strconv.Itoa(viewIndex) + " section " + strconv.Itoa(sectionIndex) + "."
 	}
 
-	client.PrintSuccess(cardConfig, textMode, msg)
+	output.PrintSuccess(cardConfig, textMode, msg)
 	return nil
 }

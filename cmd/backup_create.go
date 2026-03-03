@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +36,6 @@ func runBackupCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, "Backup creation initiated.")
+	output.PrintSuccess(result, textMode, "Backup creation initiated.")
 	return nil
 }

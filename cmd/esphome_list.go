@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -121,6 +122,6 @@ func runESPHomeList(cmd *cobra.Command, args []string) error {
 		"importable": devices.Importable,
 	}
 
-	client.PrintOutput(result, false, "")
+	output.PrintOutput(result, false, "")
 	return nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/home-assistant/hab/auth"
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -46,6 +46,6 @@ func runAuthRefresh(cmd *cobra.Command, args []string) error {
 		"token_expiry": creds.TokenExpiry,
 	}
 
-	client.PrintSuccess(result, textMode, "Token refreshed successfully.")
+	output.PrintSuccess(result, textMode, "Token refreshed successfully.")
 	return nil
 }

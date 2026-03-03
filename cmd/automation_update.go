@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -52,6 +52,6 @@ func runAutomationUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(result, textMode, "Automation updated successfully.")
+	output.PrintSuccess(result, textMode, "Automation updated successfully.")
 	return nil
 }

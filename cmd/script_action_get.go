@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -86,6 +86,6 @@ func runScriptActionGet(cmd *cobra.Command, args []string) error {
 	}
 	actionData["index"] = actionIndex
 
-	client.PrintOutput(actionData, textMode, "")
+	output.PrintOutput(actionData, textMode, "")
 	return nil
 }

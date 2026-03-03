@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -56,6 +56,6 @@ func runAutomationDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("Automation %s deleted.", automationID))
+	output.PrintSuccess(nil, textMode, fmt.Sprintf("Automation %s deleted.", automationID))
 	return nil
 }

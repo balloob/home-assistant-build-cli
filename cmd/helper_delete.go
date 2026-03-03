@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -87,6 +87,6 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 		"deleted":   true,
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Helper '%s' deleted successfully.", entityID))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Helper '%s' deleted successfully.", entityID))
 	return nil
 }

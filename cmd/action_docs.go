@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -86,7 +86,7 @@ func runActionDocs(cmd *cobra.Command, args []string) error {
 			"target":      serviceData["target"],
 		}
 
-		client.PrintOutput(result, textMode, "")
+		output.PrintOutput(result, textMode, "")
 		return nil
 	}
 

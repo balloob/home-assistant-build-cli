@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +40,6 @@ func runSystemLogs(cmd *cobra.Command, args []string) error {
 		lines = lines[len(lines)-logsLines:]
 	}
 
-	client.PrintOutput(strings.Join(lines, "\n"), textMode, "")
+	output.PrintOutput(strings.Join(lines, "\n"), textMode, "")
 	return nil
 }

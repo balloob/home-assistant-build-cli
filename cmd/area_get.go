@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +69,7 @@ func runAreaGet(cmd *cobra.Command, args []string) error {
 				}
 			}
 
-			client.PrintOutput(result, textMode, "")
+			output.PrintOutput(result, textMode, "")
 			return nil
 		}
 	}

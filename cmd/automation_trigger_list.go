@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ func runAutomationTriggerList(cmd *cobra.Command, args []string) error {
 
 	config, ok := result.(map[string]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
@@ -47,7 +47,7 @@ func runAutomationTriggerList(cmd *cobra.Command, args []string) error {
 	if !ok {
 		triggers, ok = config["trigger"].([]interface{})
 		if !ok {
-			client.PrintOutput([]interface{}{}, textMode, "")
+			output.PrintOutput([]interface{}{}, textMode, "")
 			return nil
 		}
 	}
@@ -65,6 +65,6 @@ func runAutomationTriggerList(cmd *cobra.Command, args []string) error {
 		triggerList[i] = triggerData
 	}
 
-	client.PrintOutput(triggerList, textMode, "")
+	output.PrintOutput(triggerList, textMode, "")
 	return nil
 }

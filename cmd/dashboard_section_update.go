@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -134,6 +134,6 @@ func runSectionUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	existingSection["index"] = sectionIndex
-	client.PrintSuccess(existingSection, textMode, fmt.Sprintf("Section at index %d updated.", sectionIndex))
+	output.PrintSuccess(existingSection, textMode, fmt.Sprintf("Section at index %d updated.", sectionIndex))
 	return nil
 }

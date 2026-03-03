@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -769,7 +769,7 @@ Examples:
 				}
 			}
 
-			client.PrintSuccess(result, textMode, fmt.Sprintf("Statistics sensor '%s' created successfully.", name))
+			output.PrintSuccess(result, textMode, fmt.Sprintf("Statistics sensor '%s' created successfully.", name))
 			return nil
 		},
 	})
@@ -944,7 +944,7 @@ Examples:
 				}
 			}
 
-			client.PrintSuccess(result, textMode, fmt.Sprintf("Group '%s' created successfully.", name))
+			output.PrintSuccess(result, textMode, fmt.Sprintf("Group '%s' created successfully.", name))
 			return nil
 		},
 	})

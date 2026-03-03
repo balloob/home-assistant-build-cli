@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/home-assistant/hab/auth"
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -24,9 +24,9 @@ func runAuthLogout(cmd *cobra.Command, args []string) error {
 	manager := auth.NewManager(configDir)
 
 	if manager.Logout() {
-		client.PrintSuccess(nil, textMode, "Successfully logged out.")
+		output.PrintSuccess(nil, textMode, "Successfully logged out.")
 	} else {
-		client.PrintSuccess(nil, textMode, "No credentials to remove.")
+		output.PrintSuccess(nil, textMode, "No credentials to remove.")
 	}
 
 	return nil

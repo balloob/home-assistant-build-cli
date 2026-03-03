@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -87,6 +87,6 @@ func runAutomationActionCreate(cmd *cobra.Command, args []string) error {
 		"index":  len(actions) - 1,
 		"config": actionConfig,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Action created at index %d.", len(actions)-1))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Action created at index %d.", len(actions)-1))
 	return nil
 }

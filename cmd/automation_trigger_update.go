@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -96,6 +96,6 @@ func runAutomationTriggerUpdate(cmd *cobra.Command, args []string) error {
 		"index":  triggerIndex,
 		"config": newTrigger,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Trigger at index %d updated.", triggerIndex))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Trigger at index %d updated.", triggerIndex))
 	return nil
 }

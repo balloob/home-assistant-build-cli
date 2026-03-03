@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -119,6 +119,6 @@ func runViewUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	existingView["index"] = viewIndex
-	client.PrintSuccess(existingView, textMode, fmt.Sprintf("View at index %d updated.", viewIndex))
+	output.PrintSuccess(existingView, textMode, fmt.Sprintf("View at index %d updated.", viewIndex))
 	return nil
 }

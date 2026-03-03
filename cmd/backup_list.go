@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -47,13 +47,13 @@ func runBackupList(cmd *cobra.Command, args []string) error {
 	}
 
 	if backups == nil {
-		client.PrintOutput(result, textMode, "")
+		output.PrintOutput(result, textMode, "")
 		return nil
 	}
 
 	// Handle count mode
 	if backupListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(backups)}, textMode, "")
+		output.PrintOutput(map[string]interface{}{"count": len(backups)}, textMode, "")
 		return nil
 	}
 
@@ -73,10 +73,10 @@ func runBackupList(cmd *cobra.Command, args []string) error {
 				})
 			}
 		}
-		client.PrintOutput(brief, textMode, "")
+		output.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(backups, textMode, "")
+	output.PrintOutput(backups, textMode, "")
 	return nil
 }

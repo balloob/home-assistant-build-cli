@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -91,6 +91,6 @@ func runAutomationTriggerGet(cmd *cobra.Command, args []string) error {
 	}
 	triggerData["index"] = triggerIndex
 
-	client.PrintOutput(triggerData, textMode, "")
+	output.PrintOutput(triggerData, textMode, "")
 	return nil
 }

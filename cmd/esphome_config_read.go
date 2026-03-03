@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +41,7 @@ func runESPHomeConfigRead(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	client.PrintOutput(map[string]interface{}{
+	output.PrintOutput(map[string]interface{}{
 		"configuration": configuration,
 		"content":       content,
 	}, false, "")

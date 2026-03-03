@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +62,7 @@ func runFloorList(cmd *cobra.Command, args []string) error {
 		if textMode {
 			fmt.Printf("Count: %d\n", len(floors))
 		} else {
-			client.PrintOutput(map[string]interface{}{"count": len(floors)}, false, "")
+			output.PrintOutput(map[string]interface{}{"count": len(floors)}, false, "")
 		}
 		return nil
 	}
@@ -92,7 +92,7 @@ func runFloorList(cmd *cobra.Command, args []string) error {
 					})
 				}
 			}
-			client.PrintOutput(brief, false, "")
+			output.PrintOutput(brief, false, "")
 		}
 		return nil
 	}
@@ -117,7 +117,7 @@ func runFloorList(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		client.PrintOutput(floors, false, "")
+		output.PrintOutput(floors, false, "")
 	}
 	return nil
 }

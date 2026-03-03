@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -72,6 +72,6 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 		"events": result,
 	}
 
-	client.PrintOutput(wrapped, textMode, "")
+	output.PrintOutput(wrapped, textMode, "")
 	return nil
 }

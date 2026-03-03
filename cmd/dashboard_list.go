@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 	// Convert to slice for processing
 	dashboards, ok := result.([]interface{})
 	if !ok {
-		client.PrintOutput(result, textMode, "")
+		output.PrintOutput(result, textMode, "")
 		return nil
 	}
 
@@ -55,7 +55,7 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 		if textMode {
 			fmt.Printf("Count: %d\n", len(dashboards))
 		} else {
-			client.PrintOutput(map[string]interface{}{"count": len(dashboards)}, false, "")
+			output.PrintOutput(map[string]interface{}{"count": len(dashboards)}, false, "")
 		}
 		return nil
 	}
@@ -89,7 +89,7 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 					})
 				}
 			}
-			client.PrintOutput(brief, false, "")
+			output.PrintOutput(brief, false, "")
 		}
 		return nil
 	}
@@ -107,7 +107,7 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		client.PrintOutput(dashboards, false, "")
+		output.PrintOutput(dashboards, false, "")
 	}
 	return nil
 }

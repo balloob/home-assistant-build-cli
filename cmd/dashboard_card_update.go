@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -162,6 +162,6 @@ func runCardUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	existingCard["index"] = cardIndex
-	client.PrintSuccess(existingCard, textMode, fmt.Sprintf("Card at index %d updated.", cardIndex))
+	output.PrintSuccess(existingCard, textMode, fmt.Sprintf("Card at index %d updated.", cardIndex))
 	return nil
 }

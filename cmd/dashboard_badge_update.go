@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -128,6 +128,6 @@ func runBadgeUpdate(cmd *cobra.Command, args []string) error {
 		"index":  badgeIndex,
 		"config": newBadge,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Badge at index %d updated.", badgeIndex))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Badge at index %d updated.", badgeIndex))
 	return nil
 }

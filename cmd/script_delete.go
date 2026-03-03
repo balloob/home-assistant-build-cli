@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -54,6 +54,6 @@ func runScriptDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintSuccess(nil, textMode, fmt.Sprintf("Script %s deleted.", scriptID))
+	output.PrintSuccess(nil, textMode, fmt.Sprintf("Script %s deleted.", scriptID))
 	return nil
 }

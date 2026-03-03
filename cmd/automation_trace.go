@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -67,6 +67,6 @@ func runAutomationTrace(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client.PrintOutput(result, textMode, "")
+	output.PrintOutput(result, textMode, "")
 	return nil
 }

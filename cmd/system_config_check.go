@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -30,17 +30,17 @@ func runSystemConfigCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	if result["result"] == "valid" {
-		output := map[string]interface{}{
+		data := map[string]interface{}{
 			"valid":  true,
 			"errors": nil,
 		}
-		client.PrintSuccess(output, textMode, "Configuration is valid.")
+		output.PrintSuccess(data, textMode, "Configuration is valid.")
 	} else {
-		output := map[string]interface{}{
+		data := map[string]interface{}{
 			"valid":  false,
 			"errors": result["errors"],
 		}
-		client.PrintOutput(output, textMode, "")
+		output.PrintOutput(data, textMode, "")
 	}
 
 	return nil

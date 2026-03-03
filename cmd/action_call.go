@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -83,9 +83,9 @@ func runActionCall(cmd *cobra.Command, args []string) error {
 	}
 
 	if actionCallReturnResponse && result != nil {
-		client.PrintOutput(result, textMode, "")
+		output.PrintOutput(result, textMode, "")
 	} else {
-		client.PrintSuccess(nil, textMode, fmt.Sprintf("Action %s called successfully.", actionName))
+		output.PrintSuccess(nil, textMode, fmt.Sprintf("Action %s called successfully.", actionName))
 	}
 
 	return nil

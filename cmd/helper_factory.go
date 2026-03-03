@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -117,7 +118,7 @@ func runWSList(ws client.WebSocketAPI, def HelperDef, textMode, count, brief boo
 	}
 
 	if count {
-		client.PrintOutput(map[string]interface{}{"count": len(helpers)}, textMode, "")
+		output.PrintOutput(map[string]interface{}{"count": len(helpers)}, textMode, "")
 		return nil
 	}
 
@@ -135,11 +136,11 @@ func runWSList(ws client.WebSocketAPI, def HelperDef, textMode, count, brief boo
 				})
 			}
 		}
-		client.PrintOutput(result, textMode, "")
+		output.PrintOutput(result, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(helpers, textMode, "")
+	output.PrintOutput(helpers, textMode, "")
 	return nil
 }
 
@@ -167,7 +168,7 @@ func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode, count, b
 	}
 
 	if count {
-		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		output.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
 		return nil
 	}
 
@@ -183,11 +184,11 @@ func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode, count, b
 				"title":    item["title"],
 			})
 		}
-		client.PrintOutput(briefResult, textMode, "")
+		output.PrintOutput(briefResult, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(result, textMode, "")
+	output.PrintOutput(result, textMode, "")
 	return nil
 }
 
@@ -227,7 +228,7 @@ func runWSDelete(id string, def HelperDef, textMode bool) error {
 		"id":      id,
 		"deleted": true,
 	}
-	client.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id))
 	return nil
 }
 
@@ -265,7 +266,7 @@ func runConfigFlowDelete(id string, def HelperDef, textMode bool) error {
 		"id":      id,
 		"deleted": true,
 	}
-	client.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id))
 	return nil
 }
 
@@ -292,7 +293,7 @@ func helperWSCreate(typeName, displayName string, buildParams func(cmd *cobra.Co
 			return err
 		}
 
-		client.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name))
+		output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name))
 		return nil
 	}
 }
@@ -353,7 +354,7 @@ func helperConfigFlowCreate(typeName, displayName string, buildFormData func(cmd
 			}
 		}
 
-		client.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name))
+		output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name))
 		return nil
 	}
 }

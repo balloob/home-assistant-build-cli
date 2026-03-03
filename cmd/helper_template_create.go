@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -198,7 +198,7 @@ func runTemplateCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Template %s '%s' created successfully.", helperTemplateCreateType, name))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Template %s '%s' created successfully.", helperTemplateCreateType, name))
 	return nil
 }
 

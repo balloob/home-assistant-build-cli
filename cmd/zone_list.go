@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +41,7 @@ func runZoneList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if zoneListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(zones)}, textMode, "")
+		output.PrintOutput(map[string]interface{}{"count": len(zones)}, textMode, "")
 		return nil
 	}
 
@@ -61,10 +61,10 @@ func runZoneList(cmd *cobra.Command, args []string) error {
 				})
 			}
 		}
-		client.PrintOutput(brief, textMode, "")
+		output.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(zones, textMode, "")
+	output.PrintOutput(zones, textMode, "")
 	return nil
 }

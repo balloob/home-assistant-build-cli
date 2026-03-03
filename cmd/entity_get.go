@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +56,7 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	ws, err := getWSClient()
 	if err != nil {
 		// Fall back to just state if we can't get WebSocket connection
-		client.PrintOutput(state, textMode, "")
+		output.PrintOutput(state, textMode, "")
 		return nil
 	}
 	defer ws.Close()
@@ -65,7 +65,7 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	registry, err := ws.EntityRegistryGet(entityID)
 	if err != nil {
 		// Entity might not be in registry, just return state
-		client.PrintOutput(state, textMode, "")
+		output.PrintOutput(state, textMode, "")
 		return nil
 	}
 
@@ -105,6 +105,6 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client.PrintOutput(result, textMode, "")
+	output.PrintOutput(result, textMode, "")
 	return nil
 }

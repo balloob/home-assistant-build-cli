@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ func runAutomationConditionList(cmd *cobra.Command, args []string) error {
 
 	config, ok := result.(map[string]interface{})
 	if !ok {
-		client.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutput([]interface{}{}, textMode, "")
 		return nil
 	}
 
@@ -47,7 +47,7 @@ func runAutomationConditionList(cmd *cobra.Command, args []string) error {
 	if !ok {
 		conditions, ok = config["condition"].([]interface{})
 		if !ok {
-			client.PrintOutput([]interface{}{}, textMode, "")
+			output.PrintOutput([]interface{}{}, textMode, "")
 			return nil
 		}
 	}
@@ -65,6 +65,6 @@ func runAutomationConditionList(cmd *cobra.Command, args []string) error {
 		conditionList[i] = conditionData
 	}
 
-	client.PrintOutput(conditionList, textMode, "")
+	output.PrintOutput(conditionList, textMode, "")
 	return nil
 }

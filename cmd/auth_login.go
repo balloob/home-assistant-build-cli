@@ -10,6 +10,7 @@ import (
 
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
@@ -154,7 +155,7 @@ func loginWithToken(manager *auth.Manager, textMode bool) error {
 		"version":       config["version"],
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Successfully authenticated to %s", locationName))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Successfully authenticated to %s", locationName))
 	return nil
 }
 
@@ -199,6 +200,6 @@ func loginWithOAuth(manager *auth.Manager, textMode bool) error {
 		"version":       config["version"],
 	}
 
-	client.PrintSuccess(result, textMode, fmt.Sprintf("Successfully authenticated to %s", locationName))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Successfully authenticated to %s", locationName))
 	return nil
 }

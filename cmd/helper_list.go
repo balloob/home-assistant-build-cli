@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -92,7 +92,7 @@ func runHelperList(cmd *cobra.Command, args []string) error {
 
 	// Handle count mode
 	if helperListCount {
-		client.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+		output.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
 		return nil
 	}
 
@@ -110,10 +110,10 @@ func runHelperList(cmd *cobra.Command, args []string) error {
 				"name":      item["name"],
 			})
 		}
-		client.PrintOutput(brief, textMode, "")
+		output.PrintOutput(brief, textMode, "")
 		return nil
 	}
 
-	client.PrintOutput(result, textMode, "")
+	output.PrintOutput(result, textMode, "")
 	return nil
 }

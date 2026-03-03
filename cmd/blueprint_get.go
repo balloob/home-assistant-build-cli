@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -56,13 +56,13 @@ func runBlueprintGet(cmd *cobra.Command, args []string) error {
 				"domain": domain,
 				"blueprint": blueprint,
 			}
-			client.PrintOutput(result, textMode, "")
+			output.PrintOutput(result, textMode, "")
 			return nil
 		}
 	}
 
 	// If not found in list format, return the path lookup result directly
-	client.PrintOutput(map[string]interface{}{
+	output.PrintOutput(map[string]interface{}{
 		"path":   path,
 		"domain": domain,
 		"error":  "Blueprint not found",

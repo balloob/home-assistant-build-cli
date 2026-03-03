@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
@@ -87,6 +87,6 @@ func runAutomationTriggerCreate(cmd *cobra.Command, args []string) error {
 		"index":  len(triggers) - 1,
 		"config": triggerConfig,
 	}
-	client.PrintSuccess(resultData, textMode, fmt.Sprintf("Trigger created at index %d.", len(triggers)-1))
+	output.PrintSuccess(resultData, textMode, fmt.Sprintf("Trigger created at index %d.", len(triggers)-1))
 	return nil
 }
