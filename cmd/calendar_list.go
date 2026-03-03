@@ -66,6 +66,12 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	client.PrintOutput(result, textMode, "")
+	// The REST API returns a plain array of events, but the original WebSocket API
+	// returned {"events": [...]}.  Wrap the result to preserve the expected structure.
+	wrapped := map[string]interface{}{
+		"events": result,
+	}
+
+	client.PrintOutput(wrapped, textMode, "")
 	return nil
 }
