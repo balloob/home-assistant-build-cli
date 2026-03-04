@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -48,12 +49,50 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	// Get entity registry
-	registry, err := ws.EntityRegistryList()
-	if err != nil {
-		return err
+	// Fetch registry data, device data, states (and optionally areas)
+	// concurrently — these are independent API calls over the same WS
+	// connection which supports multiple in-flight requests.
+	var (
+		registry []interface{}
+		devices  []interface{}
+		states   []interface{}
+		areas    []interface{}
+
+		registryErr error
+		statesErr   error
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		registry, registryErr = ws.EntityRegistryList()
+	}()
+	go func() {
+		defer wg.Done()
+		devices, _ = ws.DeviceRegistryList()
+	}()
+	go func() {
+		defer wg.Done()
+		states, statesErr = ws.GetStates()
+	}()
+	if entityListFloor != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			areas, _ = ws.AreaRegistryList()
+		}()
+	}
+	wg.Wait()
+
+	if registryErr != nil {
+		return registryErr
+	}
+	if statesErr != nil {
+		return statesErr
 	}
 
+	// Build registry lookup map
 	registryMap := make(map[string]map[string]interface{})
 	for _, e := range registry {
 		if entry, ok := e.(map[string]interface{}); ok {
@@ -63,25 +102,21 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Get device registry for device names and area inheritance
+	// Build device lookup maps
 	deviceMap := make(map[string]string)     // device_id -> display name
 	deviceAreaMap := make(map[string]string) // device_id -> area_id
-	devices, err := ws.DeviceRegistryList()
-	if err == nil {
-		for _, d := range devices {
-			if device, ok := d.(map[string]interface{}); ok {
-				deviceID, _ := device["id"].(string)
-				name, _ := device["name"].(string)
-				nameByUser, _ := device["name_by_user"].(string)
-				if nameByUser != "" {
-					deviceMap[deviceID] = nameByUser
-				} else if name != "" {
-					deviceMap[deviceID] = name
-				}
-				// Capture device area for area/floor filter inheritance
-				if areaID, _ := device["area_id"].(string); areaID != "" {
-					deviceAreaMap[deviceID] = areaID
-				}
+	for _, d := range devices {
+		if device, ok := d.(map[string]interface{}); ok {
+			deviceID, _ := device["id"].(string)
+			name, _ := device["name"].(string)
+			nameByUser, _ := device["name_by_user"].(string)
+			if nameByUser != "" {
+				deviceMap[deviceID] = nameByUser
+			} else if name != "" {
+				deviceMap[deviceID] = name
+			}
+			if areaID, _ := device["area_id"].(string); areaID != "" {
+				deviceAreaMap[deviceID] = areaID
 			}
 		}
 	}
@@ -90,24 +125,15 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 	var areaFloorMap map[string]string
 	if entityListFloor != "" {
 		areaFloorMap = make(map[string]string)
-		areas, err := ws.AreaRegistryList()
-		if err == nil {
-			for _, a := range areas {
-				if area, ok := a.(map[string]interface{}); ok {
-					areaID, _ := area["area_id"].(string)
-					floorID, _ := area["floor_id"].(string)
-					if areaID != "" {
-						areaFloorMap[areaID] = floorID
-					}
+		for _, a := range areas {
+			if area, ok := a.(map[string]interface{}); ok {
+				areaID, _ := area["area_id"].(string)
+				floorID, _ := area["floor_id"].(string)
+				if areaID != "" {
+					areaFloorMap[areaID] = floorID
 				}
 			}
 		}
-	}
-
-	// Get states
-	states, err := ws.GetStates()
-	if err != nil {
-		return err
 	}
 
 	var entities []map[string]interface{}
