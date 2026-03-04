@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -29,15 +26,9 @@ func runDeviceDelete(cmd *cobra.Command, args []string) error {
 	deviceID := args[0]
 	textMode := getTextMode()
 
-	if !deviceDeleteForce && !textMode {
-		fmt.Printf("Delete device %s? This will also remove all its entities. [y/N]: ", deviceID)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Cancelled.")
-			return nil
-		}
+	if !confirmAction(deviceDeleteForce, textMode, fmt.Sprintf("Delete device %s? This will also remove all its entities.", deviceID)) {
+		fmt.Println("Cancelled.")
+		return nil
 	}
 
 	ws, err := getWSClient()

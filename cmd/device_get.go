@@ -27,12 +27,9 @@ func init() {
 }
 
 func runDeviceGet(cmd *cobra.Command, args []string) error {
-	deviceID := deviceGetID
-	if deviceID == "" && len(args) > 0 {
-		deviceID = args[0]
-	}
-	if deviceID == "" {
-		return fmt.Errorf("device ID is required (use --device flag or positional argument)")
+	deviceID, err := resolveArg(deviceGetID, args, 0, "device ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

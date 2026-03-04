@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -24,12 +22,9 @@ func init() {
 }
 
 func runBlueprintGet(cmd *cobra.Command, args []string) error {
-	path := blueprintGetPath
-	if path == "" && len(args) > 0 {
-		path = args[0]
-	}
-	if path == "" {
-		return fmt.Errorf("blueprint path is required (use --path flag or positional argument)")
+	path, err := resolveArg(blueprintGetPath, args, 0, "blueprint path")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 	domain, _ := cmd.Flags().GetString("domain")

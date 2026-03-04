@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/home-assistant/hab/output"
@@ -33,15 +31,9 @@ func runScriptDelete(cmd *cobra.Command, args []string) error {
 
 	textMode := getTextMode()
 
-	if !scriptDeleteForce && !textMode {
-		fmt.Printf("Delete script %s? [y/N]: ", scriptID)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Cancelled.")
-			return nil
-		}
+	if !confirmAction(scriptDeleteForce, textMode, fmt.Sprintf("Delete script %s?", scriptID)) {
+		fmt.Println("Cancelled.")
+		return nil
 	}
 
 	restClient, err := getRESTClient()

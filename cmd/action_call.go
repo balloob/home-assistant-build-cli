@@ -35,12 +35,9 @@ func init() {
 }
 
 func runActionCall(cmd *cobra.Command, args []string) error {
-	actionName := actionCallName
-	if actionName == "" && len(args) > 0 {
-		actionName = args[0]
-	}
-	if actionName == "" {
-		return fmt.Errorf("action name is required (use --action flag or positional argument)")
+	actionName, err := resolveArg(actionCallName, args, 0, "action name")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

@@ -30,12 +30,9 @@ func init() {
 }
 
 func runScriptRun(cmd *cobra.Command, args []string) error {
-	scriptID := scriptRunID
-	if scriptID == "" && len(args) > 0 {
-		scriptID = args[0]
-	}
-	if scriptID == "" {
-		return fmt.Errorf("script ID is required (use --script flag or positional argument)")
+	scriptID, err := resolveArg(scriptRunID, args, 0, "script ID")
+	if err != nil {
+		return err
 	}
 	if !strings.HasPrefix(scriptID, "script.") {
 		scriptID = "script." + scriptID

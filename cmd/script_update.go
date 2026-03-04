@@ -4,15 +4,10 @@ import (
 	"strings"
 
 	"github.com/home-assistant/hab/output"
-	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
 
-var (
-	scriptUpdateData   string
-	scriptUpdateFile   string
-	scriptUpdateFormat string
-)
+var scriptUpdateInput InputFlags
 
 var scriptUpdateCmd = &cobra.Command{
 	Use:     "update <script_id>",
@@ -25,9 +20,7 @@ var scriptUpdateCmd = &cobra.Command{
 
 func init() {
 	scriptCmd.AddCommand(scriptUpdateCmd)
-	scriptUpdateCmd.Flags().StringVarP(&scriptUpdateData, "data", "d", "", "Updated configuration as JSON")
-	scriptUpdateCmd.Flags().StringVarP(&scriptUpdateFile, "file", "f", "", "Path to config file")
-	scriptUpdateCmd.Flags().StringVar(&scriptUpdateFormat, "format", "", "Input format (json, yaml)")
+	scriptUpdateInput.Register(scriptUpdateCmd)
 }
 
 func runScriptUpdate(cmd *cobra.Command, args []string) error {
@@ -37,7 +30,7 @@ func runScriptUpdate(cmd *cobra.Command, args []string) error {
 
 	textMode := getTextMode()
 
-	config, err := input.ParseInput(scriptUpdateData, scriptUpdateFile, scriptUpdateFormat)
+	config, err := scriptUpdateInput.Parse()
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -30,15 +27,9 @@ func runDashboardDelete(cmd *cobra.Command, args []string) error {
 	dashboardID := args[0]
 	textMode := getTextMode()
 
-	if !dashboardDeleteForce && !textMode {
-		fmt.Printf("Delete dashboard %s? [y/N]: ", dashboardID)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Cancelled.")
-			return nil
-		}
+	if !confirmAction(dashboardDeleteForce, textMode, fmt.Sprintf("Delete dashboard %s?", dashboardID)) {
+		fmt.Println("Cancelled.")
+		return nil
 	}
 
 	ws, err := getWSClient()

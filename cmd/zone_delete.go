@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -30,24 +27,15 @@ func init() {
 }
 
 func runZoneDelete(cmd *cobra.Command, args []string) error {
-	zoneID := zoneDeleteID
-	if zoneID == "" && len(args) > 0 {
-		zoneID = args[0]
-	}
-	if zoneID == "" {
-		return fmt.Errorf("zone ID is required (use --zone flag or positional argument)")
+	zoneID, err := resolveArg(zoneDeleteID, args, 0, "zone ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 
-	if !zoneDeleteForce && !textMode {
-		fmt.Printf("Delete zone %s? [y/N]: ", zoneID)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Cancelled.")
-			return nil
-		}
+	if !confirmAction(zoneDeleteForce, textMode, fmt.Sprintf("Delete zone %s?", zoneID)) {
+		fmt.Println("Cancelled.")
+		return nil
 	}
 
 	ws, err := getWSClient()

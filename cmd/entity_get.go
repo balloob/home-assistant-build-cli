@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -32,12 +30,9 @@ func init() {
 }
 
 func runEntityGet(cmd *cobra.Command, args []string) error {
-	entityID := entityGetID
-	if entityID == "" && len(args) > 0 {
-		entityID = args[0]
-	}
-	if entityID == "" {
-		return fmt.Errorf("entity ID is required (use --entity flag or positional argument)")
+	entityID, err := resolveArg(entityGetID, args, 0, "entity ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

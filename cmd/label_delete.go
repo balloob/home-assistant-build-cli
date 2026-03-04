@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -29,15 +26,9 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 	labelID := args[0]
 	textMode := getTextMode()
 
-	if !labelDeleteForce && !textMode {
-		fmt.Printf("Delete label %s? [y/N]: ", labelID)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Cancelled.")
-			return nil
-		}
+	if !confirmAction(labelDeleteForce, textMode, fmt.Sprintf("Delete label %s?", labelID)) {
+		fmt.Println("Cancelled.")
+		return nil
 	}
 
 	ws, err := getWSClient()

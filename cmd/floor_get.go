@@ -27,12 +27,9 @@ func init() {
 }
 
 func runFloorGet(cmd *cobra.Command, args []string) error {
-	floorID := floorGetID
-	if floorID == "" && len(args) > 0 {
-		floorID = args[0]
-	}
-	if floorID == "" {
-		return fmt.Errorf("floor ID is required (use --floor flag or positional argument)")
+	floorID, err := resolveArg(floorGetID, args, 0, "floor ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

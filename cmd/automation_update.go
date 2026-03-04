@@ -2,15 +2,10 @@ package cmd
 
 import (
 	"github.com/home-assistant/hab/output"
-	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
 
-var (
-	automationUpdateData   string
-	automationUpdateFile   string
-	automationUpdateFormat string
-)
+var automationUpdateInput InputFlags
 
 var automationUpdateCmd = &cobra.Command{
 	Use:     "update <automation_id>",
@@ -23,16 +18,14 @@ var automationUpdateCmd = &cobra.Command{
 
 func init() {
 	automationCmd.AddCommand(automationUpdateCmd)
-	automationUpdateCmd.Flags().StringVarP(&automationUpdateData, "data", "d", "", "Updated configuration as JSON")
-	automationUpdateCmd.Flags().StringVarP(&automationUpdateFile, "file", "f", "", "Path to config file")
-	automationUpdateCmd.Flags().StringVar(&automationUpdateFormat, "format", "", "Input format (json, yaml)")
+	automationUpdateInput.Register(automationUpdateCmd)
 }
 
 func runAutomationUpdate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
 	textMode := getTextMode()
 
-	config, err := input.ParseInput(automationUpdateData, automationUpdateFile, automationUpdateFormat)
+	config, err := automationUpdateInput.Parse()
 	if err != nil {
 		return err
 	}

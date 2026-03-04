@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 
 	"github.com/home-assistant/hab/client"
-	"github.com/home-assistant/hab/input"
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -259,26 +255,24 @@ func makeSubComponentGet(cfg SubComponentConfig, parentID *string, itemIndex *in
 // --- create ---
 
 func registerSubComponentCreate(parentCmd *cobra.Command, cfg SubComponentConfig) {
-	var data, file, format string
+	var inputFlags InputFlags
 
 	createCmd := &cobra.Command{
 		Use:   fmt.Sprintf("create <%s_id>", cfg.ParentName),
 		Short: fmt.Sprintf("Create a new %s", cfg.ComponentName),
 		Long:  fmt.Sprintf("Create a new %s in %s.", cfg.ComponentName, addArticle(cfg.ParentName)),
 		Args:  cobra.ExactArgs(1),
-		RunE:  makeSubComponentCreate(cfg, &data, &file, &format),
+		RunE:  makeSubComponentCreate(cfg, &inputFlags),
 	}
-	createCmd.Flags().StringVarP(&data, "data", "d", "", fmt.Sprintf("%s configuration as JSON", capitalize(cfg.ComponentName)))
-	createCmd.Flags().StringVarP(&file, "file", "f", "", "Path to config file")
-	createCmd.Flags().StringVar(&format, "format", "", "Input format (json, yaml)")
+	inputFlags.Register(createCmd)
 	parentCmd.AddCommand(createCmd)
 }
 
-func makeSubComponentCreate(cfg SubComponentConfig, dataFlag, fileFlag, formatFlag *string) func(*cobra.Command, []string) error {
+func makeSubComponentCreate(cfg SubComponentConfig, flags *InputFlags) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		textMode := getTextMode()
 
-		itemConfig, err := input.ParseInput(*dataFlag, *fileFlag, *formatFlag)
+		itemConfig, err := flags.Parse()
 		if err != nil {
 			return err
 		}
@@ -318,22 +312,20 @@ func makeSubComponentCreate(cfg SubComponentConfig, dataFlag, fileFlag, formatFl
 // --- update ---
 
 func registerSubComponentUpdate(parentCmd *cobra.Command, cfg SubComponentConfig) {
-	var data, file, format string
+	var inputFlags InputFlags
 
 	updateCmd := &cobra.Command{
 		Use:   fmt.Sprintf("update <%s_id> <%s_index>", cfg.ParentName, cfg.ComponentName),
 		Short: fmt.Sprintf("Update %s", addArticle(cfg.ComponentName)),
 		Long:  fmt.Sprintf("Update %s in %s by index.", addArticle(cfg.ComponentName), addArticle(cfg.ParentName)),
 		Args:  cobra.ExactArgs(2),
-		RunE:  makeSubComponentUpdate(cfg, &data, &file, &format),
+		RunE:  makeSubComponentUpdate(cfg, &inputFlags),
 	}
-	updateCmd.Flags().StringVarP(&data, "data", "d", "", fmt.Sprintf("%s configuration as JSON (replaces entire %s)", capitalize(cfg.ComponentName), cfg.ComponentName))
-	updateCmd.Flags().StringVarP(&file, "file", "f", "", "Path to config file")
-	updateCmd.Flags().StringVar(&format, "format", "", "Input format (json, yaml)")
+	inputFlags.Register(updateCmd)
 	parentCmd.AddCommand(updateCmd)
 }
 
-func makeSubComponentUpdate(cfg SubComponentConfig, dataFlag, fileFlag, formatFlag *string) func(*cobra.Command, []string) error {
+func makeSubComponentUpdate(cfg SubComponentConfig, flags *InputFlags) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		idx, err := strconv.Atoi(args[1])
 		if err != nil {
@@ -342,7 +334,7 @@ func makeSubComponentUpdate(cfg SubComponentConfig, dataFlag, fileFlag, formatFl
 
 		textMode := getTextMode()
 
-		newItem, err := input.ParseInput(*dataFlag, *fileFlag, *formatFlag)
+		newItem, err := flags.Parse()
 		if err != nil {
 			return err
 		}
@@ -423,14 +415,8 @@ func makeSubComponentDelete(cfg SubComponentConfig, force *bool) func(*cobra.Com
 			return fmt.Errorf("%s index %d out of range (0-%d)", cfg.ComponentName, idx, len(items)-1)
 		}
 
-		if !*force && !textMode {
-			fmt.Printf("Are you sure you want to delete %s at index %d? [y/N]: ", cfg.ComponentName, idx)
-			reader := bufio.NewReader(os.Stdin)
-			response, _ := reader.ReadString('\n')
-			response = strings.TrimSpace(strings.ToLower(response))
-			if response != "y" && response != "yes" {
-				return fmt.Errorf("deletion cancelled")
-			}
+		if !confirmAction(*force, textMode, fmt.Sprintf("Are you sure you want to delete %s at index %d?", cfg.ComponentName, idx)) {
+			return fmt.Errorf("deletion cancelled")
 		}
 
 		items = append(items[:idx], items[idx+1:]...)

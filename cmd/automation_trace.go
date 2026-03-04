@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/home-assistant/hab/output"
@@ -29,12 +28,9 @@ func init() {
 }
 
 func runAutomationTrace(cmd *cobra.Command, args []string) error {
-	automationID := automationTraceID
-	if automationID == "" && len(args) > 0 {
-		automationID = args[0]
-	}
-	if automationID == "" {
-		return fmt.Errorf("automation ID is required (use --automation flag or positional argument)")
+	automationID, err := resolveArg(automationTraceID, args, 0, "automation ID")
+	if err != nil {
+		return err
 	}
 	if !strings.HasPrefix(automationID, "automation.") {
 		automationID = "automation." + automationID
