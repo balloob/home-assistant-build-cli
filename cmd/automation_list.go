@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/output"
@@ -58,7 +59,8 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	var result []map[string]interface{}
+	// First pass: collect all automation items from states.
+	var items []map[string]interface{}
 	for _, s := range states {
 		state, ok := s.(map[string]interface{})
 		if !ok {
@@ -77,36 +79,75 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 			"state":          state["state"],
 			"last_triggered": attrs["last_triggered"],
 		}
+		items = append(items, item)
+	}
 
-		var blueprintPath string
+	// If extended mode, fetch all automation configs concurrently.
+	if extended && restClient != nil {
+		const maxConcurrent = 10
+		sem := make(chan struct{}, maxConcurrent)
+		var wg sync.WaitGroup
 
-		// Fetch extended info if requested
-		if extended && restClient != nil {
+		// Store per-index results so we can merge without locking the items slice.
+		type extendedInfo struct {
+			description string
+			blueprint   string
+		}
+		extInfos := make([]extendedInfo, len(items))
+
+		for i, item := range items {
+			entityID, _ := item["entity_id"].(string)
 			automationID := strings.TrimPrefix(entityID, "automation.")
-			config, err := restClient.Get("config/automation/config/" + automationID)
-			if err == nil {
-				if configMap, ok := config.(map[string]interface{}); ok {
-					// Add description (capped)
-					if desc, ok := configMap["description"].(string); ok && desc != "" {
-						if len(desc) > maxDescriptionLength {
-							desc = desc[:maxDescriptionLength] + "..."
-						}
-						item["description"] = desc
+
+			wg.Add(1)
+			go func(idx int, autoID string) {
+				defer wg.Done()
+				sem <- struct{}{}        // acquire
+				defer func() { <-sem }() // release
+
+				config, err := restClient.Get("config/automation/config/" + autoID)
+				if err != nil {
+					return
+				}
+				configMap, ok := config.(map[string]interface{})
+				if !ok {
+					return
+				}
+
+				var info extendedInfo
+				if desc, ok := configMap["description"].(string); ok && desc != "" {
+					if len(desc) > maxDescriptionLength {
+						desc = desc[:maxDescriptionLength] + "..."
 					}
-					// Add blueprint info
-					if blueprint, ok := configMap["use_blueprint"].(map[string]interface{}); ok {
-						if path, ok := blueprint["path"].(string); ok {
-							item["blueprint"] = path
-							blueprintPath = path
-						}
+					info.description = desc
+				}
+				if blueprint, ok := configMap["use_blueprint"].(map[string]interface{}); ok {
+					if path, ok := blueprint["path"].(string); ok {
+						info.blueprint = path
 					}
 				}
+
+				extInfos[idx] = info
+			}(i, automationID)
+		}
+		wg.Wait()
+
+		// Merge extended info back into items.
+		for i, info := range extInfos {
+			if info.description != "" {
+				items[i]["description"] = info.description
+			}
+			if info.blueprint != "" {
+				items[i]["blueprint"] = info.blueprint
 			}
 		}
+	}
 
-		// Apply blueprint filter
+	// Apply blueprint filter and build final result.
+	var result []map[string]interface{}
+	for _, item := range items {
 		if blueprintFilter != "" {
-			// Filter by specific blueprint path, or use "*" to match any blueprint
+			blueprintPath, _ := item["blueprint"].(string)
 			if blueprintFilter == "*" {
 				if blueprintPath == "" {
 					continue
@@ -115,7 +156,6 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 				continue
 			}
 		}
-
 		result = append(result, item)
 	}
 

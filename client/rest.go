@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -17,13 +18,15 @@ const (
 	DefaultTimeout = 30 * time.Second
 )
 
-// RestClient is an HTTP client for the Home Assistant REST API
+// RestClient is an HTTP client for the Home Assistant REST API.
+// After initialization, concurrent Get/Post/Put/Delete calls are safe.
 type RestClient struct {
 	BaseURL   string
 	Token     string
 	Timeout   time.Duration
 	VerifySSL bool
 	client    *resty.Client
+	clientMu  sync.Once
 }
 
 // NewRestClient creates a new REST client
@@ -47,7 +50,7 @@ func NewRestClientWithOptions(baseURL, token string, timeout time.Duration, veri
 }
 
 func (c *RestClient) getClient() *resty.Client {
-	if c.client == nil {
+	c.clientMu.Do(func() {
 		c.client = resty.New()
 		c.client.SetTimeout(c.Timeout)
 		c.client.SetBaseURL(c.BaseURL)
@@ -70,7 +73,7 @@ func (c *RestClient) getClient() *resty.Client {
 			}).Debug("REST response")
 			return nil
 		})
-	}
+	})
 	return c.client
 }
 
