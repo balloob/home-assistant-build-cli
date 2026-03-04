@@ -4,6 +4,7 @@ package client
 var (
 	_ WebSocketAPI = (*WebSocketClient)(nil)
 	_ RestAPI      = (*RestClient)(nil)
+	_ ESPHomeAPI   = (*ESPHomeClient)(nil)
 )
 
 // Compile-time assertions that WebSocketClient satisfies each sub-interface.
@@ -151,6 +152,17 @@ type WebSocketAPI interface {
 	SearchAPI
 	HelperAPI
 	ConfigAPI
+}
+
+// ESPHomeAPI defines the interface for operations against the ESPHome Dashboard.
+// This enables unit-testing ESPHome command handlers with mock implementations.
+type ESPHomeAPI interface {
+	GetDevices() (*ESPHomeDeviceList, error)
+	GetPing() (map[string]*bool, error)
+	GetVersion() (string, error)
+	ReadConfig(configuration string) (string, error)
+	WriteConfig(configuration, content string) error
+	StreamCommand(path string, spawnMsg map[string]interface{}, callback func(ESPHomeStreamEvent)) (int, error)
 }
 
 // RestAPI defines the interface for REST operations against Home Assistant.

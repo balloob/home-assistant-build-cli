@@ -23,8 +23,8 @@ func init() {
 
 // getESPHomeClient is the shared helper used by all esphome subcommands.
 // It resolves the dashboard URL (via HAB_ESPHOME_URL or ingress auto-discovery)
-// and returns a configured ESPHomeClient.
-func getESPHomeClient() (*client.ESPHomeClient, error) {
+// and returns a configured ESPHomeClient implementing client.ESPHomeAPI.
+func getESPHomeClient() (client.ESPHomeAPI, error) {
 	creds, err := getCredentials()
 	if err != nil || creds == nil {
 		return nil, err
@@ -43,7 +43,7 @@ func decodeESPHomeAnsi(s string) string {
 
 // streamToOutput is a shared helper that handles streaming ESPHome WebSocket
 // commands (build, logs, validate, upload, run) with proper text/JSON output.
-func streamToOutput(esClient *client.ESPHomeClient, wsPath string, spawnMsg map[string]interface{}, textMode bool) error {
+func streamToOutput(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[string]interface{}, textMode bool) error {
 	if textMode {
 		exitCode, err := esClient.StreamCommand(wsPath, spawnMsg, func(event client.ESPHomeStreamEvent) {
 			switch event.Event {
