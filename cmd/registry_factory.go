@@ -35,9 +35,10 @@ type RegistryFlagDef struct {
 
 // RegistryFilterDef defines a list filter flag.
 type RegistryFilterDef struct {
-	FlagName string // flag name, e.g. "area-id", "floor"
-	FieldKey string // field to match in the result, e.g. "area_id", "floor_id"
-	Usage    string // flag help text
+	FlagName  string // flag name, e.g. "area-id", "floor"
+	Shorthand string // optional one-letter shorthand, e.g. "f"
+	FieldKey  string // field to match in the result, e.g. "area_id", "floor_id"
+	Usage     string // flag help text
 }
 
 // RegistryCRUDConfig holds all configuration needed to generate CRUD
@@ -191,7 +192,7 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 		f := &cfg.ListFilters[i]
 		val := new(string)
 		filterValues[f.FlagName] = val
-		listCmd.Flags().StringVar(val, f.FlagName, "", f.Usage)
+		listCmd.Flags().StringVarP(val, f.FlagName, f.Shorthand, "", f.Usage)
 	}
 
 	cfg.ParentCmd.AddCommand(listCmd)

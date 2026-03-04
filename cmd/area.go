@@ -23,7 +23,7 @@ func init() {
 		IDFlagName:   "area",
 		ListFilters: []RegistryFilterDef{
 			{FlagName: "area-id", FieldKey: "area_id", Usage: "Filter by area ID"},
-			{FlagName: "floor", FieldKey: "floor_id", Usage: "Filter by floor ID"},
+			{FlagName: "floor", Shorthand: "f", FieldKey: "floor_id", Usage: "Filter by floor ID"},
 		},
 		BriefFields: []string{"area_id", "name"},
 		CreateFlags: []RegistryFlagDef{
