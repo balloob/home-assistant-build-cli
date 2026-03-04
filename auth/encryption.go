@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 // getMachineID returns a machine-specific identifier for key derivation
@@ -99,11 +100,22 @@ func getHardwareUUID() string {
 	return ""
 }
 
-// deriveKey derives an encryption key from machine-specific data
+// deriveKey derives an encryption key from machine-specific data.
+// The result is cached after the first call because the underlying
+// getMachineID() may spawn subprocesses (ioreg on macOS, reg query on
+// Windows) which are expensive to repeat within a single CLI invocation.
+var (
+	derivedKey     []byte
+	derivedKeyOnce sync.Once
+)
+
 func deriveKey() []byte {
-	machineID := getMachineID()
-	hash := sha256.Sum256([]byte(machineID))
-	return hash[:]
+	derivedKeyOnce.Do(func() {
+		machineID := getMachineID()
+		hash := sha256.Sum256([]byte(machineID))
+		derivedKey = hash[:]
+	})
+	return derivedKey
 }
 
 // encrypt encrypts data using AES-GCM
