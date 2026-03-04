@@ -107,7 +107,6 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 | `blueprint` | Manage blueprints |
 | `system` | System operations |
 | `device` | Device management |
-| `group` | Manage entity groups |
 | `thread` | Manage Thread credentials |
 | `esphome` | Manage ESPHome devices |
 | `overview` | Show an overview of the HA instance |
