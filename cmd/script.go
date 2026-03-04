@@ -33,6 +33,15 @@ func init() {
 		&cobra.Group{ID: scriptGroupSubcommands, Title: "Subcommands:"},
 	)
 
+	RegisterConfigResourceCRUD(ConfigResourceConfig{
+		ParentCmd:    scriptCmd,
+		ResourceName: "script",
+		APIPrefix:    "config/script/config/",
+		IDFlagName:   "script",
+		ResolveID:    resolveScriptConfigID,
+		GroupID:      scriptGroupCommands,
+	})
+
 	RegisterSubComponentCRUD(SubComponentConfig{
 		ParentCmd:       scriptCmd,
 		ParentName:      "script",
