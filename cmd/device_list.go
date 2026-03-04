@@ -11,10 +11,9 @@ var (
 	deviceListID    string
 	deviceListArea  string
 	deviceListFloor string
-	deviceListCount bool
-	deviceListBrief bool
-	deviceListLimit int
 )
+
+var deviceListFlags *ListFlags
 
 var deviceListCmd = &cobra.Command{
 	Use:   "list",
@@ -28,9 +27,7 @@ func init() {
 	deviceListCmd.Flags().StringVar(&deviceListID, "device-id", "", "Filter by device ID")
 	deviceListCmd.Flags().StringVarP(&deviceListArea, "area", "a", "", "Filter by area ID")
 	deviceListCmd.Flags().StringVarP(&deviceListFloor, "floor", "f", "", "Filter by floor ID (includes all areas on that floor)")
-	deviceListCmd.Flags().BoolVarP(&deviceListCount, "count", "c", false, "Return only the count of items")
-	deviceListCmd.Flags().BoolVarP(&deviceListBrief, "brief", "b", false, "Return minimal fields (id and name only)")
-	deviceListCmd.Flags().IntVarP(&deviceListLimit, "limit", "n", 0, "Limit results to N items")
+	deviceListFlags = RegisterListFlags(deviceListCmd, "id")
 }
 
 func runDeviceList(cmd *cobra.Command, args []string) error {
@@ -107,39 +104,11 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	// Handle count mode
-	if deviceListCount {
-		if textMode {
-			fmt.Printf("Count: %d\n", len(result))
-		} else {
-			output.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
-		}
+	if deviceListFlags.RenderCount(len(result), textMode) {
 		return nil
 	}
-
-	// Apply limit
-	if deviceListLimit > 0 && len(result) > deviceListLimit {
-		result = result[:deviceListLimit]
-	}
-
-	// Handle brief mode
-	if deviceListBrief {
-		if textMode {
-			for _, item := range result {
-				name, _ := item["name"].(string)
-				id, _ := item["id"].(string)
-				fmt.Printf("%s (%s)\n", name, id)
-			}
-		} else {
-			var brief []map[string]interface{}
-			for _, item := range result {
-				brief = append(brief, map[string]interface{}{
-					"id":   item["id"],
-					"name": item["name"],
-				})
-			}
-			output.PrintOutput(brief, false, "")
-		}
+	result = deviceListFlags.ApplyLimitMap(result)
+	if deviceListFlags.RenderBriefMap(result, textMode, "id", "name") {
 		return nil
 	}
 

@@ -16,10 +16,9 @@ var (
 	entityListLabel       string
 	entityListDevice      string
 	entityListDeviceClass string
-	entityListCount       bool
-	entityListBrief       bool
-	entityListLimit       int
 )
+
+var entityListFlags *ListFlags
 
 var entityListCmd = &cobra.Command{
 	Use:   "list",
@@ -37,9 +36,7 @@ func init() {
 	entityListCmd.Flags().StringVarP(&entityListLabel, "label", "l", "", "Filter by label ID")
 	entityListCmd.Flags().StringVar(&entityListDevice, "device", "", "Filter by device ID")
 	entityListCmd.Flags().StringVar(&entityListDeviceClass, "device-class", "", "Filter by device class (e.g., temperature, motion, door)")
-	entityListCmd.Flags().BoolVarP(&entityListCount, "count", "c", false, "Return only the count of items")
-	entityListCmd.Flags().BoolVarP(&entityListBrief, "brief", "b", false, "Return minimal fields (entity_id and name only)")
-	entityListCmd.Flags().IntVarP(&entityListLimit, "limit", "n", 0, "Limit results to N items")
+	entityListFlags = RegisterListFlags(entityListCmd, "entity_id")
 }
 
 func runEntityList(cmd *cobra.Command, args []string) error {
@@ -267,23 +264,13 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	// Handle count mode
-	if entityListCount {
-		if textMode {
-			fmt.Printf("Count: %d\n", len(entities))
-		} else {
-			output.PrintOutput(map[string]interface{}{"count": len(entities)}, false, "")
-		}
+	if entityListFlags.RenderCount(len(entities), textMode) {
 		return nil
 	}
+	entities = entityListFlags.ApplyLimitMap(entities)
 
-	// Apply limit
-	if entityListLimit > 0 && len(entities) > entityListLimit {
-		entities = entities[:entityListLimit]
-	}
-
-	// Handle brief mode
-	if entityListBrief {
+	// Handle brief mode — custom text rendering for name==entityID fallback
+	if entityListFlags.Brief {
 		if textMode {
 			for _, item := range entities {
 				entityID, _ := item["entity_id"].(string)

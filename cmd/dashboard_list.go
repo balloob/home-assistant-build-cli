@@ -16,17 +16,11 @@ var dashboardListCmd = &cobra.Command{
 	RunE:    runDashboardList,
 }
 
-var (
-	dashboardListCount bool
-	dashboardListBrief bool
-	dashboardListLimit int
-)
+var dashboardListFlags *ListFlags
 
 func init() {
 	dashboardCmd.AddCommand(dashboardListCmd)
-	dashboardListCmd.Flags().BoolVarP(&dashboardListCount, "count", "c", false, "Return only the count of items")
-	dashboardListCmd.Flags().BoolVarP(&dashboardListBrief, "brief", "b", false, "Return minimal fields (url_path and title only)")
-	dashboardListCmd.Flags().IntVarP(&dashboardListLimit, "limit", "n", 0, "Limit results to N items")
+	dashboardListFlags = RegisterListFlags(dashboardListCmd, "url_path")
 }
 
 func runDashboardList(cmd *cobra.Command, args []string) error {
@@ -50,23 +44,13 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Handle count mode
-	if dashboardListCount {
-		if textMode {
-			fmt.Printf("Count: %d\n", len(dashboards))
-		} else {
-			output.PrintOutput(map[string]interface{}{"count": len(dashboards)}, false, "")
-		}
+	if dashboardListFlags.RenderCount(len(dashboards), textMode) {
 		return nil
 	}
+	dashboards = dashboardListFlags.ApplyLimit(dashboards)
 
-	// Apply limit
-	if dashboardListLimit > 0 && len(dashboards) > dashboardListLimit {
-		dashboards = dashboards[:dashboardListLimit]
-	}
-
-	// Handle brief mode
-	if dashboardListBrief {
+	// Handle brief mode — custom text rendering for title=="" fallback
+	if dashboardListFlags.Brief {
 		if textMode {
 			for _, d := range dashboards {
 				if dashboard, ok := d.(map[string]interface{}); ok {
