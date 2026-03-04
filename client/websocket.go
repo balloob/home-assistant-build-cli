@@ -336,6 +336,24 @@ func (c *WebSocketClient) sendMapCommand(cmdType string, params map[string]inter
 	return nil, fmt.Errorf("unexpected response type")
 }
 
+// mergeAndSend builds a params map from a base key/value pair, merges in extra
+// params, and sends the command expecting a map result.  This is the common
+// pattern used by registry create/update methods.
+func (c *WebSocketClient) mergeAndSend(cmdType, baseKey string, baseVal interface{}, extra map[string]interface{}) (map[string]interface{}, error) {
+	p := map[string]interface{}{baseKey: baseVal}
+	for k, v := range extra {
+		p[k] = v
+	}
+	return c.sendMapCommand(cmdType, p)
+}
+
+// sendDelete sends a delete command with a single ID field and discards the
+// result.  This is the common pattern used by registry delete methods.
+func (c *WebSocketClient) sendDelete(cmdType, idField string, idVal interface{}) error {
+	_, err := c.SendCommand(cmdType, map[string]interface{}{idField: idVal})
+	return err
+}
+
 // High-level API methods
 
 // GetStates returns all entity states
@@ -386,28 +404,17 @@ func (c *WebSocketClient) AreaRegistryList() ([]interface{}, error) {
 
 // AreaRegistryCreate creates a new area
 func (c *WebSocketClient) AreaRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"name": name}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/area_registry/create", p)
+	return c.mergeAndSend("config/area_registry/create", "name", name, params)
 }
 
 // AreaRegistryUpdate updates an area
 func (c *WebSocketClient) AreaRegistryUpdate(areaID string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"area_id": areaID}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/area_registry/update", p)
+	return c.mergeAndSend("config/area_registry/update", "area_id", areaID, params)
 }
 
 // AreaRegistryDelete deletes an area
 func (c *WebSocketClient) AreaRegistryDelete(areaID string) error {
-	_, err := c.SendCommand("config/area_registry/delete", map[string]interface{}{
-		"area_id": areaID,
-	})
-	return err
+	return c.sendDelete("config/area_registry/delete", "area_id", areaID)
 }
 
 // FloorRegistryList returns all floors
@@ -417,28 +424,17 @@ func (c *WebSocketClient) FloorRegistryList() ([]interface{}, error) {
 
 // FloorRegistryCreate creates a new floor
 func (c *WebSocketClient) FloorRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"name": name}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/floor_registry/create", p)
+	return c.mergeAndSend("config/floor_registry/create", "name", name, params)
 }
 
 // FloorRegistryUpdate updates a floor
 func (c *WebSocketClient) FloorRegistryUpdate(floorID string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"floor_id": floorID}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/floor_registry/update", p)
+	return c.mergeAndSend("config/floor_registry/update", "floor_id", floorID, params)
 }
 
 // FloorRegistryDelete deletes a floor
 func (c *WebSocketClient) FloorRegistryDelete(floorID string) error {
-	_, err := c.SendCommand("config/floor_registry/delete", map[string]interface{}{
-		"floor_id": floorID,
-	})
-	return err
+	return c.sendDelete("config/floor_registry/delete", "floor_id", floorID)
 }
 
 // LabelRegistryList returns all labels
@@ -448,28 +444,17 @@ func (c *WebSocketClient) LabelRegistryList() ([]interface{}, error) {
 
 // LabelRegistryCreate creates a new label
 func (c *WebSocketClient) LabelRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"name": name}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/label_registry/create", p)
+	return c.mergeAndSend("config/label_registry/create", "name", name, params)
 }
 
 // LabelRegistryUpdate updates a label
 func (c *WebSocketClient) LabelRegistryUpdate(labelID string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"label_id": labelID}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/label_registry/update", p)
+	return c.mergeAndSend("config/label_registry/update", "label_id", labelID, params)
 }
 
 // LabelRegistryDelete deletes a label
 func (c *WebSocketClient) LabelRegistryDelete(labelID string) error {
-	_, err := c.SendCommand("config/label_registry/delete", map[string]interface{}{
-		"label_id": labelID,
-	})
-	return err
+	return c.sendDelete("config/label_registry/delete", "label_id", labelID)
 }
 
 // DeviceRegistryList returns all devices
@@ -479,11 +464,7 @@ func (c *WebSocketClient) DeviceRegistryList() ([]interface{}, error) {
 
 // DeviceRegistryUpdate updates a device
 func (c *WebSocketClient) DeviceRegistryUpdate(deviceID string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"device_id": deviceID}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/device_registry/update", p)
+	return c.mergeAndSend("config/device_registry/update", "device_id", deviceID, params)
 }
 
 // EntityRegistryList returns all entities
@@ -500,11 +481,7 @@ func (c *WebSocketClient) EntityRegistryGet(entityID string) (map[string]interfa
 
 // EntityRegistryUpdate updates an entity
 func (c *WebSocketClient) EntityRegistryUpdate(entityID string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"entity_id": entityID}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("config/entity_registry/update", p)
+	return c.mergeAndSend("config/entity_registry/update", "entity_id", entityID, params)
 }
 
 // ZoneList returns all zones
@@ -528,19 +505,12 @@ func (c *WebSocketClient) ZoneCreate(name string, latitude, longitude, radius fl
 
 // ZoneUpdate updates a zone
 func (c *WebSocketClient) ZoneUpdate(zoneID string, params map[string]interface{}) (map[string]interface{}, error) {
-	p := map[string]interface{}{"zone_id": zoneID}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand("zone/update", p)
+	return c.mergeAndSend("zone/update", "zone_id", zoneID, params)
 }
 
 // ZoneDelete deletes a zone
 func (c *WebSocketClient) ZoneDelete(zoneID string) error {
-	_, err := c.SendCommand("zone/delete", map[string]interface{}{
-		"zone_id": zoneID,
-	})
-	return err
+	return c.sendDelete("zone/delete", "zone_id", zoneID)
 }
 
 // SystemHealthInfo returns system health information using subscription
