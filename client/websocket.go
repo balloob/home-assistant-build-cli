@@ -18,6 +18,7 @@ type WebSocketClient struct {
 	Timeout       time.Duration
 	VerifySSL     bool
 	conn          *websocket.Conn
+	writeMu       sync.Mutex // serialises conn.WriteJSON; gorilla/websocket does not allow concurrent writes
 	messageID     int
 	messageIDMu   sync.Mutex
 	pending       map[int]chan *WSMessage
@@ -246,18 +247,23 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		return nil, fmt.Errorf("not connected")
 	}
 
-	msgID := c.nextID()
-
-	// Build message
+	// Build message (without ID — assigned inside the write lock below)
 	msg := map[string]interface{}{
-		"id":   msgID,
 		"type": cmdType,
 	}
 	for k, v := range params {
 		msg[k] = v
 	}
 
-	// Create response channel
+	// Assign ID and send atomically under the write lock.  Home Assistant
+	// requires message IDs to arrive in strictly increasing order, so the
+	// ID assignment and the write must happen in the same critical section
+	// to prevent out-of-order delivery when multiple goroutines call
+	// SendCommand concurrently.
+	c.writeMu.Lock()
+	msgID := c.nextID()
+	msg["id"] = msgID
+
 	respCh := make(chan *WSMessage, 1)
 	c.pendingMu.Lock()
 	c.pending[msgID] = respCh
@@ -268,12 +274,13 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		"type": cmdType,
 	}).Debug("Sending WebSocket command")
 
-	// Send message
-	if err := c.conn.WriteJSON(msg); err != nil {
+	writeErr := c.conn.WriteJSON(msg)
+	c.writeMu.Unlock()
+	if writeErr != nil {
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, fmt.Errorf("failed to send command: %w", err)
+		return nil, fmt.Errorf("failed to send command: %w", writeErr)
 	}
 
 	// Wait for response
@@ -510,8 +517,6 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 		return nil, fmt.Errorf("not connected")
 	}
 
-	msgID := c.nextID()
-
 	// Channel to receive events
 	eventCh := make(chan map[string]interface{}, 100)
 	doneCh := make(chan struct{})
@@ -520,7 +525,11 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 	data := make(map[string]interface{})
 	var dataErr error
 
-	// Register subscription callback
+	// Assign ID, register subscription, and send — all under the write
+	// lock to guarantee monotonically increasing IDs on the wire.
+	c.writeMu.Lock()
+	msgID := c.nextID()
+
 	c.subsMu.Lock()
 	c.subscriptions[msgID] = func(event map[string]interface{}) {
 		select {
@@ -530,30 +539,31 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 	}
 	c.subsMu.Unlock()
 
-	// Cleanup function
+	msg := map[string]interface{}{
+		"id":   msgID,
+		"type": "system_health/info",
+	}
+
+	respCh := make(chan *WSMessage, 1)
+	c.pendingMu.Lock()
+	c.pending[msgID] = respCh
+	c.pendingMu.Unlock()
+
+	writeErr := c.conn.WriteJSON(msg)
+	c.writeMu.Unlock()
+
+	// Cleanup subscription on exit
 	defer func() {
 		c.subsMu.Lock()
 		delete(c.subscriptions, msgID)
 		c.subsMu.Unlock()
 	}()
 
-	// Send subscribe message
-	msg := map[string]interface{}{
-		"id":   msgID,
-		"type": "system_health/info",
-	}
-
-	// Create response channel for the initial result
-	respCh := make(chan *WSMessage, 1)
-	c.pendingMu.Lock()
-	c.pending[msgID] = respCh
-	c.pendingMu.Unlock()
-
-	if err := c.conn.WriteJSON(msg); err != nil {
+	if writeErr != nil {
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, fmt.Errorf("failed to send command: %w", err)
+		return nil, fmt.Errorf("failed to send command: %w", writeErr)
 	}
 
 	// Wait for initial result (subscription confirmation)
