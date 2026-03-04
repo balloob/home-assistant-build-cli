@@ -27,12 +27,9 @@ func init() {
 }
 
 func runThreadAdd(cmd *cobra.Command, args []string) error {
-	tlv := threadAddTLV
-	if tlv == "" && len(args) > 0 {
-		tlv = args[0]
-	}
-	if tlv == "" {
-		return fmt.Errorf("TLV is required (use --tlv flag or positional argument)")
+	tlv, err := resolveArg(threadAddTLV, args, 0, "TLV data")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

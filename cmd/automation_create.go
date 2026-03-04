@@ -4,15 +4,10 @@ import (
 	"fmt"
 
 	"github.com/home-assistant/hab/output"
-	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
 
-var (
-	automationCreateData   string
-	automationCreateFile   string
-	automationCreateFormat string
-)
+var automationCreateInput InputFlags
 
 var automationCreateCmd = &cobra.Command{
 	Use:     "create <id>",
@@ -25,16 +20,14 @@ var automationCreateCmd = &cobra.Command{
 
 func init() {
 	automationCmd.AddCommand(automationCreateCmd)
-	automationCreateCmd.Flags().StringVarP(&automationCreateData, "data", "d", "", "Automation configuration as JSON")
-	automationCreateCmd.Flags().StringVarP(&automationCreateFile, "file", "f", "", "Path to config file")
-	automationCreateCmd.Flags().StringVar(&automationCreateFormat, "format", "", "Input format (json, yaml)")
+	automationCreateInput.Register(automationCreateCmd)
 }
 
 func runAutomationCreate(cmd *cobra.Command, args []string) error {
 	automationID := args[0]
 	textMode := getTextMode()
 
-	config, err := input.ParseInput(automationCreateData, automationCreateFile, automationCreateFormat)
+	config, err := automationCreateInput.Parse()
 	if err != nil {
 		return err
 	}

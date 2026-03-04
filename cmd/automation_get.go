@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -24,12 +22,9 @@ func init() {
 }
 
 func runAutomationGet(cmd *cobra.Command, args []string) error {
-	automationID := automationGetID
-	if automationID == "" && len(args) > 0 {
-		automationID = args[0]
-	}
-	if automationID == "" {
-		return fmt.Errorf("automation ID is required (use --automation flag or positional argument)")
+	automationID, err := resolveArg(automationGetID, args, 0, "automation ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

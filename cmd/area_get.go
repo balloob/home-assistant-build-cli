@@ -27,12 +27,9 @@ func init() {
 }
 
 func runAreaGet(cmd *cobra.Command, args []string) error {
-	areaID := areaGetID
-	if areaID == "" && len(args) > 0 {
-		areaID = args[0]
-	}
-	if areaID == "" {
-		return fmt.Errorf("area ID is required (use --area flag or positional argument)")
+	areaID, err := resolveArg(areaGetID, args, 0, "area ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

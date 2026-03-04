@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -23,12 +21,9 @@ func init() {
 }
 
 func runDeviceEntities(cmd *cobra.Command, args []string) error {
-	deviceID := deviceEntitiesID
-	if deviceID == "" && len(args) > 0 {
-		deviceID = args[0]
-	}
-	if deviceID == "" {
-		return fmt.Errorf("device ID is required (use --device flag or positional argument)")
+	deviceID, err := resolveArg(deviceEntitiesID, args, 0, "device ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

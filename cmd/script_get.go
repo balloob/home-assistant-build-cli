@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/home-assistant/hab/output"
@@ -25,12 +24,9 @@ func init() {
 }
 
 func runScriptGet(cmd *cobra.Command, args []string) error {
-	scriptID := scriptGetID
-	if scriptID == "" && len(args) > 0 {
-		scriptID = args[0]
-	}
-	if scriptID == "" {
-		return fmt.Errorf("script ID is required (use --script flag or positional argument)")
+	scriptID, err := resolveArg(scriptGetID, args, 0, "script ID")
+	if err != nil {
+		return err
 	}
 	// Strip "script." prefix if provided - API expects just the ID
 	scriptID = strings.TrimPrefix(scriptID, "script.")

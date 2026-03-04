@@ -27,19 +27,13 @@ func init() {
 }
 
 func runLabelRemove(cmd *cobra.Command, args []string) error {
-	labelID := labelRemoveLabelID
-	if labelID == "" && len(args) > 0 {
-		labelID = args[0]
+	labelID, err := resolveArg(labelRemoveLabelID, args, 0, "label ID")
+	if err != nil {
+		return err
 	}
-	if labelID == "" {
-		return fmt.Errorf("label ID is required (use --label flag or first positional argument)")
-	}
-	entityID := labelRemoveEntityID
-	if entityID == "" && len(args) > 1 {
-		entityID = args[1]
-	}
-	if entityID == "" {
-		return fmt.Errorf("entity ID is required (use --entity flag or second positional argument)")
+	entityID, err := resolveArg(labelRemoveEntityID, args, 1, "entity ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

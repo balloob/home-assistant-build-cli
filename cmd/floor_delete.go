@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -29,15 +26,9 @@ func runFloorDelete(cmd *cobra.Command, args []string) error {
 	floorID := args[0]
 	textMode := getTextMode()
 
-	if !floorDeleteForce && !textMode {
-		fmt.Printf("Delete floor %s? [y/N]: ", floorID)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Cancelled.")
-			return nil
-		}
+	if !confirmAction(floorDeleteForce, textMode, fmt.Sprintf("Delete floor %s?", floorID)) {
+		fmt.Println("Cancelled.")
+		return nil
 	}
 
 	ws, err := getWSClient()

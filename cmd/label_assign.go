@@ -27,19 +27,13 @@ func init() {
 }
 
 func runLabelAssign(cmd *cobra.Command, args []string) error {
-	labelID := labelAssignLabelID
-	if labelID == "" && len(args) > 0 {
-		labelID = args[0]
+	labelID, err := resolveArg(labelAssignLabelID, args, 0, "label ID")
+	if err != nil {
+		return err
 	}
-	if labelID == "" {
-		return fmt.Errorf("label ID is required (use --label flag or first positional argument)")
-	}
-	entityID := labelAssignEntityID
-	if entityID == "" && len(args) > 1 {
-		entityID = args[1]
-	}
-	if entityID == "" {
-		return fmt.Errorf("entity ID is required (use --entity flag or second positional argument)")
+	entityID, err := resolveArg(labelAssignEntityID, args, 1, "entity ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

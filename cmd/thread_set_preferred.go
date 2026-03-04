@@ -23,12 +23,9 @@ func init() {
 }
 
 func runThreadSetPreferred(cmd *cobra.Command, args []string) error {
-	datasetID := threadSetPreferredDatasetID
-	if datasetID == "" && len(args) > 0 {
-		datasetID = args[0]
-	}
-	if datasetID == "" {
-		return fmt.Errorf("dataset ID is required (use --dataset flag or positional argument)")
+	datasetID, err := resolveArg(threadSetPreferredDatasetID, args, 0, "dataset ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

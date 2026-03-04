@@ -41,19 +41,13 @@ func init() {
 }
 
 func runSearchRelated(cmd *cobra.Command, args []string) error {
-	itemType := searchRelatedType
-	if itemType == "" && len(args) > 0 {
-		itemType = args[0]
+	itemType, err := resolveArg(searchRelatedType, args, 0, "item type")
+	if err != nil {
+		return err
 	}
-	if itemType == "" {
-		return fmt.Errorf("item type is required (use --type flag or first positional argument)")
-	}
-	itemID := searchRelatedID
-	if itemID == "" && len(args) > 1 {
-		itemID = args[1]
-	}
-	if itemID == "" {
-		return fmt.Errorf("item ID is required (use --id flag or second positional argument)")
+	itemID, err := resolveArg(searchRelatedID, args, 1, "item ID")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

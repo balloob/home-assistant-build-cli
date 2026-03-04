@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -40,15 +37,9 @@ func runAutomationDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !automationDeleteForce && !textMode {
-		fmt.Printf("Delete automation %s? [y/N]: ", automationID)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Cancelled.")
-			return nil
-		}
+	if !confirmAction(automationDeleteForce, textMode, fmt.Sprintf("Delete automation %s?", automationID)) {
+		fmt.Println("Cancelled.")
+		return nil
 	}
 
 	_, err = restClient.Delete("config/automation/config/" + configID)

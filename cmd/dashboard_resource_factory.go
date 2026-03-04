@@ -1,13 +1,10 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
-	"github.com/home-assistant/hab/input"
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -172,14 +169,8 @@ func saveDashboardConfig(ws interface{ SendCommand(string, map[string]interface{
 
 // confirmDelete prompts for deletion confirmation unless force or textMode is set.
 func confirmDelete(force, textMode bool, description string) error {
-	if !force && !textMode {
-		fmt.Printf("Are you sure you want to delete %s? [y/N]: ", description)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-		if response != "y" && response != "yes" {
-			return fmt.Errorf("deletion cancelled")
-		}
+	if !confirmAction(force, textMode, fmt.Sprintf("Are you sure you want to delete %s?", description)) {
+		return fmt.Errorf("deletion cancelled")
 	}
 	return nil
 }
@@ -766,8 +757,8 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 	name := cfg.ResourceName
 	sectionFlag := -1
 
-	// Closure-local data/file/format flags
-	var dataFlag, fileFlag, formatFlag string
+	// Closure-local input flags
+	var inputFlags InputFlags
 
 	// Closure-local custom flag values (we store as map for flexibility)
 	customFlagValues := make(map[string]*string)
@@ -827,14 +818,14 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 
 			// ── Handle badge-specific entity/type shorthand ──
 			if cfg.ItemCanBeString {
-				return runBadgeStyleCreate(cmd, cfg, urlPath, viewIndex, textMode, dataFlag, fileFlag, formatFlag, customFlagValues)
+				return runBadgeStyleCreate(cmd, cfg, urlPath, viewIndex, textMode, &inputFlags, customFlagValues)
 			}
 
 			// ── Standard map-based create ──
 			var resourceConfig map[string]interface{}
-			if dataFlag != "" || fileFlag != "" {
+			if inputFlags.Data != "" || inputFlags.File != "" {
 				var err error
-				resourceConfig, err = input.ParseInput(dataFlag, fileFlag, formatFlag)
+				resourceConfig, err = inputFlags.Parse()
 				if err != nil {
 					return err
 				}
@@ -934,9 +925,7 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 		},
 	}
 
-	createCmd.Flags().StringVarP(&dataFlag, "data", "d", "", capitalize(name)+" configuration as JSON")
-	createCmd.Flags().StringVarP(&fileFlag, "file", "f", "", "Path to config file")
-	createCmd.Flags().StringVar(&formatFlag, "format", "", "Input format (json, yaml)")
+	inputFlags.Register(createCmd)
 
 	for _, f := range cfg.CreateFlags {
 		ptr := customFlagValues[f.Name]
@@ -955,7 +944,7 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 }
 
 // runBadgeStyleCreate handles badge create which supports entity_id strings.
-func runBadgeStyleCreate(cmd *cobra.Command, cfg DashboardResourceConfig, urlPath string, viewIndex int, textMode bool, dataFlag, fileFlag, formatFlag string, customFlagValues map[string]*string) error {
+func runBadgeStyleCreate(cmd *cobra.Command, cfg DashboardResourceConfig, urlPath string, viewIndex int, textMode bool, flags *InputFlags, customFlagValues map[string]*string) error {
 	name := cfg.ResourceName
 
 	var badgeConfig interface{}
@@ -968,8 +957,8 @@ func runBadgeStyleCreate(cmd *cobra.Command, cfg DashboardResourceConfig, urlPat
 		typeVal = *ptr
 	}
 
-	if dataFlag != "" || fileFlag != "" {
-		parsed, err := input.ParseInput(dataFlag, fileFlag, formatFlag)
+	if flags.Data != "" || flags.File != "" {
+		parsed, err := flags.Parse()
 		if err != nil {
 			return err
 		}
@@ -1156,7 +1145,7 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 	name := cfg.ResourceName
 	sectionFlag := -1
 
-	var dataFlag, fileFlag, formatFlag string
+	var inputFlags InputFlags
 
 	// Custom flag values
 	customFlagValues := make(map[string]*string)
@@ -1236,7 +1225,7 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 
 			// ── Badge-specific update ──
 			if cfg.ItemCanBeString {
-				return runBadgeStyleUpdate(cmd, cfg, ws, urlPath, config, viewIndex, itemIndex, textMode, dataFlag, fileFlag, formatFlag, customFlagValues)
+				return runBadgeStyleUpdate(cmd, cfg, ws, urlPath, config, viewIndex, itemIndex, textMode, &inputFlags, customFlagValues)
 			}
 
 			// ── Standard map-based update ──
@@ -1271,8 +1260,8 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 			}
 
 			// If data or file provided, replace entirely
-			if dataFlag != "" || fileFlag != "" {
-				newConfig, err := input.ParseInput(dataFlag, fileFlag, formatFlag)
+			if inputFlags.Data != "" || inputFlags.File != "" {
+				newConfig, err := inputFlags.Parse()
 				if err != nil {
 					return err
 				}
@@ -1298,9 +1287,7 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 		},
 	}
 
-	updateCmd.Flags().StringVarP(&dataFlag, "data", "d", "", capitalize(name)+" configuration as JSON (replaces entire "+name+")")
-	updateCmd.Flags().StringVarP(&fileFlag, "file", "f", "", "Path to config file")
-	updateCmd.Flags().StringVar(&formatFlag, "format", "", "Input format (json, yaml)")
+	inputFlags.Register(updateCmd)
 
 	for _, f := range cfg.UpdateFlags {
 		ptr := customFlagValues[f.Name]
@@ -1319,7 +1306,7 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 }
 
 // runBadgeStyleUpdate handles badge update which supports entity_id strings.
-func runBadgeStyleUpdate(cmd *cobra.Command, cfg DashboardResourceConfig, ws interface{ SendCommand(string, map[string]interface{}) (interface{}, error) }, urlPath string, config map[string]interface{}, viewIndex, itemIndex int, textMode bool, dataFlag, fileFlag, formatFlag string, customFlagValues map[string]*string) error {
+func runBadgeStyleUpdate(cmd *cobra.Command, cfg DashboardResourceConfig, ws interface{ SendCommand(string, map[string]interface{}) (interface{}, error) }, urlPath string, config map[string]interface{}, viewIndex, itemIndex int, textMode bool, flags *InputFlags, customFlagValues map[string]*string) error {
 	name := cfg.ResourceName
 
 	nav, err := navigateToResourceArray(config, cfg.PathFromConfig, viewIndex, -1)
@@ -1337,8 +1324,8 @@ func runBadgeStyleUpdate(cmd *cobra.Command, cfg DashboardResourceConfig, ws int
 
 	var newItem interface{}
 
-	if dataFlag != "" || fileFlag != "" {
-		parsed, err := input.ParseInput(dataFlag, fileFlag, formatFlag)
+	if flags.Data != "" || flags.File != "" {
+		parsed, err := flags.Parse()
 		if err != nil {
 			return err
 		}

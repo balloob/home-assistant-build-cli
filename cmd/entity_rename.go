@@ -27,19 +27,13 @@ func init() {
 }
 
 func runEntityRename(cmd *cobra.Command, args []string) error {
-	entityID := entityRenameID
-	if entityID == "" && len(args) > 0 {
-		entityID = args[0]
+	entityID, err := resolveArg(entityRenameID, args, 0, "entity ID")
+	if err != nil {
+		return err
 	}
-	if entityID == "" {
-		return fmt.Errorf("entity ID is required (use --entity flag or first positional argument)")
-	}
-	newName := entityRenameName
-	if newName == "" && len(args) > 1 {
-		newName = args[1]
-	}
-	if newName == "" {
-		return fmt.Errorf("new name is required (use --name flag or second positional argument)")
+	newName, err := resolveArg(entityRenameName, args, 1, "new name")
+	if err != nil {
+		return err
 	}
 	textMode := getTextMode()
 

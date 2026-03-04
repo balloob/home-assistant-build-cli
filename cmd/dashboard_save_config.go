@@ -4,15 +4,10 @@ import (
 	"fmt"
 
 	"github.com/home-assistant/hab/output"
-	"github.com/home-assistant/hab/input"
 	"github.com/spf13/cobra"
 )
 
-var (
-	dashboardSaveConfigData   string
-	dashboardSaveConfigFile   string
-	dashboardSaveConfigFormat string
-)
+var dashboardSaveConfigInput InputFlags
 
 var dashboardSaveConfigCmd = &cobra.Command{
 	Use:     "save-config <url_path>",
@@ -25,16 +20,14 @@ var dashboardSaveConfigCmd = &cobra.Command{
 
 func init() {
 	dashboardCmd.AddCommand(dashboardSaveConfigCmd)
-	dashboardSaveConfigCmd.Flags().StringVarP(&dashboardSaveConfigData, "data", "d", "", "Dashboard configuration as JSON")
-	dashboardSaveConfigCmd.Flags().StringVarP(&dashboardSaveConfigFile, "file", "f", "", "Path to config file")
-	dashboardSaveConfigCmd.Flags().StringVar(&dashboardSaveConfigFormat, "format", "", "Input format (json, yaml)")
+	dashboardSaveConfigInput.Register(dashboardSaveConfigCmd)
 }
 
 func runDashboardSaveConfig(cmd *cobra.Command, args []string) error {
 	urlPath := args[0]
 	textMode := getTextMode()
 
-	config, err := input.ParseInput(dashboardSaveConfigData, dashboardSaveConfigFile, dashboardSaveConfigFormat)
+	config, err := dashboardSaveConfigInput.Parse()
 	if err != nil {
 		return err
 	}
