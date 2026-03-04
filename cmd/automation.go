@@ -61,4 +61,43 @@ func init() {
 		&cobra.Group{ID: automationGroupCommands, Title: "Commands:"},
 		&cobra.Group{ID: automationGroupSubcommands, Title: "Subcommands:"},
 	)
+
+	RegisterSubComponentCRUD(SubComponentConfig{
+		ParentCmd:       automationCmd,
+		ParentName:      "automation",
+		ComponentName:   "trigger",
+		ComponentPlural: "triggers",
+		ConfigKeys:      []string{"triggers", "trigger"},
+		DefaultKey:      "triggers",
+		APIBasePath:     "config/automation/config/",
+		ResolveID:       resolveAutomationConfigID,
+		ParentFlagName:  "automation",
+		GroupID:         automationGroupSubcommands,
+	})
+
+	RegisterSubComponentCRUD(SubComponentConfig{
+		ParentCmd:       automationCmd,
+		ParentName:      "automation",
+		ComponentName:   "condition",
+		ComponentPlural: "conditions",
+		ConfigKeys:      []string{"conditions", "condition"},
+		DefaultKey:      "conditions",
+		APIBasePath:     "config/automation/config/",
+		ResolveID:       resolveAutomationConfigID,
+		ParentFlagName:  "automation",
+		GroupID:         automationGroupSubcommands,
+	})
+
+	RegisterSubComponentCRUD(SubComponentConfig{
+		ParentCmd:       automationCmd,
+		ParentName:      "automation",
+		ComponentName:   "action",
+		ComponentPlural: "actions",
+		ConfigKeys:      []string{"actions", "action"},
+		DefaultKey:      "actions",
+		APIBasePath:     "config/automation/config/",
+		ResolveID:       resolveAutomationConfigID,
+		ParentFlagName:  "automation",
+		GroupID:         automationGroupSubcommands,
+	})
 }
