@@ -39,9 +39,6 @@ type WSMessage struct {
 
 	// Fields for sending commands
 	AccessToken string `json:"access_token,omitempty"`
-
-	// Dynamic fields
-	Extra map[string]interface{} `json:"-"`
 }
 
 // WSError represents a WebSocket error
@@ -180,12 +177,6 @@ func (c *WebSocketClient) readMessage() (*WSMessage, error) {
 	var msg WSMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, err
-	}
-
-	// Also parse into a generic map for extra fields
-	var extra map[string]interface{}
-	if err := json.Unmarshal(data, &extra); err == nil {
-		msg.Extra = extra
 	}
 
 	return &msg, nil
