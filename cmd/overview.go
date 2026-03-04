@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -35,12 +36,46 @@ func runOverview(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	// Gather all data
+	// Fetch all data concurrently — the REST call runs on a separate HTTP
+	// connection while the 7 WS calls share one connection (with
+	// concurrency-safe SendCommand).  All calls are optional; errors are
+	// silently ignored per the original behavior.
+	var (
+		configData interface{}
+		floors     []interface{}
+		areas      []interface{}
+		devices    []interface{}
+		dashboards interface{}
+		labels     []interface{}
+		states     []interface{}
+		entities   []interface{}
+
+		configErr     error
+		floorsErr     error
+		areasErr      error
+		devicesErr    error
+		dashboardsErr error
+		labelsErr     error
+		statesErr     error
+		entitiesErr   error
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(8)
+	go func() { defer wg.Done(); configData, configErr = restClient.Get("config") }()
+	go func() { defer wg.Done(); floors, floorsErr = ws.FloorRegistryList() }()
+	go func() { defer wg.Done(); areas, areasErr = ws.AreaRegistryList() }()
+	go func() { defer wg.Done(); devices, devicesErr = ws.DeviceRegistryList() }()
+	go func() { defer wg.Done(); dashboards, dashboardsErr = ws.SendCommand("lovelace/dashboards/list", nil) }()
+	go func() { defer wg.Done(); labels, labelsErr = ws.LabelRegistryList() }()
+	go func() { defer wg.Done(); states, statesErr = ws.GetStates() }()
+	go func() { defer wg.Done(); entities, entitiesErr = ws.EntityRegistryList() }()
+	wg.Wait()
+
+	// Assemble result from fetched data
 	result := make(map[string]interface{})
 
-	// Get system config
-	configData, err := restClient.Get("config")
-	if err == nil {
+	if configErr == nil {
 		if config, ok := configData.(map[string]interface{}); ok {
 			result["location_name"] = config["location_name"]
 			result["version"] = config["version"]
@@ -55,41 +90,25 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Count floors
-	floors, err := ws.FloorRegistryList()
-	if err == nil {
+	if floorsErr == nil {
 		result["floors"] = len(floors)
 	}
-
-	// Count areas
-	areas, err := ws.AreaRegistryList()
-	if err == nil {
+	if areasErr == nil {
 		result["areas"] = len(areas)
 	}
-
-	// Count devices
-	devices, err := ws.DeviceRegistryList()
-	if err == nil {
+	if devicesErr == nil {
 		result["devices"] = len(devices)
 	}
-
-	// Count dashboards
-	dashboards, err := ws.SendCommand("lovelace/dashboards/list", nil)
-	if err == nil {
+	if dashboardsErr == nil {
 		if dashboardList, ok := dashboards.([]interface{}); ok {
 			result["dashboards"] = len(dashboardList)
 		}
 	}
-
-	// Count labels
-	labels, err := ws.LabelRegistryList()
-	if err == nil {
+	if labelsErr == nil {
 		result["labels"] = len(labels)
 	}
 
-	// Get states to count entities, automations, scripts
-	states, err := ws.GetStates()
-	if err == nil {
+	if statesErr == nil {
 		entityCount := 0
 		automationCount := 0
 		scriptCount := 0
@@ -124,9 +143,7 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		result["scripts"] = scriptCount
 	}
 
-	// Count helpers from entity registry
-	entities, err := ws.EntityRegistryList()
-	if err == nil {
+	if entitiesErr == nil {
 		helperDomains := map[string]bool{
 			"input_boolean":  true,
 			"input_number":   true,
