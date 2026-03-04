@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var scriptListFlags *ListFlags
+
 var scriptListCmd = &cobra.Command{
 	Use:     "list",
 	Short:   "List all scripts",
@@ -18,16 +20,11 @@ var scriptListCmd = &cobra.Command{
 
 func init() {
 	scriptCmd.AddCommand(scriptListCmd)
-	scriptListCmd.Flags().BoolP("count", "c", false, "Return only the count of items")
-	scriptListCmd.Flags().BoolP("brief", "b", false, "Return minimal fields (entity_id and alias only)")
-	scriptListCmd.Flags().IntP("limit", "n", 0, "Limit results to N items")
+	scriptListFlags = RegisterListFlags(scriptListCmd, "entity_id")
 }
 
 func runScriptList(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
-	listCount, _ := cmd.Flags().GetBool("count")
-	listBrief, _ := cmd.Flags().GetBool("brief")
-	listLimit, _ := cmd.Flags().GetInt("limit")
 
 	ws, err := getWSClient()
 	if err != nil {
@@ -61,39 +58,11 @@ func runScriptList(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	// Handle count mode
-	if listCount {
-		if textMode {
-			fmt.Printf("Count: %d\n", len(result))
-		} else {
-			output.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
-		}
+	if scriptListFlags.RenderCount(len(result), textMode) {
 		return nil
 	}
-
-	// Apply limit
-	if listLimit > 0 && len(result) > listLimit {
-		result = result[:listLimit]
-	}
-
-	// Handle brief mode
-	if listBrief {
-		if textMode {
-			for _, item := range result {
-				alias, _ := item["alias"].(string)
-				entityID, _ := item["entity_id"].(string)
-				fmt.Printf("%s (%s)\n", alias, entityID)
-			}
-		} else {
-			var brief []map[string]interface{}
-			for _, item := range result {
-				brief = append(brief, map[string]interface{}{
-					"entity_id": item["entity_id"],
-					"alias":     item["alias"],
-				})
-			}
-			output.PrintOutput(brief, false, "")
-		}
+	result = scriptListFlags.ApplyLimitMap(result)
+	if scriptListFlags.RenderBriefMap(result, textMode, "entity_id", "alias") {
 		return nil
 	}
 

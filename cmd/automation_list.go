@@ -11,6 +11,8 @@ import (
 
 const maxDescriptionLength = 200
 
+var automationListFlags *ListFlags
+
 var automationListCmd = &cobra.Command{
 	Use:     "list",
 	Short:   "List all automations",
@@ -23,18 +25,13 @@ func init() {
 	automationCmd.AddCommand(automationListCmd)
 	automationListCmd.Flags().Bool("extended", false, "Include extended info (description, blueprint) - requires extra API calls")
 	automationListCmd.Flags().String("blueprint", "", "Filter to automations using specific blueprint path (implies --extended)")
-	automationListCmd.Flags().BoolP("count", "c", false, "Return only the count of items")
-	automationListCmd.Flags().BoolP("brief", "b", false, "Return minimal fields (entity_id and alias only)")
-	automationListCmd.Flags().IntP("limit", "n", 0, "Limit results to N items")
+	automationListFlags = RegisterListFlags(automationListCmd, "entity_id")
 }
 
 func runAutomationList(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 	extended, _ := cmd.Flags().GetBool("extended")
 	blueprintFilter, _ := cmd.Flags().GetString("blueprint")
-	listCount, _ := cmd.Flags().GetBool("count")
-	listBrief, _ := cmd.Flags().GetBool("brief")
-	listLimit, _ := cmd.Flags().GetInt("limit")
 
 	// Blueprint filter implies extended mode
 	if blueprintFilter != "" {
@@ -122,39 +119,11 @@ func runAutomationList(cmd *cobra.Command, args []string) error {
 		result = append(result, item)
 	}
 
-	// Handle count mode
-	if listCount {
-		if textMode {
-			fmt.Printf("Count: %d\n", len(result))
-		} else {
-			output.PrintOutput(map[string]interface{}{"count": len(result)}, false, "")
-		}
+	if automationListFlags.RenderCount(len(result), textMode) {
 		return nil
 	}
-
-	// Apply limit
-	if listLimit > 0 && len(result) > listLimit {
-		result = result[:listLimit]
-	}
-
-	// Handle brief mode
-	if listBrief {
-		if textMode {
-			for _, item := range result {
-				alias, _ := item["alias"].(string)
-				entityID, _ := item["entity_id"].(string)
-				fmt.Printf("%s (%s)\n", alias, entityID)
-			}
-		} else {
-			var brief []map[string]interface{}
-			for _, item := range result {
-				brief = append(brief, map[string]interface{}{
-					"entity_id": item["entity_id"],
-					"alias":     item["alias"],
-				})
-			}
-			output.PrintOutput(brief, false, "")
-		}
+	result = automationListFlags.ApplyLimitMap(result)
+	if automationListFlags.RenderBriefMap(result, textMode, "entity_id", "alias") {
 		return nil
 	}
 

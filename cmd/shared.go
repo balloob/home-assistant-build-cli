@@ -9,6 +9,7 @@ import (
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -74,6 +75,116 @@ func confirmAction(force, textMode bool, prompt string) bool {
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
 }
+
+// ---------------------------------------------------------------------------
+// List output helpers
+// ---------------------------------------------------------------------------
+
+// ListFlags holds the common --count, --brief, --limit flag values
+// used by list commands.
+type ListFlags struct {
+	Count bool
+	Brief bool
+	Limit int
+}
+
+// RegisterListFlags adds --count/-c, --brief/-b, --limit/-n flags to a command
+// and returns a ListFlags struct that will be populated when the command runs.
+func RegisterListFlags(cmd *cobra.Command, idField string) *ListFlags {
+	f := &ListFlags{}
+	cmd.Flags().BoolVarP(&f.Count, "count", "c", false, "Return only the count of items")
+	cmd.Flags().BoolVarP(&f.Brief, "brief", "b", false,
+		fmt.Sprintf("Return minimal fields (%s and name only)", idField))
+	cmd.Flags().IntVarP(&f.Limit, "limit", "n", 0, "Limit results to N items")
+	return f
+}
+
+// RenderCount outputs the item count and returns true if the Count flag is set.
+func (f *ListFlags) RenderCount(count int, textMode bool) bool {
+	if !f.Count {
+		return false
+	}
+	if textMode {
+		fmt.Printf("Count: %d\n", count)
+	} else {
+		output.PrintOutput(map[string]interface{}{"count": count}, false, "")
+	}
+	return true
+}
+
+// ApplyLimit truncates items to the Limit if set ([]interface{} variant).
+func (f *ListFlags) ApplyLimit(items []interface{}) []interface{} {
+	if f.Limit > 0 && len(items) > f.Limit {
+		return items[:f.Limit]
+	}
+	return items
+}
+
+// ApplyLimitMap truncates items to the Limit if set ([]map variant).
+func (f *ListFlags) ApplyLimitMap(items []map[string]interface{}) []map[string]interface{} {
+	if f.Limit > 0 && len(items) > f.Limit {
+		return items[:f.Limit]
+	}
+	return items
+}
+
+// RenderBrief outputs brief items and returns true if the Brief flag is set.
+// Text mode prints "name (id)" per line; JSON mode outputs [{idField, nameField}].
+// Works with []interface{} where each element is map[string]interface{}.
+func (f *ListFlags) RenderBrief(items []interface{}, textMode bool, idField, nameField string) bool {
+	if !f.Brief {
+		return false
+	}
+	if textMode {
+		for _, item := range items {
+			if m, ok := item.(map[string]interface{}); ok {
+				name, _ := m[nameField].(string)
+				id, _ := m[idField].(string)
+				fmt.Printf("%s (%s)\n", name, id)
+			}
+		}
+	} else {
+		var brief []map[string]interface{}
+		for _, item := range items {
+			if m, ok := item.(map[string]interface{}); ok {
+				brief = append(brief, map[string]interface{}{
+					idField:   m[idField],
+					nameField: m[nameField],
+				})
+			}
+		}
+		output.PrintOutput(brief, false, "")
+	}
+	return true
+}
+
+// RenderBriefMap is the same as RenderBrief but for []map[string]interface{}.
+func (f *ListFlags) RenderBriefMap(items []map[string]interface{}, textMode bool, idField, nameField string) bool {
+	if !f.Brief {
+		return false
+	}
+	if textMode {
+		for _, item := range items {
+			name, _ := item[nameField].(string)
+			id, _ := item[idField].(string)
+			fmt.Printf("%s (%s)\n", name, id)
+		}
+	} else {
+		var brief []map[string]interface{}
+		for _, item := range items {
+			brief = append(brief, map[string]interface{}{
+				idField:   item[idField],
+				nameField: item[nameField],
+			})
+		}
+		output.PrintOutput(brief, false, "")
+	}
+	return true
+}
+
+// ---------------------------------------------------------------------------
+// Input helpers
+// ---------------------------------------------------------------------------
 
 // InputFlags holds the standard --data, --file, --format flag values
 // used by commands that accept JSON/YAML configuration input.
