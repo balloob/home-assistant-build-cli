@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/home-assistant/hab/auth"
+	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/config"
+	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/update"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -62,13 +64,32 @@ Output is human-readable text by default. Use --json for machine-parseable JSON 
 // Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		if errors.Is(err, auth.ErrNotAuthenticated) {
-			fmt.Fprintln(os.Stderr, "Not authenticated. Run 'hab auth login' to authenticate.")
+		code, msg := classifyError(err)
+		if viper.GetBool("json") {
+			fmt.Println(output.FormatError(code, msg, nil))
 		} else {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, msg)
 		}
 		ExitWithError = true
 	}
+}
+
+// classifyError extracts a structured error code and user-facing message from err.
+// It checks for known error types (APIError, auth sentinel) and falls back to UNKNOWN_ERROR.
+func classifyError(err error) (code string, msg string) {
+	// Check for auth sentinel first (it's a plain error, not an APIError)
+	if errors.Is(err, auth.ErrNotAuthenticated) {
+		return client.ErrCodeAuthRequired, "Not authenticated. Run 'hab auth login' to authenticate."
+	}
+
+	// Check for structured API errors (from REST or WebSocket)
+	var apiErr *client.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Code, apiErr.Message
+	}
+
+	// Fallback
+	return client.ErrCodeUnknownError, err.Error()
 }
 
 func init() {

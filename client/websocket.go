@@ -78,9 +78,9 @@ func (c *WebSocketClient) Connect() error {
 	conn, resp, err := dialer.Dial(c.URL, nil)
 	if err != nil {
 		if resp != nil {
-			return fmt.Errorf("websocket connection failed (%d): %w", resp.StatusCode, err)
+			return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("websocket connection failed (%d): %s", resp.StatusCode, err)}
 		}
-		return fmt.Errorf("websocket connection failed: %w", err)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("websocket connection failed: %s", err)}
 	}
 	c.conn = conn
 
@@ -120,7 +120,7 @@ func (c *WebSocketClient) Connect() error {
 		if msg.Error != nil {
 			errMsg = msg.Error.Message
 		}
-		return fmt.Errorf("%s", errMsg)
+		return &APIError{Code: ErrCodeAuthenticationError, Message: errMsg}
 	}
 	if msg.Type != "auth_ok" {
 		c.conn.Close()
@@ -289,14 +289,18 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 	select {
 	case resp := <-respCh:
 		if resp == nil {
-			return nil, fmt.Errorf("connection closed")
+			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed"}
 		}
 		if !resp.Success {
+			code := ErrCodeAPIError
 			errMsg := "unknown error"
 			if resp.Error != nil {
+				if resp.Error.Code != "" {
+					code = resp.Error.Code
+				}
 				errMsg = resp.Error.Message
 			}
-			return nil, fmt.Errorf("%s", errMsg)
+			return nil, &APIError{Code: code, Message: errMsg}
 		}
 		return resp.Result, nil
 
@@ -304,7 +308,7 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, fmt.Errorf("command timed out")
+		return nil, &APIError{Code: ErrCodeTimeout, Message: "command timed out"}
 	}
 }
 
@@ -595,17 +599,21 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 	select {
 	case resp := <-respCh:
 		if resp == nil {
-			return nil, fmt.Errorf("connection closed")
+			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed"}
 		}
 		if !resp.Success {
+			code := ErrCodeAPIError
 			errMsg := "unknown error"
 			if resp.Error != nil {
+				if resp.Error.Code != "" {
+					code = resp.Error.Code
+				}
 				errMsg = resp.Error.Message
 			}
-			return nil, fmt.Errorf("%s", errMsg)
+			return nil, &APIError{Code: code, Message: errMsg}
 		}
 	case <-time.After(c.Timeout):
-		return nil, fmt.Errorf("timeout waiting for subscription confirmation")
+		return nil, &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for subscription confirmation"}
 	}
 
 	// Process events in a goroutine
