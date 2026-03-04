@@ -62,6 +62,15 @@ func init() {
 		&cobra.Group{ID: automationGroupSubcommands, Title: "Subcommands:"},
 	)
 
+	RegisterConfigResourceCRUD(ConfigResourceConfig{
+		ParentCmd:    automationCmd,
+		ResourceName: "automation",
+		APIPrefix:    "config/automation/config/",
+		IDFlagName:   "automation",
+		ResolveID:    resolveAutomationConfigID,
+		GroupID:      automationGroupCommands,
+	})
+
 	RegisterSubComponentCRUD(SubComponentConfig{
 		ParentCmd:       automationCmd,
 		ParentName:      "automation",
