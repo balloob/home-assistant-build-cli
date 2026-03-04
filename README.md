@@ -56,6 +56,28 @@ hab area list
 hab area create "Kitchen"
 ```
 
+### ESPHome
+
+Requires the ESPHome add-on. The ESPHome Dashboard URL is auto-discovered via the HA Supervisor; set `HAB_ESPHOME_URL` to override.
+
+```bash
+# List devices and their status
+hab esphome list
+
+# Read/write device configs
+hab esphome config-read living-room.yaml
+hab esphome config-write living-room.yaml -f config.yaml
+
+# Validate, build, and flash
+hab esphome validate living-room.yaml
+hab esphome run living-room.yaml
+
+# Stream live logs
+hab esphome logs living-room.yaml
+```
+
+Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream output in real-time rather than returning a single JSON envelope.
+
 ## Features
 
 - **Hierarchical Help**: Top-level `--help` shows command groups, not all sub-commands
@@ -87,6 +109,8 @@ hab area create "Kitchen"
 | `device` | Device management |
 | `group` | Manage entity groups |
 | `thread` | Manage Thread credentials |
+| `esphome` | Manage ESPHome devices |
+| `overview` | Show an overview of the HA instance |
 | `search` | Search for items and relationships |
 | `update` | Update hab to the latest version |
 | `version` | Show version information |
@@ -172,6 +196,7 @@ Configuration is stored in `~/.config/home-assistant-builder/`:
 - `HAB_URL` - Home Assistant URL
 - `HAB_TOKEN` - Long-lived access token
 - `HAB_CONFIG_DIR` - Custom config directory
+- `HAB_ESPHOME_URL` - ESPHome Dashboard URL (auto-discovered from HA Supervisor if not set)
 
 ## Development
 
