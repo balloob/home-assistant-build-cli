@@ -41,13 +41,13 @@ type ESPHomeDevice struct {
 
 // ESPHomeImportableDevice represents a discovered but not yet imported device.
 type ESPHomeImportableDevice struct {
-	Name              string `json:"name"`
-	FriendlyName      string `json:"friendly_name"`
-	PackageImportURL  string `json:"package_import_url"`
-	ProjectName       string `json:"project_name"`
-	ProjectVersion    string `json:"project_version"`
-	Network           string `json:"network"`
-	Ignored           bool   `json:"ignored"`
+	Name             string `json:"name"`
+	FriendlyName     string `json:"friendly_name"`
+	PackageImportURL string `json:"package_import_url"`
+	ProjectName      string `json:"project_name"`
+	ProjectVersion   string `json:"project_version"`
+	Network          string `json:"network"`
+	Ignored          bool   `json:"ignored"`
 }
 
 // ESPHomeDeviceList is the response from GET /devices.
@@ -58,7 +58,7 @@ type ESPHomeDeviceList struct {
 
 // ESPHomeStreamEvent represents a line or exit event from a streaming WebSocket command.
 type ESPHomeStreamEvent struct {
-	Event string `json:"event"`         // "line" or "exit"
+	Event string `json:"event"` // "line" or "exit"
 	Data  string `json:"data,omitempty"`
 	Code  *int   `json:"code,omitempty"`
 }
@@ -388,11 +388,13 @@ func DiscoverESPHomeIngress(baseURL, token string) (*ESPHomeIngressInfo, error) 
 }
 
 // GetESPHomeClient creates a fully configured ESPHomeClient by resolving the URL.
-// If esphomeURL is set, it is used directly (no ingress session needed).
+// If esphomeURL is set, it is used directly with the optional esphomeSession.
 // Otherwise, auto-discovers via HA and creates an ingress session.
-func GetESPHomeClient(esphomeURL, haBaseURL, haToken string) (*ESPHomeClient, error) {
+func GetESPHomeClient(esphomeURL, esphomeSession, haBaseURL, haToken string) (*ESPHomeClient, error) {
 	if esphomeURL != "" {
-		return NewESPHomeClient(strings.TrimRight(esphomeURL, "/"), haToken), nil
+		c := NewESPHomeClient(strings.TrimRight(esphomeURL, "/"), haToken)
+		c.IngressSession = esphomeSession
+		return c, nil
 	}
 
 	// Auto-discover via HA ingress
@@ -405,5 +407,3 @@ func GetESPHomeClient(esphomeURL, haBaseURL, haToken string) (*ESPHomeClient, er
 	client.IngressSession = info.Session
 	return client, nil
 }
-
-

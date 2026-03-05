@@ -31,8 +31,20 @@ func getESPHomeClient() (client.ESPHomeAPI, error) {
 	}
 
 	esphomeURL := os.Getenv("HAB_ESPHOME_URL")
+	esphomeSession := os.Getenv("HAB_ESPHOME_SESSION")
 
-	return client.GetESPHomeClient(esphomeURL, creds.URL, creds.AccessToken)
+	// Allow overriding the Bearer token for ESPHome specifically.
+	// This is needed when calling through HA Core's ingress proxy from
+	// an addon container, where the Supervisor token won't work and a
+	// long-lived access token is required instead.
+	token := creds.AccessToken
+	if t := os.Getenv("HAB_ESPHOME_TOKEN"); t != "" {
+		token = t
+	} else if t := os.Getenv("HA_ACCESS_TOKEN"); t != "" {
+		token = t
+	}
+
+	return client.GetESPHomeClient(esphomeURL, esphomeSession, creds.URL, token)
 }
 
 // decodeESPHomeAnsi converts literal ESPHome escape sequences (e.g. the

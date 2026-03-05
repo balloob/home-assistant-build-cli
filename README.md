@@ -196,6 +196,8 @@ Configuration is stored in `~/.config/home-assistant-builder/`:
 - `HAB_TOKEN` - Long-lived access token
 - `HAB_CONFIG_DIR` - Custom config directory
 - `HAB_ESPHOME_URL` - ESPHome Dashboard URL (auto-discovered from HA Supervisor if not set)
+- `HAB_ESPHOME_TOKEN` - Bearer token for ESPHome ingress proxy (overrides default credentials)
+- `HAB_ESPHOME_SESSION` - Ingress session token for ESPHome (required when accessing via HA Core ingress)
 
 ## Development
 
