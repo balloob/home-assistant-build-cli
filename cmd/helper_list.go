@@ -42,18 +42,7 @@ func runHelperList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Helper domains
-	helperDomains := map[string]bool{
-		"input_boolean":  true,
-		"input_number":   true,
-		"input_text":     true,
-		"input_select":   true,
-		"input_datetime": true,
-		"input_button":   true,
-		"counter":        true,
-		"timer":          true,
-		"schedule":       true,
-	}
+	// Filter to helper domains (shared set defined in shared.go).
 
 	var result []map[string]interface{}
 	for _, e := range entities {

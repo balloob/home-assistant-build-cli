@@ -14,11 +14,30 @@ import (
 	"github.com/spf13/viper"
 )
 
+// helperDomains is the set of storage-based helper entity domains.
+// Used by helper list, overview, and other commands that need to identify
+// helper entities by their domain prefix.
+var helperDomains = map[string]bool{
+	"input_boolean":  true,
+	"input_number":   true,
+	"input_text":     true,
+	"input_select":   true,
+	"input_datetime": true,
+	"input_button":   true,
+	"counter":        true,
+	"timer":          true,
+	"schedule":       true,
+}
+
+// getAuthManager creates a new auth.Manager using the configured config dir.
+func getAuthManager() *auth.Manager {
+	return auth.NewManager(viper.GetString("config"))
+}
+
 // getWSClient creates an authenticated, connected WebSocket client.
 // Caller must defer ws.Close() after a successful return.
 func getWSClient() (client.WebSocketAPI, error) {
-	configDir := viper.GetString("config")
-	manager := auth.NewManager(configDir)
+	manager := getAuthManager()
 	creds, err := manager.GetCredentials()
 	if err != nil || creds == nil {
 		return nil, err
@@ -33,16 +52,12 @@ func getWSClient() (client.WebSocketAPI, error) {
 
 // getRESTClient creates an authenticated REST client.
 func getRESTClient() (client.RestAPI, error) {
-	configDir := viper.GetString("config")
-	manager := auth.NewManager(configDir)
-	return manager.GetRestClient()
+	return getAuthManager().GetRestClient()
 }
 
 // getCredentials returns the current authentication credentials.
 func getCredentials() (*auth.Credentials, error) {
-	configDir := viper.GetString("config")
-	manager := auth.NewManager(configDir)
-	return manager.GetCredentials()
+	return getAuthManager().GetCredentials()
 }
 
 // getTextMode returns whether text output mode is enabled.
@@ -112,20 +127,39 @@ func (f *ListFlags) RenderCount(count int, textMode bool) bool {
 	return true
 }
 
-// ApplyLimit truncates items to the Limit if set ([]interface{} variant).
-func (f *ListFlags) ApplyLimit(items []interface{}) []interface{} {
-	if f.Limit > 0 && len(items) > f.Limit {
-		return items[:f.Limit]
+// applyLimit is the generic implementation shared by both slice types.
+func applyLimit[T any](items []T, limit int) []T {
+	if limit > 0 && len(items) > limit {
+		return items[:limit]
 	}
 	return items
 }
 
+// ApplyLimit truncates items to the Limit if set ([]interface{} variant).
+func (f *ListFlags) ApplyLimit(items []interface{}) []interface{} {
+	return applyLimit(items, f.Limit)
+}
+
 // ApplyLimitMap truncates items to the Limit if set ([]map variant).
 func (f *ListFlags) ApplyLimitMap(items []map[string]interface{}) []map[string]interface{} {
-	if f.Limit > 0 && len(items) > f.Limit {
-		return items[:f.Limit]
+	return applyLimit(items, f.Limit)
+}
+
+// renderBriefCore implements the shared brief-rendering logic.
+// extractFields returns (id, name) from each item.
+func renderBriefCore[T any](items []T, textMode bool, idField, nameField string, extractFields func(T) (id, name string), buildBrief func(T) map[string]interface{}) {
+	if textMode {
+		for _, item := range items {
+			name, id := extractFields(item)
+			fmt.Printf("%s (%s)\n", name, id)
+		}
+	} else {
+		var brief []map[string]interface{}
+		for _, item := range items {
+			brief = append(brief, buildBrief(item))
+		}
+		output.PrintOutput(brief, false, "")
 	}
-	return items
 }
 
 // RenderBrief outputs brief items and returns true if the Brief flag is set.
@@ -135,26 +169,25 @@ func (f *ListFlags) RenderBrief(items []interface{}, textMode bool, idField, nam
 	if !f.Brief {
 		return false
 	}
-	if textMode {
-		for _, item := range items {
+	renderBriefCore(items, textMode, idField, nameField,
+		func(item interface{}) (string, string) {
 			if m, ok := item.(map[string]interface{}); ok {
 				name, _ := m[nameField].(string)
 				id, _ := m[idField].(string)
-				fmt.Printf("%s (%s)\n", name, id)
+				return name, id
 			}
-		}
-	} else {
-		var brief []map[string]interface{}
-		for _, item := range items {
+			return "", ""
+		},
+		func(item interface{}) map[string]interface{} {
 			if m, ok := item.(map[string]interface{}); ok {
-				brief = append(brief, map[string]interface{}{
+				return map[string]interface{}{
 					idField:   m[idField],
 					nameField: m[nameField],
-				})
+				}
 			}
-		}
-		output.PrintOutput(brief, false, "")
-	}
+			return nil
+		},
+	)
 	return true
 }
 
@@ -163,22 +196,19 @@ func (f *ListFlags) RenderBriefMap(items []map[string]interface{}, textMode bool
 	if !f.Brief {
 		return false
 	}
-	if textMode {
-		for _, item := range items {
+	renderBriefCore(items, textMode, idField, nameField,
+		func(item map[string]interface{}) (string, string) {
 			name, _ := item[nameField].(string)
 			id, _ := item[idField].(string)
-			fmt.Printf("%s (%s)\n", name, id)
-		}
-	} else {
-		var brief []map[string]interface{}
-		for _, item := range items {
-			brief = append(brief, map[string]interface{}{
+			return name, id
+		},
+		func(item map[string]interface{}) map[string]interface{} {
+			return map[string]interface{}{
 				idField:   item[idField],
 				nameField: item[nameField],
-			})
-		}
-		output.PrintOutput(brief, false, "")
-	}
+			}
+		},
+	)
 	return true
 }
 
@@ -190,27 +220,26 @@ func (f *ListFlags) RenderBriefFields(items []interface{}, textMode bool, idFiel
 	if !f.Brief {
 		return false
 	}
-	if textMode {
-		for _, item := range items {
+	renderBriefCore(items, textMode, idField, nameField,
+		func(item interface{}) (string, string) {
 			if m, ok := item.(map[string]interface{}); ok {
 				name, _ := m[nameField].(string)
 				id, _ := m[idField].(string)
-				fmt.Printf("%s (%s)\n", name, id)
+				return name, id
 			}
-		}
-	} else {
-		var brief []map[string]interface{}
-		for _, item := range items {
+			return "", ""
+		},
+		func(item interface{}) map[string]interface{} {
 			if m, ok := item.(map[string]interface{}); ok {
 				b := make(map[string]interface{})
 				for _, field := range jsonFields {
 					b[field] = m[field]
 				}
-				brief = append(brief, b)
+				return b
 			}
-		}
-		output.PrintOutput(brief, false, "")
-	}
+			return nil
+		},
+	)
 	return true
 }
 

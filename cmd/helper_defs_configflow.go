@@ -14,13 +14,15 @@ func registerDerivative() {
 	var round int
 
 	registerHelperType(HelperDef{
-		TypeName:    "derivative",
-		CommandName: "derivative",
-		DisplayName: "derivative sensor",
-		Short:       "Manage derivative sensor helpers",
-		Long:        "Create, list, and delete derivative sensor helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new derivative sensor",
+		TypeName:        "derivative",
+		CommandName:     "derivative",
+		DisplayName:     "derivative sensor",
+		Short:           "Manage derivative sensor helpers",
+		Long:            "Create, list, and delete derivative sensor helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "Calculates the rate of change of a source sensor (config flow)",
+		CreateParams:    []string{"name (required)", "source (required)", "round", "unit-prefix (n/µ/m/k/M/G/T)", "unit-time (s/min/h/d)", "time-window"},
+		CreateShort:     "Create a new derivative sensor",
 		CreateLong: `Create a new derivative sensor helper that calculates the rate of change of a source sensor.
 
 Unit prefixes: n (nano), µ (micro), m (milli), k (kilo), M (mega), G (giga), T (tera)
@@ -39,15 +41,11 @@ Examples:
 		},
 		RequiredFlags: []string{"source"},
 		RunCreate: helperConfigFlowCreate("derivative", "derivative sensor", func(cmd *cobra.Command, name string) (map[string]interface{}, error) {
-			validTimeUnits := map[string]bool{"s": true, "min": true, "h": true, "d": true}
-			if !validTimeUnits[unitTime] {
-				return nil, fmt.Errorf("invalid time unit: %s. Valid units: s, min, h, d", unitTime)
+			if err := validateOneOf(unitTime, "time unit", validTimeUnits, false); err != nil {
+				return nil, err
 			}
-			if unitPrefix != "" {
-				validPrefixes := map[string]bool{"n": true, "µ": true, "m": true, "k": true, "M": true, "G": true, "T": true, "P": true}
-				if !validPrefixes[unitPrefix] {
-					return nil, fmt.Errorf("invalid unit prefix: %s. Valid prefixes: n, µ, m, k, M, G, T, P", unitPrefix)
-				}
+			if err := validateOneOf(unitPrefix, "unit prefix", validMetricPrefixes, true); err != nil {
+				return nil, err
 			}
 			formData := map[string]interface{}{
 				"name":        name,
@@ -69,13 +67,15 @@ func registerIntegration() {
 	var round int
 
 	registerHelperType(HelperDef{
-		TypeName:    "integration",
-		CommandName: "integration",
-		DisplayName: "integration sensor",
-		Short:       "Manage integration (integral) sensor helpers",
-		Long:        "Create, list, and delete integration (Riemann sum integral) sensor helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new integration sensor",
+		TypeName:        "integration",
+		CommandName:     "integration",
+		DisplayName:     "integration sensor",
+		Short:           "Manage integration (integral) sensor helpers",
+		Long:            "Create, list, and delete integration (Riemann sum integral) sensor helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "Calculates the Riemann sum (integral) of a source sensor (config flow)",
+		CreateParams:    []string{"name (required)", "source (required)", "round", "unit-prefix (k/M/G/T)", "unit-time (s/min/h/d)", "method (trapezoidal/left/right)"},
+		CreateShort:     "Create a new integration sensor",
 		CreateLong: `Create a new integration (Riemann sum integral) sensor helper.
 
 Examples:
@@ -90,19 +90,15 @@ Examples:
 		},
 		RequiredFlags: []string{"source"},
 		RunCreate: helperConfigFlowCreate("integration", "integration sensor", func(cmd *cobra.Command, name string) (map[string]interface{}, error) {
-			validTimeUnits := map[string]bool{"s": true, "min": true, "h": true, "d": true}
-			if !validTimeUnits[unitTime] {
-				return nil, fmt.Errorf("invalid time unit: %s. Valid units: s, min, h, d", unitTime)
+			if err := validateOneOf(unitTime, "time unit", validTimeUnits, false); err != nil {
+				return nil, err
 			}
 			validMethods := map[string]bool{"left": true, "right": true, "trapezoidal": true}
-			if !validMethods[method] {
-				return nil, fmt.Errorf("invalid method: %s. Valid methods: left, right, trapezoidal", method)
+			if err := validateOneOf(method, "method", validMethods, false); err != nil {
+				return nil, err
 			}
-			if unitPrefix != "" {
-				validPrefixes := map[string]bool{"n": true, "µ": true, "m": true, "k": true, "M": true, "G": true, "T": true, "P": true}
-				if !validPrefixes[unitPrefix] {
-					return nil, fmt.Errorf("invalid unit prefix: %s", unitPrefix)
-				}
+			if err := validateOneOf(unitPrefix, "unit prefix", validMetricPrefixes, true); err != nil {
+				return nil, err
 			}
 			formData := map[string]interface{}{
 				"name":      name,
@@ -125,13 +121,15 @@ func registerMinMax() {
 	var round int
 
 	registerHelperType(HelperDef{
-		TypeName:    "min_max",
-		CommandName: "min-max",
-		DisplayName: "min/max sensor",
-		Short:       "Manage min/max sensor helpers",
-		Long:        "Create, list, and delete min/max sensor helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new min/max sensor",
+		TypeName:        "min_max",
+		CommandName:     "min-max",
+		DisplayName:     "min/max sensor",
+		Short:           "Manage min/max sensor helpers",
+		Long:            "Create, list, and delete min/max sensor helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "Aggregates values from multiple sensors (min/max/mean/etc) (config flow)",
+		CreateParams:    []string{"name (required)", "entities (required, array)", "type (min/max/mean/median/last/range/sum)", "round"},
+		CreateShort:     "Create a new min/max sensor",
 		CreateLong: `Create a new min/max sensor helper.
 
 Examples:
@@ -158,13 +156,15 @@ func registerThreshold() {
 	var lower, upper, hysteresis float64
 
 	registerHelperType(HelperDef{
-		TypeName:    "threshold",
-		CommandName: "threshold",
-		DisplayName: "threshold sensor",
-		Short:       "Manage threshold sensor helpers",
-		Long:        "Create, list, and delete threshold binary sensor helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new threshold sensor",
+		TypeName:        "threshold",
+		CommandName:     "threshold",
+		DisplayName:     "threshold sensor",
+		Short:           "Manage threshold sensor helpers",
+		Long:            "Create, list, and delete threshold binary sensor helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "Monitors a sensor value against configurable thresholds (config flow)",
+		CreateParams:    []string{"name (required)", "entity (required)", "lower", "upper", "hysteresis"},
+		CreateShort:     "Create a new threshold sensor",
 		CreateLong: `Create a new threshold binary sensor helper. At least one of --lower or --upper must be specified.
 
 Examples:
@@ -204,13 +204,15 @@ func registerUtilityMeter() {
 	var deltaValues, netConsumption, periodicallyResetting, alwaysAvailable bool
 
 	registerHelperType(HelperDef{
-		TypeName:    "utility_meter",
-		CommandName: "utility-meter",
-		DisplayName: "utility meter",
-		Short:       "Manage utility meter helpers",
-		Long:        "Create, list, and delete utility meter helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new utility meter",
+		TypeName:        "utility_meter",
+		CommandName:     "utility-meter",
+		DisplayName:     "utility meter",
+		Short:           "Manage utility meter helpers",
+		Long:            "Create, list, and delete utility meter helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "Tracks consumption across billing cycles (config flow)",
+		CreateParams:    []string{"name (required)", "source (required)", "cycle (quarter-hourly/hourly/daily/weekly/monthly/bimonthly/quarterly/yearly)", "offset", "tariffs (array)", "delta-values", "net-consumption"},
+		CreateShort:     "Create a new utility meter",
 		CreateLong: `Create a new utility meter helper that tracks consumption across billing cycles.
 
 Cycle options: quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarterly, yearly
@@ -265,13 +267,15 @@ func registerStatistics() {
 	var samplingSize, precision, percentile int
 
 	registerHelperType(HelperDef{
-		TypeName:    "statistics",
-		CommandName: "statistics",
-		DisplayName: "statistics sensor",
-		Short:       "Manage statistics sensor helpers",
-		Long:        "Create, list, and delete statistics sensor helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new statistics sensor",
+		TypeName:        "statistics",
+		CommandName:     "statistics",
+		DisplayName:     "statistics sensor",
+		Short:           "Manage statistics sensor helpers",
+		Long:            "Create, list, and delete statistics sensor helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "Provides statistical analysis of sensor history (config flow)",
+		CreateParams:    []string{"name (required)", "entity (required)", "characteristic (mean/median/standard_deviation/etc)", "sampling-size", "max-age", "precision", "percentile"},
+		CreateShort:     "Create a new statistics sensor",
 		CreateLong: `Create a new statistics sensor helper that provides statistical analysis of sensor history.
 
 State characteristics: mean, median, standard_deviation, variance, sum, min, max, count,
@@ -308,8 +312,8 @@ Examples:
 				"total": true, "count_on": true, "count_off": true,
 				"percentile": true, "noisiness": true,
 			}
-			if !validCharacteristics[characteristic] {
-				return fmt.Errorf("invalid characteristic: %s", characteristic)
+			if err := validateOneOf(characteristic, "characteristic", validCharacteristics, false); err != nil {
+				return err
 			}
 
 			hasSamplingSize := cmd.Flags().Changed("sampling-size") && samplingSize > 0
@@ -329,13 +333,9 @@ Examples:
 				return err
 			}
 
-			flowResult, err := rest.ConfigFlowCreate("statistics")
+			flowID, err := configFlowStart(rest, "statistics")
 			if err != nil {
-				return fmt.Errorf("failed to start config flow: %w", err)
-			}
-			flowID, ok := flowResult["flow_id"].(string)
-			if !ok {
-				return fmt.Errorf("no flow_id in response")
+				return err
 			}
 
 			// Step 1: entity selection
@@ -346,9 +346,8 @@ Examples:
 			if err != nil {
 				return fmt.Errorf("failed to submit entity selection: %w", err)
 			}
-			if t, _ := step1Result["type"].(string); t == "abort" {
-				reason, _ := step1Result["reason"].(string)
-				return fmt.Errorf("config flow aborted: %s", reason)
+			if err := configFlowCheckAbort(step1Result); err != nil {
+				return err
 			}
 
 			// Step 2: state characteristic
@@ -358,9 +357,8 @@ Examples:
 			if err != nil {
 				return fmt.Errorf("failed to submit state characteristic: %w", err)
 			}
-			if t, _ := step2Result["type"].(string); t == "abort" {
-				reason, _ := step2Result["reason"].(string)
-				return fmt.Errorf("config flow aborted: %s", reason)
+			if err := configFlowCheckAbort(step2Result); err != nil {
+				return err
 			}
 
 			// Step 3: options
@@ -383,31 +381,12 @@ Examples:
 				return fmt.Errorf("failed to create statistics sensor: %w", err)
 			}
 
-			resultType, _ := finalResult["type"].(string)
-			if resultType == "abort" {
-				reason, _ := finalResult["reason"].(string)
-				return fmt.Errorf("config flow aborted: %s", reason)
+			result, err := configFlowCheckFinal(finalResult)
+			if err != nil {
+				return err
 			}
-			if resultType == "form" {
-				if errors, ok := finalResult["errors"].(map[string]interface{}); ok && len(errors) > 0 {
-					return fmt.Errorf("validation error: %v", errors)
-				}
-				return fmt.Errorf("unexpected form step required: %v", finalResult)
-			}
-			if resultType != "create_entry" {
-				return fmt.Errorf("unexpected flow result type: %s", resultType)
-			}
-
-			result := map[string]interface{}{
-				"title":          finalResult["title"],
-				"entity":         entity,
-				"characteristic": characteristic,
-			}
-			if entryResult, ok := finalResult["result"].(map[string]interface{}); ok {
-				if entryID, ok := entryResult["entry_id"]; ok {
-					result["entry_id"] = entryID
-				}
-			}
+			result["entity"] = entity
+			result["characteristic"] = characteristic
 
 			output.PrintSuccess(result, textMode, fmt.Sprintf("Statistics sensor '%s' created successfully.", name))
 			return nil
@@ -419,14 +398,16 @@ func registerLocalCalendar() {
 	var icon string
 
 	registerHelperType(HelperDef{
-		TypeName:    "local_calendar",
-		CommandName: "local-calendar",
-		DisplayName: "local calendar",
-		Short:       "Manage local calendar helpers",
-		Long:        "Create, list, and delete local calendar helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new local calendar",
-		CreateLong:  "Create a new local calendar helper.",
+		TypeName:        "local_calendar",
+		CommandName:     "local-calendar",
+		DisplayName:     "local calendar",
+		Short:           "Manage local calendar helpers",
+		Long:            "Create, list, and delete local calendar helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "A local calendar for storing events in Home Assistant (config flow)",
+		CreateParams:    []string{"name (required)", "icon"},
+		CreateShort:     "Create a new local calendar",
+		CreateLong:      "Create a new local calendar helper.",
 		SetupFlags: func(cmd *cobra.Command) {
 			cmd.Flags().StringVarP(&icon, "icon", "i", "", "Icon for the calendar")
 		},
@@ -446,14 +427,16 @@ func registerLocalTodo() {
 	var icon string
 
 	registerHelperType(HelperDef{
-		TypeName:    "local_todo",
-		CommandName: "local-todo",
-		DisplayName: "local to-do list",
-		Short:       "Manage local to-do list helpers",
-		Long:        "Create, list, and delete local to-do list helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new local to-do list",
-		CreateLong:  "Create a new local to-do list helper.",
+		TypeName:        "local_todo",
+		CommandName:     "local-todo",
+		DisplayName:     "local to-do list",
+		Short:           "Manage local to-do list helpers",
+		Long:            "Create, list, and delete local to-do list helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "A local to-do list for storing tasks in Home Assistant (config flow)",
+		CreateParams:    []string{"name (required)", "icon"},
+		CreateShort:     "Create a new local to-do list",
+		CreateLong:      "Create a new local to-do list helper.",
 		SetupFlags: func(cmd *cobra.Command) {
 			cmd.Flags().StringVarP(&icon, "icon", "i", "", "Icon for the to-do list")
 		},
@@ -475,13 +458,15 @@ func registerGroup() {
 	var all, hideMembers bool
 
 	registerHelperType(HelperDef{
-		TypeName:    "group",
-		CommandName: "group",
-		DisplayName: "group",
-		Short:       "Manage group helpers",
-		Long:        "Create, list, and delete group helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new group",
+		TypeName:        "group",
+		CommandName:     "group",
+		DisplayName:     "group",
+		Short:           "Manage group helpers",
+		Long:            "Create, list, and delete group helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "A group of entities that can be controlled together (config flow)",
+		CreateParams:    []string{"name (required)", "type (light/switch/binary_sensor/cover/fan/lock/media_player/sensor/event)", "entities (required, array)", "all (true/false, for binary_sensor/light/switch)", "hide-members (true/false)"},
+		CreateShort:     "Create a new group",
 		CreateLong: `Create a new group helper using the config entry flow.
 
 Group types available: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch.
@@ -508,8 +493,8 @@ Examples:
 				"binary_sensor": true, "cover": true, "event": true, "fan": true,
 				"light": true, "lock": true, "media_player": true, "sensor": true, "switch": true,
 			}
-			if !validTypes[groupType] {
-				return fmt.Errorf("invalid group type: %s. Valid types: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch", groupType)
+			if err := validateOneOf(groupType, "group type", validTypes, false); err != nil {
+				return err
 			}
 
 			if groupType == "sensor" {
@@ -517,8 +502,8 @@ Examples:
 					"last": true, "max": true, "mean": true, "median": true,
 					"min": true, "product": true, "range": true, "stdev": true, "sum": true,
 				}
-				if !validSensorTypes[sensorType] {
-					return fmt.Errorf("invalid sensor type: %s. Valid types: last, max, mean, median, min, product, range, stdev, sum", sensorType)
+				if err := validateOneOf(sensorType, "sensor type", validSensorTypes, false); err != nil {
+					return err
 				}
 			}
 
@@ -527,13 +512,9 @@ Examples:
 				return err
 			}
 
-			flowResult, err := rest.ConfigFlowCreate("group")
+			flowID, err := configFlowStart(rest, "group")
 			if err != nil {
-				return fmt.Errorf("failed to start config flow: %w", err)
-			}
-			flowID, ok := flowResult["flow_id"].(string)
-			if !ok {
-				return fmt.Errorf("no flow_id in response")
+				return err
 			}
 
 			// Menu step: select group type
@@ -543,9 +524,8 @@ Examples:
 			if err != nil {
 				return fmt.Errorf("failed to select group type: %w", err)
 			}
-			if t, _ := menuResult["type"].(string); t == "abort" {
-				reason, _ := menuResult["reason"].(string)
-				return fmt.Errorf("config flow aborted: %s", reason)
+			if err := configFlowCheckAbort(menuResult); err != nil {
+				return err
 			}
 
 			formData := map[string]interface{}{
@@ -564,25 +544,12 @@ Examples:
 				return fmt.Errorf("failed to create group: %w", err)
 			}
 
-			resultType, _ := finalResult["type"].(string)
-			if resultType == "abort" {
-				reason, _ := finalResult["reason"].(string)
-				return fmt.Errorf("config flow aborted: %s", reason)
+			result, err := configFlowCheckFinal(finalResult)
+			if err != nil {
+				return err
 			}
-			if resultType != "create_entry" {
-				return fmt.Errorf("unexpected flow result type: %s", resultType)
-			}
-
-			result := map[string]interface{}{
-				"title":    finalResult["title"],
-				"type":     groupType,
-				"entities": entities,
-			}
-			if entryResult, ok := finalResult["result"].(map[string]interface{}); ok {
-				if entryID, ok := entryResult["entry_id"]; ok {
-					result["entry_id"] = entryID
-				}
-			}
+			result["type"] = groupType
+			result["entities"] = entities
 
 			output.PrintSuccess(result, textMode, fmt.Sprintf("Group '%s' created successfully.", name))
 			return nil
@@ -592,13 +559,15 @@ Examples:
 
 func registerTemplate() {
 	registerHelperType(HelperDef{
-		TypeName:    "template",
-		CommandName: "template",
-		DisplayName: "template entity",
-		Short:       "Manage template entity helpers",
-		Long:        "Create, list, and delete template entity helpers.",
-		Category:    HelperCategoryConfigFlow,
-		CreateShort: "Create a new template entity",
+		TypeName:        "template",
+		CommandName:     "template",
+		DisplayName:     "template entity",
+		Short:           "Manage template entity helpers",
+		Long:            "Create, list, and delete template entity helpers.",
+		Category:        HelperCategoryConfigFlow,
+		TypeDescription: "Create template entities using Jinja2 expressions (config flow)",
+		CreateParams:    []string{"name (required)", "type (alarm_control_panel/binary_sensor/button/image/number/select/sensor/switch)", "state (Jinja2 template)", "icon", "turn-on", "turn-off"},
+		CreateShort:     "Create a new template entity",
 		CreateLong: `Create a new template entity helper using the config entry flow.
 
 Template types available: alarm_control_panel, binary_sensor, button, image, number, select, sensor, switch.

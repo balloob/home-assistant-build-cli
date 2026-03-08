@@ -20,7 +20,11 @@ func init() {
 }
 
 func runEntityDisable(cmd *cobra.Command, args []string) error {
-	entityID := args[0]
+	return entitySetDisabled(args[0], true)
+}
+
+// entitySetDisabled enables or disables an entity via the registry.
+func entitySetDisabled(entityID string, disable bool) error {
 	textMode := getTextMode()
 
 	ws, err := getWSClient()
@@ -29,13 +33,20 @@ func runEntityDisable(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
+	var disabledBy interface{}
+	verb := "enabled"
+	if disable {
+		disabledBy = "user"
+		verb = "disabled"
+	}
+
 	result, err := ws.EntityRegistryUpdate(entityID, map[string]interface{}{
-		"disabled_by": "user",
+		"disabled_by": disabledBy,
 	})
 	if err != nil {
 		return err
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Entity %s disabled.", entityID))
+	output.PrintSuccess(result, textMode, fmt.Sprintf("Entity %s %s.", entityID, verb))
 	return nil
 }

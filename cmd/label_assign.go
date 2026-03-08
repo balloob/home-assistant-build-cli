@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -35,42 +34,13 @@ func runLabelAssign(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	textMode := getTextMode()
 
-	ws, err := getWSClient()
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
-
-	// First get current entity labels
-	entity, err := ws.EntityRegistryGet(entityID)
-	if err != nil {
-		return err
-	}
-
-	currentLabels, _ := entity["labels"].([]interface{})
-	labels := make([]string, 0, len(currentLabels)+1)
-	for _, l := range currentLabels {
-		if ls, ok := l.(string); ok {
-			if ls == labelID {
-				// Already has label
-				output.PrintSuccess(nil, textMode, fmt.Sprintf("Entity %s already has label %s.", entityID, labelID))
-				return nil
+	return modifyEntityLabels(entityID, labelID, func(labels []string) ([]string, string) {
+		for _, l := range labels {
+			if l == labelID {
+				return nil, fmt.Sprintf("Entity %s already has label %s.", entityID, labelID)
 			}
-			labels = append(labels, ls)
 		}
-	}
-	labels = append(labels, labelID)
-
-	// Update entity with new labels
-	result, err := ws.EntityRegistryUpdate(entityID, map[string]interface{}{
-		"labels": labels,
+		return append(labels, labelID), fmt.Sprintf("Label %s assigned to %s.", labelID, entityID)
 	})
-	if err != nil {
-		return err
-	}
-
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Label %s assigned to %s.", labelID, entityID))
-	return nil
 }

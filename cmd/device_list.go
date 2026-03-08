@@ -42,18 +42,9 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 	// Build area-to-floor map if floor filter is used
 	var areaFloorMap map[string]string
 	if deviceListFloor != "" {
-		areaFloorMap = make(map[string]string)
 		areas, err := ws.AreaRegistryList()
 		if err == nil {
-			for _, a := range areas {
-				if area, ok := a.(map[string]interface{}); ok {
-					areaID, _ := area["area_id"].(string)
-					floorID, _ := area["floor_id"].(string)
-					if areaID != "" {
-						areaFloorMap[areaID] = floorID
-					}
-				}
-			}
+			areaFloorMap = buildAreaFloorMap(areas)
 		}
 	}
 
