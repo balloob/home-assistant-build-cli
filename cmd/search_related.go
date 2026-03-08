@@ -18,7 +18,7 @@ var searchRelatedCmd = &cobra.Command{
 	Long: `Find all items related to a given item.
 
 Supported item types:
-  - entity: Find items related to an entity (e.g., search related entity light.kitchen)
+  - entity: Find items related to an entity
   - device: Find items related to a device
   - area: Find items related to an area
   - floor: Find items related to a floor
@@ -30,6 +30,9 @@ Supported item types:
   - group: Find items related to a group
 
 Returns related items grouped by type: areas, automations, config_entries, devices, entities, groups, scenes, scripts, etc.`,
+	Example: `  hab search related entity light.kitchen
+  hab search related area living_room
+  hab search related --type device --id abc123def456`,
 	Args: cobra.MaximumNArgs(2),
 	RunE: runSearchRelated,
 }

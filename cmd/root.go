@@ -1,3 +1,6 @@
+// Package cmd defines the CLI commands for the hab tool using the Cobra
+// framework. Each feature area (auth, entity, automation, etc.) has a parent
+// command file and per-operation subcommand files.
 package cmd
 
 import (

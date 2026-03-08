@@ -25,7 +25,10 @@ var authLoginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with Home Assistant",
 	Long:  `Authenticate with Home Assistant using OAuth flow or a long-lived access token.`,
-	RunE:  runAuthLogin,
+	Example: `  hab auth login
+  hab auth login --token
+  hab auth login --token --url http://homeassistant.local:8123 --access-token "eyJ..."`,
+	RunE: runAuthLogin,
 }
 
 func init() {

@@ -1,3 +1,6 @@
+// Package auth handles authentication for Home Assistant, including OAuth
+// flows, long-lived access tokens, Supervisor add-on credentials, encrypted
+// credential storage, and mDNS server discovery.
 package auth
 
 import (

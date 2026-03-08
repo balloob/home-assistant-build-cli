@@ -17,10 +17,8 @@ var (
 var automationCreateFromBlueprintCmd = &cobra.Command{
 	Use:   "create-from-blueprint <id> <blueprint-path>",
 	Short: "Create an automation from a blueprint",
-	Long: `Create a new automation from a blueprint. Provide the automation ID, blueprint path, and blueprint inputs.
-
-Example:
-  hab automation create-from-blueprint my_motion_light homeassistant/motion_light \
+	Long: `Create a new automation from a blueprint. Provide the automation ID, blueprint path, and blueprint inputs.`,
+	Example: `  hab automation create-from-blueprint my_motion_light homeassistant/motion_light \
     -d '{"alias":"Kitchen Motion Light","motion_entity":"binary_sensor.kitchen_motion","light_target":{"entity_id":"light.kitchen"}}'`,
 	GroupID: automationGroupCommands,
 	Args:    cobra.ExactArgs(2),

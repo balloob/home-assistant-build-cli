@@ -1,3 +1,6 @@
+// Package client provides REST, WebSocket, and ESPHome API clients for
+// communicating with Home Assistant. REST is used for state queries and
+// service calls; WebSocket is used for registry operations and subscriptions.
 package client
 
 // Compile-time assertions that concrete types implement the interfaces.

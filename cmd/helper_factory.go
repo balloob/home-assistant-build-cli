@@ -45,6 +45,7 @@ type HelperDef struct {
 	// Create command (all optional — if RunCreate is nil, no create subcommand is registered).
 	CreateShort   string
 	CreateLong    string
+	CreateExample string
 	SetupFlags    func(cmd *cobra.Command)
 	RunCreate     func(cmd *cobra.Command, args []string) error
 	RequiredFlags []string // Flag names to mark as required
@@ -77,11 +78,12 @@ func registerHelperType(def HelperDef) {
 	// Create subcommand (optional)
 	if def.RunCreate != nil {
 		createCmd := &cobra.Command{
-			Use:   "create <name>",
-			Short: def.CreateShort,
-			Long:  def.CreateLong,
-			Args:  cobra.ExactArgs(1),
-			RunE:  def.RunCreate,
+			Use:     "create <name>",
+			Short:   def.CreateShort,
+			Long:    def.CreateLong,
+			Example: def.CreateExample,
+			Args:    cobra.ExactArgs(1),
+			RunE:    def.RunCreate,
 		}
 		if def.SetupFlags != nil {
 			def.SetupFlags(createCmd)

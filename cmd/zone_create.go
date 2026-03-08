@@ -19,7 +19,9 @@ var zoneCreateCmd = &cobra.Command{
 	Use:   "create <name>",
 	Short: "Create a new zone",
 	Long:  `Create a new zone in Home Assistant.`,
-	Args:  cobra.ExactArgs(1),
+	Example: `  hab zone create "Office" --latitude 37.7749 --longitude -122.4194
+  hab zone create "School" --latitude 37.77 --longitude -122.42 --radius 200 --passive --icon mdi:school`,
+	Args: cobra.ExactArgs(1),
 	RunE:  runZoneCreate,
 }
 

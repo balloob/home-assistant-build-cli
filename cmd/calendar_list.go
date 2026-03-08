@@ -17,8 +17,10 @@ var (
 var calendarListCmd = &cobra.Command{
 	Use:   "list <entity_id>",
 	Short: "List calendar events",
-	Long:  `List events from a calendar entity.`,
-	Args:  cobra.ExactArgs(1),
+	Long:  `List events from a calendar entity. Defaults to the next 7 days when no time range is specified.`,
+	Example: `  hab calendar list calendar.personal
+  hab calendar list calendar.work -s "2025-03-01T00:00:00Z" -e "2025-03-31T23:59:59Z"`,
+	Args: cobra.ExactArgs(1),
 	RunE:  runCalendarList,
 }
 

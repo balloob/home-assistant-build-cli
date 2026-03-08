@@ -27,6 +27,8 @@ type ConfigResourceConfig struct {
 	ResolveID func(client.RestAPI, string) (string, error)
 	// GroupID is the cobra group ID for the generated commands.
 	GroupID string
+	// CreateExample is the Cobra Example text for the create command.
+	CreateExample string
 }
 
 // RegisterConfigResourceCRUD generates and registers get, create, update, and
@@ -82,6 +84,7 @@ func registerConfigCreate(cfg ConfigResourceConfig) {
 		Use:     "create <id>",
 		Short:   fmt.Sprintf("Create a new %s", cfg.ResourceName),
 		Long:    fmt.Sprintf("Create a new %s from JSON or YAML. The ID is used to identify the %s.", cfg.ResourceName, cfg.ResourceName),
+		Example: cfg.CreateExample,
 		GroupID: cfg.GroupID,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

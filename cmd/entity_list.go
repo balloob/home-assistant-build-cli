@@ -24,7 +24,12 @@ var entityListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List entities with optional filtering",
 	Long:  `List all entities with optional filtering by domain, area, floor, label, device, or device class.`,
-	RunE:  runEntityList,
+	Example: `  hab entity list -d light
+  hab entity list -a kitchen
+  hab entity list -f ground_floor -c
+  hab entity list --device-class temperature -b
+  hab entity list --device abc123 -n 5`,
+	RunE: runEntityList,
 }
 
 func init() {

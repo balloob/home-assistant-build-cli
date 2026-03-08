@@ -15,10 +15,8 @@ var helperDeleteCmd = &cobra.Command{
 
 This command automatically detects the helper type from the entity ID and deletes it.
 Supports: input_boolean, input_number, input_text, input_select, input_datetime,
-input_button, counter, timer, schedule, and group helpers.
-
-Examples:
-  hab helper delete input_boolean.my_toggle
+input_button, counter, timer, schedule, and group helpers.`,
+	Example: `  hab helper delete input_boolean.my_toggle
   hab helper delete counter.page_views
   hab helper delete light.living_room_group`,
 	GroupID: helperGroupCommands,

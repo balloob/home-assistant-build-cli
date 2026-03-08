@@ -26,10 +26,8 @@ func registerDerivative() {
 		CreateLong: `Create a new derivative sensor helper that calculates the rate of change of a source sensor.
 
 Unit prefixes: n (nano), µ (micro), m (milli), k (kilo), M (mega), G (giga), T (tera)
-Time units: s (seconds), min (minutes), h (hours), d (days)
-
-Examples:
-  hab helper-derivative create "Power Rate" --source sensor.energy_usage
+Time units: s (seconds), min (minutes), h (hours), d (days)`,
+		CreateExample: `  hab helper-derivative create "Power Rate" --source sensor.energy_usage
   hab helper-derivative create "Temperature Change" --source sensor.temperature --unit-time min --round 2
   hab helper-derivative create "Smooth Power Rate" --source sensor.power --time-window 00:05:00`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -76,10 +74,8 @@ func registerIntegration() {
 		TypeDescription: "Calculates the Riemann sum (integral) of a source sensor (config flow)",
 		CreateParams:    []string{"name (required)", "source (required)", "round", "unit-prefix (k/M/G/T)", "unit-time (s/min/h/d)", "method (trapezoidal/left/right)"},
 		CreateShort:     "Create a new integration sensor",
-		CreateLong: `Create a new integration (Riemann sum integral) sensor helper.
-
-Examples:
-  hab helper-integration create "Total Energy" --source sensor.power
+		CreateLong: `Create a new integration (Riemann sum integral) sensor helper.`,
+		CreateExample: `  hab helper-integration create "Total Energy" --source sensor.power
   hab helper-integration create "Water Usage" --source sensor.flow_rate --method trapezoidal`,
 		SetupFlags: func(cmd *cobra.Command) {
 			cmd.Flags().StringVarP(&source, "source", "s", "", "Source entity ID (required)")
@@ -130,10 +126,8 @@ func registerMinMax() {
 		TypeDescription: "Aggregates values from multiple sensors (min/max/mean/etc) (config flow)",
 		CreateParams:    []string{"name (required)", "entities (required, array)", "type (min/max/mean/median/last/range/sum)", "round"},
 		CreateShort:     "Create a new min/max sensor",
-		CreateLong: `Create a new min/max sensor helper.
-
-Examples:
-  hab helper-min-max create "Highest Temp" --type max --entities sensor.temp1,sensor.temp2`,
+		CreateLong: `Create a new min/max sensor helper.`,
+		CreateExample: `  hab helper-min-max create "Highest Temp" --type max --entities sensor.temp1,sensor.temp2`,
 		SetupFlags: func(cmd *cobra.Command) {
 			cmd.Flags().StringSliceVarP(&entities, "entities", "e", nil, "Source entity IDs (required)")
 			cmd.Flags().StringVarP(&minMaxType, "type", "t", "max", "Aggregation type: min, max, mean, median, last, range")
@@ -165,10 +159,8 @@ func registerThreshold() {
 		TypeDescription: "Monitors a sensor value against configurable thresholds (config flow)",
 		CreateParams:    []string{"name (required)", "entity (required)", "lower", "upper", "hysteresis"},
 		CreateShort:     "Create a new threshold sensor",
-		CreateLong: `Create a new threshold binary sensor helper. At least one of --lower or --upper must be specified.
-
-Examples:
-  hab helper-threshold create "Freezing Alert" --entity sensor.temperature --lower 0
+		CreateLong: `Create a new threshold binary sensor helper. At least one of --lower or --upper must be specified.`,
+		CreateExample: `  hab helper-threshold create "Freezing Alert" --entity sensor.temperature --lower 0
   hab helper-threshold create "Overheat Alert" --entity sensor.cpu_temp --upper 80 --hysteresis 5`,
 		SetupFlags: func(cmd *cobra.Command) {
 			cmd.Flags().StringVarP(&entity, "entity", "e", "", "Source entity ID (required)")
@@ -215,10 +207,8 @@ func registerUtilityMeter() {
 		CreateShort:     "Create a new utility meter",
 		CreateLong: `Create a new utility meter helper that tracks consumption across billing cycles.
 
-Cycle options: quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarterly, yearly
-
-Examples:
-  hab helper-utility-meter create "Monthly Energy" --source sensor.total_energy --cycle monthly
+Cycle options: quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarterly, yearly`,
+		CreateExample: `  hab helper-utility-meter create "Monthly Energy" --source sensor.total_energy --cycle monthly
   hab helper-utility-meter create "Daily Water" --source sensor.water_meter --cycle daily --delta-values
   hab helper-utility-meter create "Electric Bill" --source sensor.power --cycle monthly --tariffs "peak,off-peak"`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -283,10 +273,8 @@ State characteristics: mean, median, standard_deviation, variance, sum, min, max
                        average_linear, average_step, average_timeless, total,
                        change_sample, count_on, count_off, percentile, noisiness
 
-At least one of --sampling-size or --max-age must be specified.
-
-Examples:
-  hab helper-statistics create "Temp Average" --entity sensor.temperature --characteristic mean --sampling-size 100
+At least one of --sampling-size or --max-age must be specified.`,
+		CreateExample: `  hab helper-statistics create "Temp Average" --entity sensor.temperature --characteristic mean --sampling-size 100
   hab helper-statistics create "Temp Std Dev" --entity sensor.temp --characteristic standard_deviation --max-age "01:00:00"
   hab helper-statistics create "Temp 95th" --entity sensor.temp --characteristic percentile --percentile 95 --sampling-size 50`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -471,10 +459,8 @@ func registerGroup() {
 
 Group types available: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch.
 
-For sensor groups, use --sensor-type to specify aggregation: last, max, mean, median, min, product, range, stdev, sum.
-
-Examples:
-  hab helper-group create "Living Room Lights" --type light --entities light.lamp1,light.lamp2
+For sensor groups, use --sensor-type to specify aggregation: last, max, mean, median, min, product, range, stdev, sum.`,
+		CreateExample: `  hab helper-group create "Living Room Lights" --type light --entities light.lamp1,light.lamp2
   hab helper-group create "All Motion Sensors" --type binary_sensor --entities binary_sensor.motion1,binary_sensor.motion2 --all
   hab helper-group create "Average Temperature" --type sensor --sensor-type mean --entities sensor.temp1,sensor.temp2`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -572,10 +558,8 @@ func registerTemplate() {
 
 Template types available: alarm_control_panel, binary_sensor, button, image, number, select, sensor, switch.
 
-Templates use Jinja2 syntax. State templates should return valid values for the entity type.
-
-Examples:
-  hab helper-template create "Is Sun Up" --type binary_sensor --state "{{ is_state('sun.sun', 'above_horizon') }}"
+Templates use Jinja2 syntax. State templates should return valid values for the entity type.`,
+		CreateExample: `  hab helper-template create "Is Sun Up" --type binary_sensor --state "{{ is_state('sun.sun', 'above_horizon') }}"
   hab helper-template create "Room Temperature" --type sensor --state "{{ states('sensor.temp1') | float + states('sensor.temp2') | float }}" --unit "°C"
   hab helper-template create "All Lights" --type switch --state "{{ is_state('light.living_room', 'on') }}" --turn-on "homeassistant.turn_on" --turn-off "homeassistant.turn_off"`,
 		SetupFlags: setupTemplateCreateFlags,

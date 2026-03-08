@@ -79,6 +79,9 @@ type DashboardResourceConfig struct {
 	// CreateLongDesc overrides the create command's Long description.
 	CreateLongDesc string
 
+	// CreateExample is the Cobra Example text for the create command.
+	CreateExample string
+
 	// ──── Update overrides ────
 
 	// UpdateFlags are extra flags for the update command (beyond -d/--data, -f/--file, --format).

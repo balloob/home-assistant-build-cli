@@ -1,3 +1,5 @@
+// Package input parses user-supplied data from files, inline flags, or stdin
+// in JSON or YAML format.
 package input
 
 import (
