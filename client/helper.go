@@ -1,6 +1,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"strings"
@@ -8,30 +9,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// BuildURL constructs an API URL from base URL and endpoint
-func BuildURL(baseURL, endpoint string) (string, error) {
-	base := strings.TrimRight(baseURL, "/")
-
-	// Ensure scheme
-	if !strings.Contains(base, "://") {
-		base = "http://" + base
+// tlsConfig returns a *tls.Config that skips certificate verification
+// when verifySSL is false, or nil (use Go defaults) when true.
+func tlsConfig(verifySSL bool) *tls.Config {
+	if verifySSL {
+		return nil
 	}
-
-	// Build full URL
-	fullURL := fmt.Sprintf("%s/api/%s", base, strings.TrimLeft(endpoint, "/"))
-
-	parsed, err := url.Parse(fullURL)
-	if err != nil {
-		return "", fmt.Errorf("invalid URL: %w", err)
-	}
-
-	log.WithFields(log.Fields{
-		"base":     baseURL,
-		"endpoint": endpoint,
-		"result":   parsed.String(),
-	}).Debug("Built URL")
-
-	return parsed.String(), nil
+	return &tls.Config{InsecureSkipVerify: true}
 }
 
 // BuildWebSocketURL converts an HTTP URL to WebSocket URL

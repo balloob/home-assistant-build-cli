@@ -67,9 +67,9 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	// DeleteHelperByEntityOrEntryID handles both storage-based (WS) and
-	// config-entry-based helpers internally.
-	err = ws.DeleteHelperByEntityOrEntryID(entityID, helperType)
+	// deleteHelperByEntityOrEntryID handles both storage-based (WS) and
+	// config-entry-based helpers.
+	err = deleteHelperByEntityOrEntryID(ws, entityID, helperType)
 	if err != nil {
 		return fmt.Errorf("failed to delete helper: %w", err)
 	}

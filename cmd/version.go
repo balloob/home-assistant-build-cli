@@ -5,7 +5,6 @@ import (
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // Version is set by main.go from ldflags
@@ -24,7 +23,7 @@ func init() {
 }
 
 func runVersion(cmd *cobra.Command, args []string) {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	versionInfo := map[string]interface{}{
 		"version":   Version,

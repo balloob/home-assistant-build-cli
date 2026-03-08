@@ -3,7 +3,6 @@ package cmd
 import (
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var authStatusCmd = &cobra.Command{
@@ -18,7 +17,7 @@ func init() {
 }
 
 func runAuthStatus(cmd *cobra.Command, args []string) error {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 	manager := getAuthManager()
 
 	status := manager.GetAuthStatus()

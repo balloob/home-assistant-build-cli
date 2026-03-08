@@ -118,16 +118,24 @@ func deriveKey() []byte {
 	return derivedKey
 }
 
-// encrypt encrypts data using AES-GCM
-func encrypt(plaintext, key []byte) ([]byte, error) {
+// newGCM creates an AES-GCM cipher from the given key.
+func newGCM(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
-
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCM: %w", err)
+	}
+	return gcm, nil
+}
+
+// encrypt encrypts data using AES-GCM
+func encrypt(plaintext, key []byte) ([]byte, error) {
+	gcm, err := newGCM(key)
+	if err != nil {
+		return nil, err
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
@@ -141,14 +149,9 @@ func encrypt(plaintext, key []byte) ([]byte, error) {
 
 // decrypt decrypts data using AES-GCM
 func decrypt(ciphertext, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
+	gcm, err := newGCM(key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cipher: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GCM: %w", err)
+		return nil, err
 	}
 
 	nonceSize := gcm.NonceSize()

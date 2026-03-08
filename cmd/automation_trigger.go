@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -25,10 +24,7 @@ func init() {
 }
 
 func runAutomationTrigger(cmd *cobra.Command, args []string) error {
-	automationID := args[0]
-	if !strings.HasPrefix(automationID, "automation.") {
-		automationID = "automation." + automationID
-	}
+	automationID := ensureDomainPrefix(args[0], "automation")
 
 	textMode := getTextMode()
 

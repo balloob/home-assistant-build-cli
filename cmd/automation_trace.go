@@ -32,9 +32,7 @@ func runAutomationTrace(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(automationID, "automation.") {
-		automationID = "automation." + automationID
-	}
+	automationID = ensureDomainPrefix(automationID, "automation")
 
 	textMode := getTextMode()
 

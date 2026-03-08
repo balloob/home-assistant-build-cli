@@ -224,7 +224,7 @@ func CompareVersions(a, b string) int {
 }
 
 // DownloadUpdate downloads the latest release binary
-func DownloadUpdate(downloadURL string) (string, error) {
+func DownloadUpdate(downloadURL string) (tmpPath string, err error) {
 	if downloadURL == "" {
 		return "", fmt.Errorf("no download URL available")
 	}
@@ -234,36 +234,34 @@ func DownloadUpdate(downloadURL string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	tmpPath := tmpFile.Name()
+	tmpPath = tmpFile.Name()
+
+	// Clean up on any error after this point
+	defer func() {
+		tmpFile.Close()
+		if err != nil {
+			os.Remove(tmpPath)
+		}
+	}()
 
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Get(downloadURL)
 	if err != nil {
-		tmpFile.Close()
-		os.Remove(tmpPath)
 		return "", fmt.Errorf("failed to download: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		tmpFile.Close()
-		os.Remove(tmpPath)
 		return "", fmt.Errorf("download returned status %d", resp.StatusCode)
 	}
 
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
-		tmpFile.Close()
-		os.Remove(tmpPath)
+	if _, err = io.Copy(tmpFile, resp.Body); err != nil {
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}
 
-	tmpFile.Close()
-
 	// Make executable on Unix
 	if runtime.GOOS != "windows" {
-		if err := os.Chmod(tmpPath, 0755); err != nil {
-			os.Remove(tmpPath)
+		if err = os.Chmod(tmpPath, 0755); err != nil {
 			return "", fmt.Errorf("failed to make executable: %w", err)
 		}
 	}

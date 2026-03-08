@@ -91,14 +91,19 @@ func parseServiceEntry(entry *zeroconf.ServiceEntry) DiscoveredServer {
 
 	// Parse TXT records for additional metadata
 	for _, txt := range entry.Text {
-		if len(txt) > 8 && txt[:8] == "version=" {
-			server.Version = txt[8:]
-		} else if len(txt) > 5 && txt[:5] == "uuid=" {
-			server.UUID = txt[5:]
-		} else if len(txt) > 13 && txt[:13] == "internal_url=" {
-			server.Internal = txt[13:]
-		} else if len(txt) > 13 && txt[:13] == "external_url=" {
-			server.External = txt[13:]
+		key, value, ok := strings.Cut(txt, "=")
+		if !ok {
+			continue
+		}
+		switch key {
+		case "version":
+			server.Version = value
+		case "uuid":
+			server.UUID = value
+		case "internal_url":
+			server.Internal = value
+		case "external_url":
+			server.External = value
 		}
 	}
 
@@ -106,6 +111,14 @@ func parseServiceEntry(entry *zeroconf.ServiceEntry) DiscoveredServer {
 	server.URL = constructURL(server)
 
 	return server
+}
+
+// formatHostPort returns "host" when port is a default (80/443) or "host:port" otherwise.
+func formatHostPort(host string, port int) string {
+	if port == 80 || port == 443 {
+		return host
+	}
+	return fmt.Sprintf("%s:%d", host, port)
 }
 
 // constructURL builds a connection URL for the discovered server
@@ -123,33 +136,19 @@ func constructURL(server DiscoveredServer) string {
 
 	// Prefer IPv4 addresses
 	if len(server.IPv4) > 0 {
-		addr := server.IPv4[0].String()
-		if server.Port == 80 || server.Port == 443 {
-			return fmt.Sprintf("%s://%s", protocol, addr)
-		}
-		return fmt.Sprintf("%s://%s:%d", protocol, addr, server.Port)
+		return fmt.Sprintf("%s://%s", protocol, formatHostPort(server.IPv4[0].String(), server.Port))
 	}
 
 	// Fall back to IPv6
 	if len(server.IPv6) > 0 {
-		addr := server.IPv6[0].String()
-		if server.Port == 80 || server.Port == 443 {
-			return fmt.Sprintf("%s://[%s]", protocol, addr)
-		}
-		return fmt.Sprintf("%s://[%s]:%d", protocol, addr, server.Port)
+		addr := fmt.Sprintf("[%s]", server.IPv6[0].String())
+		return fmt.Sprintf("%s://%s", protocol, formatHostPort(addr, server.Port))
 	}
 
 	// Last resort: use hostname
 	if server.Host != "" {
-		host := server.Host
-		// Remove trailing dot from DNS hostname
-		if host[len(host)-1] == '.' {
-			host = host[:len(host)-1]
-		}
-		if server.Port == 80 || server.Port == 443 {
-			return fmt.Sprintf("%s://%s", protocol, host)
-		}
-		return fmt.Sprintf("%s://%s:%d", protocol, host, server.Port)
+		host := strings.TrimSuffix(server.Host, ".")
+		return fmt.Sprintf("%s://%s", protocol, formatHostPort(host, server.Port))
 	}
 
 	return ""

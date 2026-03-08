@@ -5,7 +5,6 @@ import (
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var authRefreshCmd = &cobra.Command{
@@ -20,7 +19,7 @@ func init() {
 }
 
 func runAuthRefresh(cmd *cobra.Command, args []string) error {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 	manager := getAuthManager()
 
 	creds, err := manager.GetCredentials()

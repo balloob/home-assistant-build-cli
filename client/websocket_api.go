@@ -166,8 +166,8 @@ func (c *WebSocketClient) ZoneDelete(zoneID string) error {
 
 // SystemHealthInfo returns system health information using subscription
 func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
-	if !c.authenticated {
-		return nil, &APIError{Code: ErrCodeConnectionError, Message: "not connected"}
+	if err := c.requireAuth(); err != nil {
+		return nil, err
 	}
 
 	// Channel to receive events
@@ -350,25 +350,14 @@ func (c *WebSocketClient) HelperCreate(helperType string, params map[string]inte
 // helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
 // The idField depends on the helper type (e.g., "input_boolean_id", "counter_id", "timer_id", "schedule_id")
 func (c *WebSocketClient) HelperUpdate(helperType, helperID string, params map[string]interface{}) (map[string]interface{}, error) {
-	// Determine the ID field name based on helper type
-	idField := helperType + "_id"
-	p := map[string]interface{}{idField: helperID}
-	for k, v := range params {
-		p[k] = v
-	}
-	return c.sendMapCommand(helperType+"/update", p)
+	return c.mergeAndSend(helperType+"/update", helperType+"_id", helperID, params)
 }
 
 // HelperDelete deletes a helper
 // helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
 // The idField depends on the helper type (e.g., "input_boolean_id", "counter_id", "timer_id", "schedule_id")
 func (c *WebSocketClient) HelperDelete(helperType, helperID string) error {
-	// Determine the ID field name based on helper type
-	idField := helperType + "_id"
-	_, err := c.SendCommand(helperType+"/delete", map[string]interface{}{
-		idField: helperID,
-	})
-	return err
+	return c.sendDelete(helperType+"/delete", helperType+"_id", helperID)
 }
 
 // Config Entry Flow operations
@@ -384,16 +373,14 @@ func (c *WebSocketClient) ConfigFlowInit(handler string, context map[string]inte
 	return c.sendMapCommand("config_entries/flow", params)
 }
 
-// ConfigFlowConfigure submits data to a config flow step
+// ConfigFlowConfigure submits data to a config flow step.
+// The flow_id is set after merging data to prevent accidental overwrite.
 func (c *WebSocketClient) ConfigFlowConfigure(flowID string, data map[string]interface{}) (map[string]interface{}, error) {
-	params := map[string]interface{}{
-		"flow_id": flowID,
+	params := make(map[string]interface{}, len(data)+1)
+	for k, v := range data {
+		params[k] = v
 	}
-	if data != nil {
-		for k, v := range data {
-			params[k] = v
-		}
-	}
+	params["flow_id"] = flowID // set last to prevent collision
 	return c.sendMapCommand("config_entries/flow", params)
 }
 
@@ -427,67 +414,5 @@ func (c *WebSocketClient) ResolveEntityToConfigEntry(entityID string) (string, e
 	return "", nil
 }
 
-// DeleteHelperByEntityOrEntryID deletes a helper by either entity_id, helper ID, or config_entry_id
-// For storage helpers (input_boolean, input_number, etc.): uses WebSocket helper/delete command
-// For config entry helpers (group): uses config entry deletion
-func (c *WebSocketClient) DeleteHelperByEntityOrEntryID(id string, helperType string) error {
-	// Storage-based helper types use WebSocket commands, not config entries
-	storageHelperTypes := map[string]bool{
-		"input_boolean":  true,
-		"input_number":   true,
-		"input_text":     true,
-		"input_select":   true,
-		"input_datetime": true,
-		"input_button":   true,
-		"counter":        true,
-		"timer":          true,
-		"schedule":       true,
-	}
 
-	// Check if it looks like an entity_id (contains a dot)
-	isEntityID := false
-	for _, ch := range id {
-		if ch == '.' {
-			isEntityID = true
-			break
-		}
-	}
 
-	// For storage-based helpers, use the HelperDelete WebSocket command
-	if storageHelperTypes[helperType] {
-		helperID := id
-		if isEntityID {
-			helperID = extractIDFromEntityID(id)
-		}
-		return c.HelperDelete(helperType, helperID)
-	}
-
-	// For config entry based helpers (like group), resolve to config_entry_id
-	var entryID string
-	if isEntityID {
-		// Try to resolve entity_id to config_entry_id
-		resolved, err := c.ResolveEntityToConfigEntry(id)
-		if err != nil {
-			return fmt.Errorf("failed to resolve entity_id: %w", err)
-		}
-		if resolved == "" {
-			return fmt.Errorf("entity %s does not have a config entry", id)
-		}
-		entryID = resolved
-	} else {
-		// Assume it's already a config_entry_id
-		entryID = id
-	}
-
-	return c.ConfigEntryDelete(entryID)
-}
-
-// extractIDFromEntityID extracts the ID part from an entity_id (e.g., "input_boolean.my_toggle" -> "my_toggle")
-func extractIDFromEntityID(entityID string) string {
-	for i, ch := range entityID {
-		if ch == '.' {
-			return entityID[i+1:]
-		}
-	}
-	return entityID
-}

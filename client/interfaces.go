@@ -116,7 +116,6 @@ type HelperAPI interface {
 	HelperCreate(helperType string, params map[string]interface{}) (map[string]interface{}, error)
 	HelperUpdate(helperType, helperID string, params map[string]interface{}) (map[string]interface{}, error)
 	HelperDelete(helperType, helperID string) error
-	DeleteHelperByEntityOrEntryID(id string, helperType string) error
 }
 
 // ConfigAPI provides config flow and config entry operations.
@@ -167,6 +166,11 @@ type ESPHomeAPI interface {
 
 // RestAPI defines the interface for REST operations against Home Assistant.
 // This enables unit-testing command handlers with mock implementations.
+//
+// Some operations (GetConfig, GetStates, GetServices, ConfigEntryDelete) are
+// also available on WebSocketAPI. REST variants are used when WebSocket is
+// unnecessary or unavailable; WebSocket variants are used when the caller
+// already holds a connection or needs subscription semantics.
 type RestAPI interface {
 	// Generic HTTP methods
 	Get(endpoint string) (interface{}, error)

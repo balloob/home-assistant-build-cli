@@ -12,7 +12,6 @@ import (
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
 
@@ -38,7 +37,7 @@ func init() {
 }
 
 func runAuthLogin(cmd *cobra.Command, args []string) error {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 	manager := getAuthManager()
 
 	if loginToken {
@@ -142,19 +141,7 @@ func loginWithToken(manager *auth.Manager, textMode bool) error {
 		return fmt.Errorf("failed to save credentials: %w", err)
 	}
 
-	// Output result
-	locationName := "Home Assistant"
-	if name, ok := config["location_name"].(string); ok {
-		locationName = name
-	}
-
-	result := map[string]interface{}{
-		"url":           url,
-		"location_name": locationName,
-		"version":       config["version"],
-	}
-
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Successfully authenticated to %s", locationName))
+	printLoginSuccess(url, config, textMode)
 	return nil
 }
 
@@ -187,18 +174,20 @@ func loginWithOAuth(manager *auth.Manager, textMode bool) error {
 		return fmt.Errorf("failed to save credentials: %w", err)
 	}
 
-	// Output result
+	printLoginSuccess(url, config, textMode)
+	return nil
+}
+
+// printLoginSuccess outputs a success message with the HA location name and version.
+func printLoginSuccess(url string, config map[string]interface{}, textMode bool) {
 	locationName := "Home Assistant"
 	if name, ok := config["location_name"].(string); ok {
 		locationName = name
 	}
-
 	result := map[string]interface{}{
 		"url":           url,
 		"location_name": locationName,
 		"version":       config["version"],
 	}
-
 	output.PrintSuccess(result, textMode, fmt.Sprintf("Successfully authenticated to %s", locationName))
-	return nil
 }

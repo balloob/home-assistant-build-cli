@@ -20,12 +20,50 @@ const (
 	TokenPath = "/auth/token"
 )
 
+const (
+	// tokenRequestTimeout is the HTTP timeout for OAuth token requests.
+	tokenRequestTimeout = 30 * time.Second
+)
+
+// tokenHTTPClient is the HTTP client used for OAuth token requests.
+// Using a dedicated client (rather than http.DefaultClient) ensures a
+// sensible timeout and avoids leaking connections on slow networks.
+var tokenHTTPClient = &http.Client{Timeout: tokenRequestTimeout}
+
 // TokenResponse represents the OAuth token response
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int    `json:"expires_in"`
 	TokenType    string `json:"token_type"`
+}
+
+// postTokenRequest posts form data to the token endpoint and decodes the response.
+func postTokenRequest(tokenURL string, data url.Values) (*TokenResponse, error) {
+	resp, err := tokenHTTPClient.PostForm(tokenURL, data)
+	if err != nil {
+		return nil, fmt.Errorf("token request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token request failed with status %d", resp.StatusCode)
+	}
+
+	var tokenResp TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	}
+	return &tokenResp, nil
+}
+
+// computeExpiry returns the token expiry timestamp from the given ExpiresIn value.
+// Falls back to defaultTokenExpiry when the server omits the field.
+func computeExpiry(expiresIn int) float64 {
+	if expiresIn == 0 {
+		expiresIn = defaultTokenExpiry
+	}
+	return float64(time.Now().Unix() + int64(expiresIn))
 }
 
 // generateState generates a random state string for CSRF protection
@@ -48,33 +86,17 @@ func ExchangeCodeForTokens(haURL, code, redirectURI string) (*Credentials, error
 	data.Set("client_id", clientID)
 	data.Set("redirect_uri", redirectURI)
 
-	resp, err := http.PostForm(tokenURL, data)
+	tokenResp, err := postTokenRequest(tokenURL, data)
 	if err != nil {
-		return nil, fmt.Errorf("token request failed: %w", err)
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token exchange failed with status %d", resp.StatusCode)
-	}
-
-	var tokenResp TokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to parse token response: %w", err)
-	}
-
-	expiresIn := tokenResp.ExpiresIn
-	if expiresIn == 0 {
-		expiresIn = 1800 // Default 30 minutes
-	}
-	tokenExpiry := float64(time.Now().Unix() + int64(expiresIn))
 
 	return &Credentials{
 		URL:          haURL,
 		ClientID:     clientID,
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: tokenResp.RefreshToken,
-		TokenExpiry:  tokenExpiry,
+		TokenExpiry:  computeExpiry(tokenResp.ExpiresIn),
 	}, nil
 }
 
@@ -87,39 +109,23 @@ func RefreshAccessToken(creds *Credentials) (*Credentials, error) {
 	data.Set("refresh_token", creds.RefreshToken)
 	data.Set("client_id", creds.ClientID)
 
-	resp, err := http.PostForm(tokenURL, data)
+	tokenResp, err := postTokenRequest(tokenURL, data)
 	if err != nil {
-		return nil, fmt.Errorf("refresh request failed: %w", err)
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh failed with status %d", resp.StatusCode)
-	}
-
-	var tokenResp TokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to parse token response: %w", err)
-	}
-
-	expiresIn := tokenResp.ExpiresIn
-	if expiresIn == 0 {
-		expiresIn = 1800
-	}
-	tokenExpiry := float64(time.Now().Unix() + int64(expiresIn))
 
 	// Use existing refresh token if new one not provided
-	newRefreshToken := tokenResp.RefreshToken
-	if newRefreshToken == "" {
-		newRefreshToken = creds.RefreshToken
+	refreshToken := tokenResp.RefreshToken
+	if refreshToken == "" {
+		refreshToken = creds.RefreshToken
 	}
 
 	return &Credentials{
 		URL:          creds.URL,
 		ClientID:     creds.ClientID,
 		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: newRefreshToken,
-		TokenExpiry:  tokenExpiry,
+		RefreshToken: refreshToken,
+		TokenExpiry:  computeExpiry(tokenResp.ExpiresIn),
 	}, nil
 }
 
