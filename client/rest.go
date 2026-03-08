@@ -174,15 +174,15 @@ func (c *RestClient) handleError(resp *resty.Response) error {
 
 	switch statusCode {
 	case http.StatusUnauthorized:
-		return &APIError{Code: "AUTHENTICATION_ERROR", Message: "Authentication failed: " + body}
+		return NewError(ErrCodeAuthenticationError, "Authentication failed: "+body)
 	case http.StatusForbidden:
-		return &APIError{Code: "PERMISSION_DENIED", Message: "Permission denied: " + body}
+		return NewError(ErrCodePermissionDenied, "Permission denied: "+body)
 	case http.StatusNotFound:
-		return &APIError{Code: "NOT_FOUND", Message: "Resource not found: " + body}
+		return NewError(ErrCodeNotFound, "Resource not found: "+body)
 	case http.StatusBadRequest:
-		return &APIError{Code: "VALIDATION_ERROR", Message: "Bad request: " + body}
+		return NewError(ErrCodeValidationError, "Bad request: "+body)
 	default:
-		return &APIError{Code: "API_ERROR", Message: fmt.Sprintf("API error (%d): %s", statusCode, body)}
+		return NewError(ErrCodeAPIError, fmt.Sprintf("API error (%d): %s", statusCode, body))
 	}
 }
 
@@ -190,64 +190,67 @@ func isJSONContentType(contentType string) bool {
 	return strings.HasPrefix(contentType, "application/json")
 }
 
-// APIError represents an API error
-type APIError struct {
-	Code    string
-	Message string
+// ---------------------------------------------------------------------------
+// Typed response helpers – eliminate the repeated "call + type-assert +
+// unexpected response type" boilerplate in every high-level method.
+// ---------------------------------------------------------------------------
+
+// getMap issues a GET and asserts the result is a map.
+func (c *RestClient) getMap(endpoint string) (map[string]interface{}, error) {
+	result, err := c.Get(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, errUnexpectedResponse
 }
 
-func (e *APIError) Error() string {
-	return e.Message
+// getList issues a GET and asserts the result is a slice.
+func (c *RestClient) getList(endpoint string) ([]interface{}, error) {
+	result, err := c.Get(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	if arr, ok := result.([]interface{}); ok {
+		return arr, nil
+	}
+	return nil, errUnexpectedResponse
+}
+
+// postMap issues a POST and asserts the result is a map.
+func (c *RestClient) postMap(endpoint string, body interface{}) (map[string]interface{}, error) {
+	result, err := c.Post(endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, errUnexpectedResponse
 }
 
 // High-level API methods
 
 // GetConfig returns the Home Assistant configuration
 func (c *RestClient) GetConfig() (map[string]interface{}, error) {
-	result, err := c.Get("config")
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.getMap("config")
 }
 
 // GetStates returns all entity states
 func (c *RestClient) GetStates() ([]interface{}, error) {
-	result, err := c.Get("states")
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.getList("states")
 }
 
 // GetState returns the state of a specific entity
 func (c *RestClient) GetState(entityID string) (map[string]interface{}, error) {
-	result, err := c.Get("states/" + entityID)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.getMap("states/" + entityID)
 }
 
 // GetServices returns all available services
 func (c *RestClient) GetServices() ([]interface{}, error) {
-	result, err := c.Get("services")
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.getList("services")
 }
 
 // CallService calls a service
@@ -258,14 +261,7 @@ func (c *RestClient) CallService(domain, service string, data map[string]interfa
 
 // CheckConfig validates the Home Assistant configuration
 func (c *RestClient) CheckConfig() (map[string]interface{}, error) {
-	result, err := c.Post("config/core/check_config", nil)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.postMap("config/core/check_config", nil)
 }
 
 // Restart restarts Home Assistant
@@ -320,14 +316,7 @@ func (c *RestClient) GetHistory(entityID string, startTime, endTime string) ([]i
 		params += "end_time=" + endTime
 	}
 
-	result, err := c.Get(endpoint + params)
-	if err != nil {
-		return nil, err
-	}
-	if arr, ok := result.([]interface{}); ok {
-		return arr, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.getList(endpoint + params)
 }
 
 // Config Flow methods
@@ -335,29 +324,15 @@ func (c *RestClient) GetHistory(entityID string, startTime, endTime string) ([]i
 // ConfigFlowCreate starts a new config flow for an integration
 func (c *RestClient) ConfigFlowCreate(handler string) (map[string]interface{}, error) {
 	body := map[string]interface{}{
-		"handler":              handler,
+		"handler":               handler,
 		"show_advanced_options": false,
 	}
-	result, err := c.Post("config/config_entries/flow", body)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.postMap("config/config_entries/flow", body)
 }
 
 // ConfigFlowStep submits data to a config flow step
 func (c *RestClient) ConfigFlowStep(flowID string, data map[string]interface{}) (map[string]interface{}, error) {
-	result, err := c.Post("config/config_entries/flow/"+flowID, data)
-	if err != nil {
-		return nil, err
-	}
-	if m, ok := result.(map[string]interface{}); ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("unexpected response type")
+	return c.postMap("config/config_entries/flow/"+flowID, data)
 }
 
 // ConfigEntryDelete deletes a config entry by ID

@@ -44,7 +44,6 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 
 	// Map domains to helper types
 	helperType := ""
-	isConfigEntry := false
 
 	switch domain {
 	case "input_boolean", "input_number", "input_text", "input_select", "input_datetime", "input_button":
@@ -58,7 +57,6 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 	case "light", "switch", "binary_sensor", "cover", "fan", "lock", "media_player", "sensor", "event":
 		// These could be group helpers (config entry based)
 		helperType = "group"
-		isConfigEntry = true
 	default:
 		return fmt.Errorf("unsupported helper domain: %s", domain)
 	}
@@ -69,14 +67,9 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	if isConfigEntry {
-		// For config entry based helpers (groups), we need to resolve to config entry
-		err = ws.DeleteHelperByEntityOrEntryID(entityID, helperType)
-	} else {
-		// For storage-based helpers, use the WebSocket delete command
-		err = ws.DeleteHelperByEntityOrEntryID(entityID, helperType)
-	}
-
+	// DeleteHelperByEntityOrEntryID handles both storage-based (WS) and
+	// config-entry-based helpers internally.
+	err = ws.DeleteHelperByEntityOrEntryID(entityID, helperType)
 	if err != nil {
 		return fmt.Errorf("failed to delete helper: %w", err)
 	}

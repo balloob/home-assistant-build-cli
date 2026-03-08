@@ -3,11 +3,9 @@ package client
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/term"
 )
 
 // BuildURL constructs an API URL from base URL and endpoint
@@ -66,25 +64,3 @@ func BuildWebSocketURL(baseURL string) (string, error) {
 	return parsed.String(), nil
 }
 
-// PrintError prints an error message to stderr
-func PrintError(err error) {
-	PrintErrorString(err.Error())
-}
-
-// PrintErrorString prints an error message to stderr
-func PrintErrorString(msg string) {
-	if term.IsTerminal(int(os.Stderr.Fd())) {
-		fmt.Fprintf(os.Stderr, "\033[1;31mError:\033[0m %s\n", msg)
-	} else {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", msg)
-	}
-}
-
-// PrintWarning prints a warning message to stderr
-func PrintWarning(msg string) {
-	if term.IsTerminal(int(os.Stderr.Fd())) {
-		fmt.Fprintf(os.Stderr, "\033[1;33mWarning:\033[0m %s\n", msg)
-	} else {
-		fmt.Fprintf(os.Stderr, "Warning: %s\n", msg)
-	}
-}
