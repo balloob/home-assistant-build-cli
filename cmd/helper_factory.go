@@ -81,8 +81,7 @@ func registerHelperType(def HelperDef) {
 
 // registerHelperList creates the "list" subcommand for a helper type.
 func registerHelperList(parentCmd *cobra.Command, def HelperDef) {
-	var listCount, listBrief bool
-	var listLimit int
+	var lf *ListFlags
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -98,45 +97,30 @@ func registerHelperList(parentCmd *cobra.Command, def HelperDef) {
 			defer ws.Close()
 
 			if def.Category == HelperCategoryWS {
-				return runWSList(ws, def, textMode, listCount, listBrief, listLimit)
+				return runWSList(ws, def, textMode, lf)
 			}
-			return runConfigFlowList(ws, def, textMode, listCount, listBrief, listLimit)
+			return runConfigFlowList(ws, def, textMode, lf)
 		},
 	}
 
-	listCmd.Flags().BoolVarP(&listCount, "count", "c", false, "Return only the count of items")
-	listCmd.Flags().BoolVarP(&listBrief, "brief", "b", false, "Return minimal fields only")
-	listCmd.Flags().IntVarP(&listLimit, "limit", "n", 0, "Limit results to N items")
+	lf = RegisterListFlags(listCmd, "id")
 	parentCmd.AddCommand(listCmd)
 }
 
 // runWSList handles the list command for WS-based helpers.
-func runWSList(ws client.WebSocketAPI, def HelperDef, textMode, count, brief bool, limit int) error {
+func runWSList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf *ListFlags) error {
 	helpers, err := ws.HelperList(def.TypeName)
 	if err != nil {
 		return err
 	}
 
-	if count {
-		output.PrintOutput(map[string]interface{}{"count": len(helpers)}, textMode, "")
+	if lf.RenderCount(len(helpers), textMode) {
 		return nil
 	}
 
-	if limit > 0 && len(helpers) > limit {
-		helpers = helpers[:limit]
-	}
+	helpers = lf.ApplyLimit(helpers)
 
-	if brief {
-		var result []map[string]interface{}
-		for _, h := range helpers {
-			if helper, ok := h.(map[string]interface{}); ok {
-				result = append(result, map[string]interface{}{
-					"id":   helper["id"],
-					"name": helper["name"],
-				})
-			}
-		}
-		output.PrintOutput(result, textMode, "")
+	if lf.RenderBrief(helpers, textMode, "id", "name") {
 		return nil
 	}
 
@@ -145,7 +129,7 @@ func runWSList(ws client.WebSocketAPI, def HelperDef, textMode, count, brief boo
 }
 
 // runConfigFlowList handles the list command for config-flow-based helpers.
-func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode, count, brief bool, limit int) error {
+func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf *ListFlags) error {
 	entries, err := ws.ConfigEntriesList(def.TypeName)
 	if err != nil {
 		return err
@@ -167,24 +151,13 @@ func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode, count, b
 		result = append(result, item)
 	}
 
-	if count {
-		output.PrintOutput(map[string]interface{}{"count": len(result)}, textMode, "")
+	if lf.RenderCount(len(result), textMode) {
 		return nil
 	}
 
-	if limit > 0 && len(result) > limit {
-		result = result[:limit]
-	}
+	result = lf.ApplyLimitMap(result)
 
-	if brief {
-		var briefResult []map[string]interface{}
-		for _, item := range result {
-			briefResult = append(briefResult, map[string]interface{}{
-				"entry_id": item["entry_id"],
-				"title":    item["title"],
-			})
-		}
-		output.PrintOutput(briefResult, textMode, "")
+	if lf.RenderBriefMap(result, textMode, "entry_id", "title") {
 		return nil
 	}
 
