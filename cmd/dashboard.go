@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	dashboardGroupCommands    = "commands"
-	dashboardGroupSubcommands = "subcommands"
+	dashboardGroupCommands    = groupCommands
+	dashboardGroupSubcommands = groupSubcommands
 )
 
 var dashboardCmd = &cobra.Command{

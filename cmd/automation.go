@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	automationGroupCommands    = "commands"
-	automationGroupSubcommands = "subcommands"
+	automationGroupCommands    = groupCommands
+	automationGroupSubcommands = groupSubcommands
 )
 
 var automationCmd = &cobra.Command{
@@ -30,10 +30,7 @@ var automationCmd = &cobra.Command{
 // the input slug is returned as-is as a fallback so callers do not have to
 // handle two code paths.
 func resolveAutomationConfigID(restClient client.RestAPI, entityOrConfigID string) (string, error) {
-	entityID := entityOrConfigID
-	if !strings.HasPrefix(entityID, "automation.") {
-		entityID = "automation." + entityID
-	}
+	entityID := ensureDomainPrefix(entityOrConfigID, "automation")
 
 	state, err := restClient.GetState(entityID)
 	if err != nil {

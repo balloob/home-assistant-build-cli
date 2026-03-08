@@ -234,9 +234,8 @@ func TestSaveAndDeleteCredentials(t *testing.T) {
 	}
 
 	// Delete
-	deleted := DeleteCredentials(tmpDir)
-	if !deleted {
-		t.Error("DeleteCredentials returned false")
+	if err := DeleteCredentials(tmpDir); err != nil {
+		t.Errorf("DeleteCredentials returned error: %v", err)
 	}
 
 	// Verify file removed
@@ -244,10 +243,9 @@ func TestSaveAndDeleteCredentials(t *testing.T) {
 		t.Error("credentials file was not deleted")
 	}
 
-	// Delete again (should return false since file is gone)
-	deleted2 := DeleteCredentials(tmpDir)
-	if deleted2 {
-		t.Error("DeleteCredentials should return false when file doesn't exist")
+	// Delete again (should succeed — idempotent)
+	if err := DeleteCredentials(tmpDir); err != nil {
+		t.Errorf("DeleteCredentials should succeed when file doesn't exist, got: %v", err)
 	}
 }
 

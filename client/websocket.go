@@ -1,7 +1,6 @@
 package client
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -67,9 +66,7 @@ func (c *WebSocketClient) Connect() error {
 		HandshakeTimeout: 10 * time.Second,
 	}
 
-	if !c.VerifySSL {
-		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	}
+	dialer.TLSClientConfig = tlsConfig(c.VerifySSL)
 
 	log.WithField("url", c.URL).Debug("Connecting to WebSocket")
 
@@ -241,10 +238,18 @@ func (c *WebSocketClient) handleMessage(msg *WSMessage) {
 	}
 }
 
+// requireAuth returns an error if the client is not authenticated.
+func (c *WebSocketClient) requireAuth() error {
+	if !c.authenticated {
+		return &APIError{Code: ErrCodeConnectionError, Message: "not connected"}
+	}
+	return nil
+}
+
 // SendCommand sends a command and waits for a response
 func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interface{}) (interface{}, error) {
-	if !c.authenticated {
-		return nil, &APIError{Code: ErrCodeConnectionError, Message: "not connected"}
+	if err := c.requireAuth(); err != nil {
+		return nil, err
 	}
 
 	// Build message (without ID — assigned inside the write lock below)

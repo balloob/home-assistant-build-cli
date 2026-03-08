@@ -1,12 +1,12 @@
 package client
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -20,8 +20,10 @@ type ESPHomeClient struct {
 	BaseURL        string
 	Token          string // HA bearer token (used for ingress proxy auth)
 	IngressSession string // Ingress session cookie value (for HA ingress proxy)
+	Timeout        time.Duration
 	VerifySSL      bool
 	client         *resty.Client
+	clientOnce     sync.Once
 }
 
 // ESPHomeDevice represents a configured device from the ESPHome dashboard.
@@ -70,14 +72,15 @@ func NewESPHomeClient(baseURL, token string) *ESPHomeClient {
 	return &ESPHomeClient{
 		BaseURL:   strings.TrimRight(baseURL, "/"),
 		Token:     token,
+		Timeout:   DefaultTimeout,
 		VerifySSL: true,
 	}
 }
 
 func (c *ESPHomeClient) getClient() *resty.Client {
-	if c.client == nil {
+	c.clientOnce.Do(func() {
 		c.client = resty.New()
-		c.client.SetTimeout(30 * time.Second)
+		c.client.SetTimeout(c.Timeout)
 		c.client.SetBaseURL(c.BaseURL)
 		if c.Token != "" {
 			c.client.SetHeader("Authorization", "Bearer "+c.Token)
@@ -89,8 +92,8 @@ func (c *ESPHomeClient) getClient() *resty.Client {
 			})
 		}
 
-		if !c.VerifySSL {
-			c.client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+		if cfg := tlsConfig(c.VerifySSL); cfg != nil {
+			c.client.SetTLSClientConfig(cfg)
 		}
 
 		c.client.OnAfterResponse(func(client *resty.Client, resp *resty.Response) error {
@@ -102,7 +105,7 @@ func (c *ESPHomeClient) getClient() *resty.Client {
 			}).Debug("ESPHome REST response")
 			return nil
 		})
-	}
+	})
 	return c.client
 }
 
@@ -204,9 +207,7 @@ func (c *ESPHomeClient) StreamCommand(path string, spawnMsg map[string]interface
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 10 * time.Second,
 	}
-	if !c.VerifySSL {
-		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	}
+	dialer.TLSClientConfig = tlsConfig(c.VerifySSL)
 
 	headers := http.Header{}
 	if c.Token != "" {

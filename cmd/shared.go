@@ -14,6 +14,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Shared cobra group IDs for parent commands that split their subcommands
+// into "commands" (top-level actions) and "subcommands" (resource-specific
+// CRUD). Each parent (automation, script, dashboard, helper) uses these
+// values to group its children consistently in --help output.
+const (
+	groupCommands    = "commands"
+	groupSubcommands = "subcommands"
+)
+
 // helperDomains is the set of storage-based helper entity domains.
 // Used by helper list, overview, and other commands that need to identify
 // helper entities by their domain prefix.
@@ -89,6 +98,57 @@ func confirmAction(force, textMode bool, prompt string) bool {
 	response, _ := reader.ReadString('\n')
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
+}
+
+// ensureDomainPrefix ensures an entity ID has the given domain prefix.
+// If id already starts with "domain.", it is returned unchanged.
+func ensureDomainPrefix(id, domain string) string {
+	prefix := domain + "."
+	if strings.HasPrefix(id, prefix) {
+		return id
+	}
+	return prefix + id
+}
+
+// ---------------------------------------------------------------------------
+// Helper delete orchestration
+// ---------------------------------------------------------------------------
+
+// deleteHelperByEntityOrEntryID deletes a helper by entity_id, helper ID, or
+// config_entry_id. Storage-based helpers (input_boolean, counter, …) are
+// deleted via the WS helper/delete command; config-entry-based helpers (group)
+// are deleted via the config entry API. This orchestration logic was moved
+// from the client package to keep domain policy in cmd/.
+func deleteHelperByEntityOrEntryID(ws client.WebSocketAPI, id, helperType string) error {
+	isEntityID := strings.Contains(id, ".")
+
+	// Storage-based helpers: use HelperDelete
+	if helperDomains[helperType] {
+		helperID := id
+		if isEntityID {
+			if _, after, ok := strings.Cut(id, "."); ok {
+				helperID = after
+			}
+		}
+		return ws.HelperDelete(helperType, helperID)
+	}
+
+	// Config-entry-based helpers (e.g. group): resolve to config_entry_id
+	var entryID string
+	if isEntityID {
+		resolved, err := ws.ResolveEntityToConfigEntry(id)
+		if err != nil {
+			return fmt.Errorf("failed to resolve entity_id: %w", err)
+		}
+		if resolved == "" {
+			return fmt.Errorf("entity %s does not have a config entry", id)
+		}
+		entryID = resolved
+	} else {
+		entryID = id
+	}
+
+	return ws.ConfigEntryDelete(entryID)
 }
 
 // ---------------------------------------------------------------------------

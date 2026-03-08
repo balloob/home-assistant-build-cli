@@ -207,7 +207,7 @@ func runWSDelete(id string, def HelperDef, textMode bool) error {
 	}
 	defer ws.Close()
 
-	if err := ws.DeleteHelperByEntityOrEntryID(id, def.TypeName); err != nil {
+	if err := deleteHelperByEntityOrEntryID(ws, id, def.TypeName); err != nil {
 		return fmt.Errorf("failed to delete %s: %w", def.DisplayName, err)
 	}
 

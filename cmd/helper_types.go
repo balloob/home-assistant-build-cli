@@ -3,7 +3,6 @@ package cmd
 import (
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var helperTypesCmd = &cobra.Command{
@@ -19,7 +18,7 @@ func init() {
 }
 
 func runHelperTypes(cmd *cobra.Command, args []string) error {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 
 	result := make([]interface{}, len(helperTypeRegistry))
 	for i, def := range helperTypeRegistry {

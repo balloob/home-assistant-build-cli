@@ -33,8 +33,13 @@ func init() {
 }
 
 // printUpdateError formats and prints an error in text or JSON mode.
-// The update command prints errors inline and returns nil rather than
-// returning them to the root error handler.
+//
+// Design note: the update command deliberately prints errors inline and
+// returns nil to the root error handler so that `hab update` never produces
+// a non-zero exit code. This prevents self-update failures (network issues,
+// missing binaries, permission errors) from breaking automation pipelines
+// or confusing interactive users — an update failure should be informational,
+// not fatal.
 func printUpdateError(textMode bool, code, msg, suggestion string, details map[string]interface{}) {
 	if textMode {
 		fmt.Println(output.FormatErrorText(msg, suggestion))
@@ -44,7 +49,7 @@ func printUpdateError(textMode bool, code, msg, suggestion string, details map[s
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 	configDir := viper.GetString("config")
 
 	// Check for latest release

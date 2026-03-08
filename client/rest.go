@@ -1,7 +1,6 @@
 package client
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -58,8 +57,8 @@ func (c *RestClient) getClient() *resty.Client {
 		c.client.SetHeader("Content-Type", "application/json")
 		c.client.SetHeader("Accept", "application/json")
 
-		if !c.VerifySSL {
-			c.client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+		if cfg := tlsConfig(c.VerifySSL); cfg != nil {
+			c.client.SetTLSClientConfig(cfg)
 		}
 
 		// Response logging

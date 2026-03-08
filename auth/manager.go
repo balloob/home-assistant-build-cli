@@ -73,36 +73,11 @@ func (m *Manager) IsAuthenticated() bool {
 	return creds.HasValidToken()
 }
 
-// GetURL returns the Home Assistant URL
-func (m *Manager) GetURL() string {
-	creds, _ := m.loadCredentials()
-	if creds == nil {
-		return ""
-	}
-	return creds.URL
-}
-
-// GetToken returns the access token
-func (m *Manager) GetToken() string {
-	creds, _ := m.loadCredentials()
-	if creds == nil {
-		return ""
-	}
-	return creds.AccessToken
-}
-
-// NeedsRefresh returns true if the token needs to be refreshed
-func (m *Manager) NeedsRefresh() bool {
-	creds, _ := m.loadCredentials()
-	if creds == nil {
-		return false
-	}
-	return creds.NeedsRefresh()
-}
-
-// RefreshToken refreshes an OAuth token
+// RefreshToken forces an OAuth token refresh.
+// Uses loadCredentials (not GetCredentials) to avoid an automatic refresh
+// before the explicit one requested by the caller.
 func (m *Manager) RefreshToken() error {
-	creds, err := m.GetCredentials()
+	creds, err := m.loadCredentials()
 	if err != nil {
 		return err
 	}
@@ -126,7 +101,7 @@ func (m *Manager) Save(creds *Credentials) error {
 }
 
 // Logout removes stored credentials
-func (m *Manager) Logout() bool {
+func (m *Manager) Logout() error {
 	m.credentials = nil
 	return DeleteCredentials(m.ConfigDir)
 }

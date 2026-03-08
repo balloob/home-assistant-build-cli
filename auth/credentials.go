@@ -8,6 +8,16 @@ import (
 	"github.com/home-assistant/hab/config"
 )
 
+const (
+	// tokenRefreshWindow is the number of seconds before expiry at which
+	// a token is considered due for refresh (5 minutes).
+	tokenRefreshWindow = 300
+
+	// defaultTokenExpiry is the assumed token lifetime in seconds when the
+	// server does not provide an expires_in value (30 minutes).
+	defaultTokenExpiry = 1800
+)
+
 // Credentials stores authentication information
 type Credentials struct {
 	URL          string  `json:"url"`
@@ -46,8 +56,8 @@ func (c *Credentials) NeedsRefresh() bool {
 	if c.TokenExpiry == 0 {
 		return true
 	}
-	// Refresh if within 5 minutes of expiry
-	return float64(time.Now().Unix()) >= (c.TokenExpiry - 300)
+	// Refresh if within tokenRefreshWindow of expiry
+	return float64(time.Now().Unix()) >= (c.TokenExpiry - tokenRefreshWindow)
 }
 
 // LoadCredentials loads credentials from storage
@@ -127,18 +137,15 @@ func SaveCredentials(creds *Credentials, configDir string) error {
 	}
 
 	credsPath := config.GetCredentialsPath(configDir)
-	if err := os.WriteFile(credsPath, encrypted, 0600); err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(credsPath, encrypted, 0600)
 }
 
-// DeleteCredentials removes stored credentials
-func DeleteCredentials(configDir string) bool {
+// DeleteCredentials removes stored credentials.
+// Returns nil if the file was removed or did not exist (idempotent).
+func DeleteCredentials(configDir string) error {
 	credsPath := config.GetCredentialsPath(configDir)
-	if err := os.Remove(credsPath); err != nil {
-		return false
+	if err := os.Remove(credsPath); err != nil && !os.IsNotExist(err) {
+		return err
 	}
-	return true
+	return nil
 }

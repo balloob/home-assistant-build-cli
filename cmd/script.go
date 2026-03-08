@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	scriptGroupCommands    = "commands"
-	scriptGroupSubcommands = "subcommands"
+	scriptGroupCommands    = groupCommands
+	scriptGroupSubcommands = groupSubcommands
 )
 
 var scriptCmd = &cobra.Command{

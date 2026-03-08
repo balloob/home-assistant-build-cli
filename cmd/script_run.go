@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -34,9 +33,7 @@ func runScriptRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(scriptID, "script.") {
-		scriptID = "script." + scriptID
-	}
+	scriptID = ensureDomainPrefix(scriptID, "script")
 
 	textMode := getTextMode()
 

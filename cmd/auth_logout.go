@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var authLogoutCmd = &cobra.Command{
@@ -18,14 +19,13 @@ func init() {
 }
 
 func runAuthLogout(cmd *cobra.Command, args []string) error {
-	textMode := viper.GetBool("text")
+	textMode := getTextMode()
 	manager := getAuthManager()
 
-	if manager.Logout() {
-		output.PrintSuccess(nil, textMode, "Successfully logged out.")
-	} else {
-		output.PrintSuccess(nil, textMode, "No credentials to remove.")
+	if err := manager.Logout(); err != nil {
+		return fmt.Errorf("failed to remove credentials: %w", err)
 	}
 
+	output.PrintSuccess(nil, textMode, "Successfully logged out.")
 	return nil
 }

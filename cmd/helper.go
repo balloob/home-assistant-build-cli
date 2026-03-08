@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	helperGroupCommands    = "commands"
-	helperGroupSubcommands = "subcommands"
+	helperGroupCommands    = groupCommands
+	helperGroupSubcommands = groupSubcommands
 )
 
 var helperCmd = &cobra.Command{
