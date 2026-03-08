@@ -182,6 +182,38 @@ func (f *ListFlags) RenderBriefMap(items []map[string]interface{}, textMode bool
 	return true
 }
 
+// RenderBriefFields outputs brief items and returns true if the Brief flag is set.
+// Text mode prints "name (id)" per line; JSON mode outputs items with only
+// the specified jsonFields. This variant is useful when brief JSON output
+// should include a configurable set of fields beyond just id and name.
+func (f *ListFlags) RenderBriefFields(items []interface{}, textMode bool, idField, nameField string, jsonFields []string) bool {
+	if !f.Brief {
+		return false
+	}
+	if textMode {
+		for _, item := range items {
+			if m, ok := item.(map[string]interface{}); ok {
+				name, _ := m[nameField].(string)
+				id, _ := m[idField].(string)
+				fmt.Printf("%s (%s)\n", name, id)
+			}
+		}
+	} else {
+		var brief []map[string]interface{}
+		for _, item := range items {
+			if m, ok := item.(map[string]interface{}); ok {
+				b := make(map[string]interface{})
+				for _, field := range jsonFields {
+					b[field] = m[field]
+				}
+				brief = append(brief, b)
+			}
+		}
+		output.PrintOutput(brief, false, "")
+	}
+	return true
+}
+
 // ---------------------------------------------------------------------------
 // Input helpers
 // ---------------------------------------------------------------------------

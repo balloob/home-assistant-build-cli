@@ -80,11 +80,9 @@ func RegisterRegistryCRUD(cfg RegistryCRUDConfig) {
 // ---------------------------------------------------------------------------
 
 func registerRegistryList(cfg RegistryCRUDConfig) {
-	var listCount, listBrief bool
-	var listLimit int
-
 	// Filter flag values: map flag-name -> *string
 	filterValues := make(map[string]*string)
+	var lf *ListFlags
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -122,43 +120,15 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 			}
 
 			// Count mode
-			if listCount {
-				if textMode {
-					fmt.Printf("Count: %d\n", len(items))
-				} else {
-					output.PrintOutput(map[string]interface{}{"count": len(items)}, false, "")
-				}
+			if lf.RenderCount(len(items), textMode) {
 				return nil
 			}
 
 			// Apply limit
-			if listLimit > 0 && len(items) > listLimit {
-				items = items[:listLimit]
-			}
+			items = lf.ApplyLimit(items)
 
 			// Brief mode
-			if listBrief {
-				if textMode {
-					for _, item := range items {
-						if m, ok := item.(map[string]interface{}); ok {
-							name, _ := m["name"].(string)
-							id, _ := m[cfg.IDField].(string)
-							fmt.Printf("%s (%s)\n", name, id)
-						}
-					}
-				} else {
-					var brief []map[string]interface{}
-					for _, item := range items {
-						if m, ok := item.(map[string]interface{}); ok {
-							b := make(map[string]interface{})
-							for _, field := range cfg.BriefFields {
-								b[field] = m[field]
-							}
-							brief = append(brief, b)
-						}
-					}
-					output.PrintOutput(brief, false, "")
-				}
+			if lf.RenderBriefFields(items, textMode, cfg.IDField, "name", cfg.BriefFields) {
 				return nil
 			}
 
@@ -183,9 +153,7 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 	}
 
 	// Register standard list flags
-	listCmd.Flags().BoolVarP(&listCount, "count", "c", false, "Return only the count of items")
-	listCmd.Flags().BoolVarP(&listBrief, "brief", "b", false, fmt.Sprintf("Return minimal fields (%s and name only)", cfg.IDField))
-	listCmd.Flags().IntVarP(&listLimit, "limit", "n", 0, "Limit results to N items")
+	lf = RegisterListFlags(listCmd, cfg.IDField)
 
 	// Register filter flags
 	for i := range cfg.ListFilters {
