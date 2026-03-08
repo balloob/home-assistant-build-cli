@@ -1,7 +1,13 @@
 package client
 
+import "errors"
+
+// errUnexpectedResponse is returned when an API response cannot be
+// type-asserted to the expected Go type (map or slice).
+var errUnexpectedResponse = errors.New("unexpected response type")
+
 // Error code constants for structured error output.
-// REST-originated codes are already used by rest.go handleError().
+// REST-originated codes are used by rest.go handleError().
 // The remaining codes are used by the centralized error handler in cmd/root.go.
 const (
 	// REST API codes (existing, used in rest.go)
@@ -19,6 +25,18 @@ const (
 	ErrCodeInputError      = "INPUT_ERROR"      // invalid JSON/YAML input, parse failures
 	ErrCodeUnknownError    = "UNKNOWN_ERROR"    // fallback for unclassified errors
 )
+
+// APIError represents a structured API error with a machine-readable code
+// and a human-readable message.  It is used by both the REST and WebSocket
+// clients and can be inspected by callers via errors.As.
+type APIError struct {
+	Code    string
+	Message string
+}
+
+func (e *APIError) Error() string {
+	return e.Message
+}
 
 // NewError creates a new APIError with the given code and message.
 func NewError(code, message string) *APIError {

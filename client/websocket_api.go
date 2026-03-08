@@ -1,0 +1,501 @@
+package client
+
+import (
+	"fmt"
+	"time"
+)
+
+// High-level API methods
+
+// GetStates returns all entity states
+func (c *WebSocketClient) GetStates() ([]interface{}, error) {
+	return c.sendListCommand("get_states", nil)
+}
+
+// GetConfig returns the Home Assistant configuration
+func (c *WebSocketClient) GetConfig() (map[string]interface{}, error) {
+	return c.sendMapCommand("get_config", nil)
+}
+
+// GetServices returns all available services
+func (c *WebSocketClient) GetServices() (map[string]interface{}, error) {
+	return c.sendMapCommand("get_services", nil)
+}
+
+// CallService calls a service
+func (c *WebSocketClient) CallService(domain, service string, data, target map[string]interface{}, returnResponse bool) (interface{}, error) {
+	params := map[string]interface{}{
+		"domain":  domain,
+		"service": service,
+	}
+	if data != nil {
+		params["service_data"] = data
+	}
+	if target != nil {
+		params["target"] = target
+	}
+	if returnResponse {
+		params["return_response"] = true
+	}
+	return c.SendCommand("call_service", params)
+}
+
+// Ping sends a ping message
+func (c *WebSocketClient) Ping() error {
+	_, err := c.SendCommand("ping", nil)
+	return err
+}
+
+// Registry operations
+
+// AreaRegistryList returns all areas
+func (c *WebSocketClient) AreaRegistryList() ([]interface{}, error) {
+	return c.sendListCommand("config/area_registry/list", nil)
+}
+
+// AreaRegistryCreate creates a new area
+func (c *WebSocketClient) AreaRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/area_registry/create", "name", name, params)
+}
+
+// AreaRegistryUpdate updates an area
+func (c *WebSocketClient) AreaRegistryUpdate(areaID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/area_registry/update", "area_id", areaID, params)
+}
+
+// AreaRegistryDelete deletes an area
+func (c *WebSocketClient) AreaRegistryDelete(areaID string) error {
+	return c.sendDelete("config/area_registry/delete", "area_id", areaID)
+}
+
+// FloorRegistryList returns all floors
+func (c *WebSocketClient) FloorRegistryList() ([]interface{}, error) {
+	return c.sendListCommand("config/floor_registry/list", nil)
+}
+
+// FloorRegistryCreate creates a new floor
+func (c *WebSocketClient) FloorRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/floor_registry/create", "name", name, params)
+}
+
+// FloorRegistryUpdate updates a floor
+func (c *WebSocketClient) FloorRegistryUpdate(floorID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/floor_registry/update", "floor_id", floorID, params)
+}
+
+// FloorRegistryDelete deletes a floor
+func (c *WebSocketClient) FloorRegistryDelete(floorID string) error {
+	return c.sendDelete("config/floor_registry/delete", "floor_id", floorID)
+}
+
+// LabelRegistryList returns all labels
+func (c *WebSocketClient) LabelRegistryList() ([]interface{}, error) {
+	return c.sendListCommand("config/label_registry/list", nil)
+}
+
+// LabelRegistryCreate creates a new label
+func (c *WebSocketClient) LabelRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/label_registry/create", "name", name, params)
+}
+
+// LabelRegistryUpdate updates a label
+func (c *WebSocketClient) LabelRegistryUpdate(labelID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/label_registry/update", "label_id", labelID, params)
+}
+
+// LabelRegistryDelete deletes a label
+func (c *WebSocketClient) LabelRegistryDelete(labelID string) error {
+	return c.sendDelete("config/label_registry/delete", "label_id", labelID)
+}
+
+// DeviceRegistryList returns all devices
+func (c *WebSocketClient) DeviceRegistryList() ([]interface{}, error) {
+	return c.sendListCommand("config/device_registry/list", nil)
+}
+
+// DeviceRegistryUpdate updates a device
+func (c *WebSocketClient) DeviceRegistryUpdate(deviceID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/device_registry/update", "device_id", deviceID, params)
+}
+
+// EntityRegistryList returns all entities
+func (c *WebSocketClient) EntityRegistryList() ([]interface{}, error) {
+	return c.sendListCommand("config/entity_registry/list", nil)
+}
+
+// EntityRegistryGet returns a specific entity
+func (c *WebSocketClient) EntityRegistryGet(entityID string) (map[string]interface{}, error) {
+	return c.sendMapCommand("config/entity_registry/get", map[string]interface{}{
+		"entity_id": entityID,
+	})
+}
+
+// EntityRegistryUpdate updates an entity
+func (c *WebSocketClient) EntityRegistryUpdate(entityID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/entity_registry/update", "entity_id", entityID, params)
+}
+
+// ZoneList returns all zones
+func (c *WebSocketClient) ZoneList() ([]interface{}, error) {
+	return c.sendListCommand("zone/list", nil)
+}
+
+// ZoneCreate creates a new zone
+func (c *WebSocketClient) ZoneCreate(name string, latitude, longitude, radius float64, params map[string]interface{}) (map[string]interface{}, error) {
+	p := map[string]interface{}{
+		"name":      name,
+		"latitude":  latitude,
+		"longitude": longitude,
+		"radius":    radius,
+	}
+	for k, v := range params {
+		p[k] = v
+	}
+	return c.sendMapCommand("zone/create", p)
+}
+
+// ZoneUpdate updates a zone
+func (c *WebSocketClient) ZoneUpdate(zoneID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("zone/update", "zone_id", zoneID, params)
+}
+
+// ZoneDelete deletes a zone
+func (c *WebSocketClient) ZoneDelete(zoneID string) error {
+	return c.sendDelete("zone/delete", "zone_id", zoneID)
+}
+
+// SystemHealthInfo returns system health information using subscription
+func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
+	if !c.authenticated {
+		return nil, fmt.Errorf("not connected")
+	}
+
+	// Channel to receive events
+	eventCh := make(chan map[string]interface{}, 100)
+	doneCh := make(chan struct{})
+
+	// Accumulated data
+	data := make(map[string]interface{})
+	var dataErr error
+
+	// Assign ID, register subscription, and send — all under the write
+	// lock to guarantee monotonically increasing IDs on the wire.
+	c.writeMu.Lock()
+	msgID := c.nextID()
+
+	c.subsMu.Lock()
+	c.subscriptions[msgID] = func(event map[string]interface{}) {
+		select {
+		case eventCh <- event:
+		default:
+		}
+	}
+	c.subsMu.Unlock()
+
+	msg := map[string]interface{}{
+		"id":   msgID,
+		"type": "system_health/info",
+	}
+
+	respCh := make(chan *WSMessage, 1)
+	c.pendingMu.Lock()
+	c.pending[msgID] = respCh
+	c.pendingMu.Unlock()
+
+	writeErr := c.conn.WriteJSON(msg)
+	c.writeMu.Unlock()
+
+	// Cleanup subscription on exit
+	defer func() {
+		c.subsMu.Lock()
+		delete(c.subscriptions, msgID)
+		c.subsMu.Unlock()
+	}()
+
+	if writeErr != nil {
+		c.pendingMu.Lock()
+		delete(c.pending, msgID)
+		c.pendingMu.Unlock()
+		return nil, fmt.Errorf("failed to send command: %w", writeErr)
+	}
+
+	// Wait for initial result (subscription confirmation)
+	select {
+	case resp := <-respCh:
+		if resp == nil {
+			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed"}
+		}
+		if !resp.Success {
+			code := ErrCodeAPIError
+			errMsg := "unknown error"
+			if resp.Error != nil {
+				if resp.Error.Code != "" {
+					code = resp.Error.Code
+				}
+				errMsg = resp.Error.Message
+			}
+			return nil, &APIError{Code: code, Message: errMsg}
+		}
+	case <-time.After(c.Timeout):
+		return nil, &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for subscription confirmation"}
+	}
+
+	// Process events in a goroutine
+	go func() {
+		defer close(doneCh)
+		for event := range eventCh {
+			eventType, _ := event["type"].(string)
+
+			switch eventType {
+			case "initial":
+				if eventData, ok := event["data"].(map[string]interface{}); ok {
+					for k, v := range eventData {
+						data[k] = v
+					}
+				}
+			case "update":
+				domain, _ := event["domain"].(string)
+				key, _ := event["key"].(string)
+				success, _ := event["success"].(bool)
+
+				if domain != "" && key != "" {
+					if _, exists := data[domain]; !exists {
+						data[domain] = map[string]interface{}{
+							"info": make(map[string]interface{}),
+						}
+					}
+					if domainData, ok := data[domain].(map[string]interface{}); ok {
+						if _, exists := domainData["info"]; !exists {
+							domainData["info"] = make(map[string]interface{})
+						}
+						if infoData, ok := domainData["info"].(map[string]interface{}); ok {
+							if success {
+								infoData[key] = event["data"]
+							} else {
+								if errData, ok := event["error"].(map[string]interface{}); ok {
+									infoData[key] = map[string]interface{}{
+										"error": true,
+										"value": errData["msg"],
+									}
+								}
+							}
+						}
+					}
+				}
+			case "finish":
+				return
+			}
+		}
+	}()
+
+	// Wait for finish or timeout
+	select {
+	case <-doneCh:
+		// Normal completion
+	case <-time.After(30 * time.Second):
+		dataErr = fmt.Errorf("timeout waiting for system health data")
+	}
+
+	close(eventCh)
+
+	if dataErr != nil {
+		return nil, dataErr
+	}
+
+	return data, nil
+}
+
+// SearchRelated returns related items for a given item type and ID
+// itemType can be: area, automation, automation_blueprint, config_entry, device, entity, floor, group, label, scene, script, script_blueprint
+func (c *WebSocketClient) SearchRelated(itemType, itemID string) (map[string][]string, error) {
+	result, err := c.SendCommand("search/related", map[string]interface{}{
+		"item_type": itemType,
+		"item_id":   itemID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the result to a map of string slices
+	resultMap := make(map[string][]string)
+	if m, ok := result.(map[string]interface{}); ok {
+		for key, value := range m {
+			if arr, ok := value.([]interface{}); ok {
+				var items []string
+				for _, item := range arr {
+					if str, ok := item.(string); ok {
+						items = append(items, str)
+					}
+				}
+				resultMap[key] = items
+			}
+		}
+	}
+
+	return resultMap, nil
+}
+
+// GetWebSocketClientForAuth creates a WebSocket client from auth manager
+func GetWebSocketClientForAuth(baseURL, token string) *WebSocketClient {
+	return NewWebSocketClient(baseURL, token)
+}
+
+// Helper operations
+
+// HelperList returns all helpers of a specific type
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+func (c *WebSocketClient) HelperList(helperType string) ([]interface{}, error) {
+	return c.sendListCommand(helperType+"/list", nil)
+}
+
+// HelperCreate creates a new helper of a specific type
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+func (c *WebSocketClient) HelperCreate(helperType string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.sendMapCommand(helperType+"/create", params)
+}
+
+// HelperUpdate updates an existing helper
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+// The idField depends on the helper type (e.g., "input_boolean_id", "counter_id", "timer_id", "schedule_id")
+func (c *WebSocketClient) HelperUpdate(helperType, helperID string, params map[string]interface{}) (map[string]interface{}, error) {
+	// Determine the ID field name based on helper type
+	idField := helperType + "_id"
+	p := map[string]interface{}{idField: helperID}
+	for k, v := range params {
+		p[k] = v
+	}
+	return c.sendMapCommand(helperType+"/update", p)
+}
+
+// HelperDelete deletes a helper
+// helperType can be: input_boolean, input_number, input_text, input_select, input_datetime, input_button, counter, timer, schedule
+// The idField depends on the helper type (e.g., "input_boolean_id", "counter_id", "timer_id", "schedule_id")
+func (c *WebSocketClient) HelperDelete(helperType, helperID string) error {
+	// Determine the ID field name based on helper type
+	idField := helperType + "_id"
+	_, err := c.SendCommand(helperType+"/delete", map[string]interface{}{
+		idField: helperID,
+	})
+	return err
+}
+
+// Config Entry Flow operations
+
+// ConfigFlowInit starts a new config flow for an integration
+func (c *WebSocketClient) ConfigFlowInit(handler string, context map[string]interface{}) (map[string]interface{}, error) {
+	params := map[string]interface{}{
+		"handler": handler,
+	}
+	if context != nil {
+		params["context"] = context
+	}
+	return c.sendMapCommand("config_entries/flow", params)
+}
+
+// ConfigFlowConfigure submits data to a config flow step
+func (c *WebSocketClient) ConfigFlowConfigure(flowID string, data map[string]interface{}) (map[string]interface{}, error) {
+	params := map[string]interface{}{
+		"flow_id": flowID,
+	}
+	if data != nil {
+		for k, v := range data {
+			params[k] = v
+		}
+	}
+	return c.sendMapCommand("config_entries/flow", params)
+}
+
+// ConfigEntriesList returns all config entries, optionally filtered by domain
+func (c *WebSocketClient) ConfigEntriesList(domain string) ([]interface{}, error) {
+	params := map[string]interface{}{}
+	if domain != "" {
+		params["domain"] = domain
+	}
+	return c.sendListCommand("config_entries/get", params)
+}
+
+// ConfigEntryDelete deletes a config entry
+func (c *WebSocketClient) ConfigEntryDelete(entryID string) error {
+	_, err := c.SendCommand("config_entries/delete", map[string]interface{}{
+		"entry_id": entryID,
+	})
+	return err
+}
+
+// ResolveEntityToConfigEntry resolves an entity_id to its config_entry_id
+// Returns the config_entry_id if found, or empty string if the entity doesn't have one
+func (c *WebSocketClient) ResolveEntityToConfigEntry(entityID string) (string, error) {
+	entity, err := c.EntityRegistryGet(entityID)
+	if err != nil {
+		return "", err
+	}
+	if configEntryID, ok := entity["config_entry_id"].(string); ok && configEntryID != "" {
+		return configEntryID, nil
+	}
+	return "", nil
+}
+
+// DeleteHelperByEntityOrEntryID deletes a helper by either entity_id, helper ID, or config_entry_id
+// For storage helpers (input_boolean, input_number, etc.): uses WebSocket helper/delete command
+// For config entry helpers (group): uses config entry deletion
+func (c *WebSocketClient) DeleteHelperByEntityOrEntryID(id string, helperType string) error {
+	// Storage-based helper types use WebSocket commands, not config entries
+	storageHelperTypes := map[string]bool{
+		"input_boolean":  true,
+		"input_number":   true,
+		"input_text":     true,
+		"input_select":   true,
+		"input_datetime": true,
+		"input_button":   true,
+		"counter":        true,
+		"timer":          true,
+		"schedule":       true,
+	}
+
+	// Check if it looks like an entity_id (contains a dot)
+	isEntityID := false
+	for _, ch := range id {
+		if ch == '.' {
+			isEntityID = true
+			break
+		}
+	}
+
+	// For storage-based helpers, use the HelperDelete WebSocket command
+	if storageHelperTypes[helperType] {
+		helperID := id
+		if isEntityID {
+			helperID = extractIDFromEntityID(id)
+		}
+		return c.HelperDelete(helperType, helperID)
+	}
+
+	// For config entry based helpers (like group), resolve to config_entry_id
+	var entryID string
+	if isEntityID {
+		// Try to resolve entity_id to config_entry_id
+		resolved, err := c.ResolveEntityToConfigEntry(id)
+		if err != nil {
+			return fmt.Errorf("failed to resolve entity_id: %w", err)
+		}
+		if resolved == "" {
+			return fmt.Errorf("entity %s does not have a config entry", id)
+		}
+		entryID = resolved
+	} else {
+		// Assume it's already a config_entry_id
+		entryID = id
+	}
+
+	return c.ConfigEntryDelete(entryID)
+}
+
+// extractIDFromEntityID extracts the ID part from an entity_id (e.g., "input_boolean.my_toggle" -> "my_toggle")
+func extractIDFromEntityID(entityID string) string {
+	for i, ch := range entityID {
+		if ch == '.' {
+			return entityID[i+1:]
+		}
+	}
+	return entityID
+}

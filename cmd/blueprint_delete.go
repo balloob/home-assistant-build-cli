@@ -18,13 +18,19 @@ var blueprintDeleteCmd = &cobra.Command{
 func init() {
 	blueprintCmd.AddCommand(blueprintDeleteCmd)
 	blueprintDeleteCmd.Flags().String("domain", "automation", "Domain of the blueprint (automation/script)")
-	blueprintDeleteCmd.Flags().Bool("force", false, "Skip confirmation")
+	blueprintDeleteCmd.Flags().BoolP("force", "f", false, "Skip confirmation")
 }
 
 func runBlueprintDelete(cmd *cobra.Command, args []string) error {
 	path := args[0]
 	textMode := getTextMode()
 	domain, _ := cmd.Flags().GetString("domain")
+	force, _ := cmd.Flags().GetBool("force")
+
+	if !confirmAction(force, textMode, fmt.Sprintf("Delete blueprint %s?", path)) {
+		fmt.Println("Cancelled.")
+		return nil
+	}
 
 	ws, err := getWSClient()
 	if err != nil {
