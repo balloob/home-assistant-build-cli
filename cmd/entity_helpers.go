@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"strings"
+
+	"github.com/home-assistant/hab/output"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -297,4 +299,48 @@ func printEntityText(e map[string]interface{}, indent string) {
 	if areaID != "" {
 		fmt.Printf("%s  area: %s\n", indent, areaID)
 	}
+}
+
+// modifyEntityLabels fetches an entity's current labels, applies a modifier
+// function, and updates the entity registry.  The modifier returns the new
+// label list and a message.  If the returned list is nil, the message is
+// treated as an early-exit notice (e.g. "already has label") and no update
+// is performed.
+func modifyEntityLabels(entityID, labelID string, modify func(labels []string) ([]string, string)) error {
+	textMode := getTextMode()
+
+	ws, err := getWSClient()
+	if err != nil {
+		return err
+	}
+	defer ws.Close()
+
+	entity, err := ws.EntityRegistryGet(entityID)
+	if err != nil {
+		return err
+	}
+
+	currentLabels, _ := entity["labels"].([]interface{})
+	labels := make([]string, 0, len(currentLabels))
+	for _, l := range currentLabels {
+		if ls, ok := l.(string); ok {
+			labels = append(labels, ls)
+		}
+	}
+
+	newLabels, msg := modify(labels)
+	if newLabels == nil {
+		output.PrintSuccess(nil, textMode, msg)
+		return nil
+	}
+
+	result, err := ws.EntityRegistryUpdate(entityID, map[string]interface{}{
+		"labels": newLabels,
+	})
+	if err != nil {
+		return err
+	}
+
+	output.PrintSuccess(result, textMode, msg)
+	return nil
 }

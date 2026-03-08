@@ -167,7 +167,7 @@ func (c *WebSocketClient) ZoneDelete(zoneID string) error {
 // SystemHealthInfo returns system health information using subscription
 func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 	if !c.authenticated {
-		return nil, fmt.Errorf("not connected")
+		return nil, &APIError{Code: ErrCodeConnectionError, Message: "not connected"}
 	}
 
 	// Channel to receive events
@@ -216,7 +216,7 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, fmt.Errorf("failed to send command: %w", writeErr)
+		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send command: %s", writeErr)}
 	}
 
 	// Wait for initial result (subscription confirmation)
@@ -226,74 +226,21 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed"}
 		}
 		if !resp.Success {
-			code := ErrCodeAPIError
-			errMsg := "unknown error"
-			if resp.Error != nil {
-				if resp.Error.Code != "" {
-					code = resp.Error.Code
-				}
-				errMsg = resp.Error.Message
-			}
-			return nil, &APIError{Code: code, Message: errMsg}
+			return nil, wsResponseError(resp)
 		}
 	case <-time.After(c.Timeout):
 		return nil, &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for subscription confirmation"}
 	}
 
 	// Process events in a goroutine
-	go func() {
-		defer close(doneCh)
-		for event := range eventCh {
-			eventType, _ := event["type"].(string)
-
-			switch eventType {
-			case "initial":
-				if eventData, ok := event["data"].(map[string]interface{}); ok {
-					for k, v := range eventData {
-						data[k] = v
-					}
-				}
-			case "update":
-				domain, _ := event["domain"].(string)
-				key, _ := event["key"].(string)
-				success, _ := event["success"].(bool)
-
-				if domain != "" && key != "" {
-					if _, exists := data[domain]; !exists {
-						data[domain] = map[string]interface{}{
-							"info": make(map[string]interface{}),
-						}
-					}
-					if domainData, ok := data[domain].(map[string]interface{}); ok {
-						if _, exists := domainData["info"]; !exists {
-							domainData["info"] = make(map[string]interface{})
-						}
-						if infoData, ok := domainData["info"].(map[string]interface{}); ok {
-							if success {
-								infoData[key] = event["data"]
-							} else {
-								if errData, ok := event["error"].(map[string]interface{}); ok {
-									infoData[key] = map[string]interface{}{
-										"error": true,
-										"value": errData["msg"],
-									}
-								}
-							}
-						}
-					}
-				}
-			case "finish":
-				return
-			}
-		}
-	}()
+	go aggregateHealthEvents(eventCh, data, doneCh)
 
 	// Wait for finish or timeout
 	select {
 	case <-doneCh:
 		// Normal completion
-	case <-time.After(30 * time.Second):
-		dataErr = fmt.Errorf("timeout waiting for system health data")
+	case <-time.After(c.Timeout):
+		dataErr = &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for system health data"}
 	}
 
 	close(eventCh)
@@ -303,6 +250,56 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 	}
 
 	return data, nil
+}
+
+// aggregateHealthEvents processes system_health/info subscription events,
+// merging them into the provided data map. It reads from eventCh and closes
+// doneCh when a "finish" event is received (or the channel is closed).
+func aggregateHealthEvents(eventCh <-chan map[string]interface{}, data map[string]interface{}, doneCh chan struct{}) {
+	defer close(doneCh)
+	for event := range eventCh {
+		eventType, _ := event["type"].(string)
+
+		switch eventType {
+		case "initial":
+			if eventData, ok := event["data"].(map[string]interface{}); ok {
+				for k, v := range eventData {
+					data[k] = v
+				}
+			}
+		case "update":
+			domain, _ := event["domain"].(string)
+			key, _ := event["key"].(string)
+			success, _ := event["success"].(bool)
+
+			if domain != "" && key != "" {
+				if _, exists := data[domain]; !exists {
+					data[domain] = map[string]interface{}{
+						"info": make(map[string]interface{}),
+					}
+				}
+				if domainData, ok := data[domain].(map[string]interface{}); ok {
+					if _, exists := domainData["info"]; !exists {
+						domainData["info"] = make(map[string]interface{})
+					}
+					if infoData, ok := domainData["info"].(map[string]interface{}); ok {
+						if success {
+							infoData[key] = event["data"]
+						} else {
+							if errData, ok := event["error"].(map[string]interface{}); ok {
+								infoData[key] = map[string]interface{}{
+									"error": true,
+									"value": errData["msg"],
+								}
+							}
+						}
+					}
+				}
+			}
+		case "finish":
+			return
+		}
+	}
 }
 
 // SearchRelated returns related items for a given item type and ID
@@ -333,11 +330,6 @@ func (c *WebSocketClient) SearchRelated(itemType, itemID string) (map[string][]s
 	}
 
 	return resultMap, nil
-}
-
-// GetWebSocketClientForAuth creates a WebSocket client from auth manager
-func GetWebSocketClientForAuth(baseURL, token string) *WebSocketClient {
-	return NewWebSocketClient(baseURL, token)
 }
 
 // Helper operations

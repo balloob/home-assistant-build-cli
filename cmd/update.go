@@ -32,6 +32,17 @@ func init() {
 	updateCmd.Flags().BoolVarP(&updateCheck, "check", "c", false, "Only check for updates without installing")
 }
 
+// printUpdateError formats and prints an error in text or JSON mode.
+// The update command prints errors inline and returns nil rather than
+// returning them to the root error handler.
+func printUpdateError(textMode bool, code, msg, suggestion string, details map[string]interface{}) {
+	if textMode {
+		fmt.Println(output.FormatErrorText(msg, suggestion))
+	} else {
+		fmt.Println(output.FormatError(code, msg, details))
+	}
+}
+
 func runUpdate(cmd *cobra.Command, args []string) error {
 	textMode := viper.GetBool("text")
 	configDir := viper.GetString("config")
@@ -43,11 +54,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	check, err := update.CheckForUpdate(configDir, Version)
 	if err != nil {
-		if textMode {
-			fmt.Println(output.FormatErrorText("Failed to check for updates: "+err.Error(), "Check your internet connection"))
-		} else {
-			fmt.Println(output.FormatError("UPDATE_CHECK_FAILED", err.Error(), nil))
-		}
+		printUpdateError(textMode, "UPDATE_CHECK_FAILED", "Failed to check for updates: "+err.Error(), "Check your internet connection", nil)
 		return nil
 	}
 
@@ -56,10 +63,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Check-only mode
 	if updateCheck {
 		result := map[string]interface{}{
-			"current_version": Version,
-			"latest_version":  check.LatestVersion,
+			"current_version":  Version,
+			"latest_version":   check.LatestVersion,
 			"update_available": hasUpdate,
-			"release_url":     check.ReleaseURL,
+			"release_url":      check.ReleaseURL,
 		}
 
 		if textMode {
@@ -93,13 +100,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Check if we have a download URL
 	if check.DownloadURL == "" {
 		errMsg := fmt.Sprintf("No binary available for your platform. Visit %s to download manually.", check.ReleaseURL)
-		if textMode {
-			fmt.Println(output.FormatErrorText(errMsg, ""))
-		} else {
-			fmt.Println(output.FormatError("NO_BINARY", errMsg, map[string]interface{}{
-				"release_url": check.ReleaseURL,
-			}))
-		}
+		printUpdateError(textMode, "NO_BINARY", errMsg, "", map[string]interface{}{
+			"release_url": check.ReleaseURL,
+		})
 		return nil
 	}
 
@@ -110,11 +113,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	tmpPath, err := update.DownloadUpdate(check.DownloadURL)
 	if err != nil {
-		if textMode {
-			fmt.Println(output.FormatErrorText("Failed to download update: "+err.Error(), ""))
-		} else {
-			fmt.Println(output.FormatError("DOWNLOAD_FAILED", err.Error(), nil))
-		}
+		printUpdateError(textMode, "DOWNLOAD_FAILED", "Failed to download update: "+err.Error(), "", nil)
 		return nil
 	}
 
@@ -125,11 +124,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	if err := update.InstallUpdate(tmpPath); err != nil {
 		os.Remove(tmpPath) // Clean up temp file
-		if textMode {
-			fmt.Println(output.FormatErrorText("Failed to install update: "+err.Error(), "You may need to run with elevated permissions"))
-		} else {
-			fmt.Println(output.FormatError("INSTALL_FAILED", err.Error(), nil))
-		}
+		printUpdateError(textMode, "INSTALL_FAILED", "Failed to install update: "+err.Error(), "You may need to run with elevated permissions", nil)
 		return nil
 	}
 

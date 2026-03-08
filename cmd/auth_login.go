@@ -38,9 +38,8 @@ func init() {
 }
 
 func runAuthLogin(cmd *cobra.Command, args []string) error {
-	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
-	manager := auth.NewManager(configDir)
+	manager := getAuthManager()
 
 	if loginToken {
 		return loginWithToken(manager, textMode)

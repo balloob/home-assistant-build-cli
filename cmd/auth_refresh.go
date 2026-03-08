@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,9 +20,8 @@ func init() {
 }
 
 func runAuthRefresh(cmd *cobra.Command, args []string) error {
-	configDir := viper.GetString("config")
 	textMode := viper.GetBool("text")
-	manager := auth.NewManager(configDir)
+	manager := getAuthManager()
 
 	creds, err := manager.GetCredentials()
 	if err != nil {

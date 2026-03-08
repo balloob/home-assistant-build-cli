@@ -106,19 +106,30 @@ func (c *ESPHomeClient) getClient() *resty.Client {
 	return c.client
 }
 
-// GetDevices returns the list of configured and importable ESPHome devices.
-func (c *ESPHomeClient) GetDevices() (*ESPHomeDeviceList, error) {
-	resp, err := c.getClient().R().Get("/devices")
+// doGet performs a GET request, checks for a 200 status, and JSON-unmarshals
+// the response body into dest. operation names the action for error messages.
+func (c *ESPHomeClient) doGet(path, operation string, dest interface{}) error {
+	resp, err := c.getClient().R().Get(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list devices: %w", err)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to %s: %s", operation, err)}
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("ESPHome dashboard returned status %d: %s", resp.StatusCode(), string(resp.Body()))
+		return &APIError{
+			Code:    ErrCodeAPIError,
+			Message: fmt.Sprintf("ESPHome dashboard returned status %d: %s", resp.StatusCode(), string(resp.Body())),
+		}
 	}
+	if err := json.Unmarshal(resp.Body(), dest); err != nil {
+		return &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse %s response: %s", operation, err)}
+	}
+	return nil
+}
 
+// GetDevices returns the list of configured and importable ESPHome devices.
+func (c *ESPHomeClient) GetDevices() (*ESPHomeDeviceList, error) {
 	var result ESPHomeDeviceList
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse device list: %w", err)
+	if err := c.doGet("/devices", "list devices", &result); err != nil {
+		return nil, err
 	}
 	return &result, nil
 }
@@ -126,36 +137,20 @@ func (c *ESPHomeClient) GetDevices() (*ESPHomeDeviceList, error) {
 // GetPing returns online/offline status for all devices.
 // Map keys are configuration filenames, values are true (online), false (offline), or nil (unknown).
 func (c *ESPHomeClient) GetPing() (map[string]*bool, error) {
-	resp, err := c.getClient().R().Get("/ping")
-	if err != nil {
-		return nil, fmt.Errorf("failed to ping devices: %w", err)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("ESPHome dashboard returned status %d", resp.StatusCode())
-	}
-
 	var result map[string]*bool
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse ping response: %w", err)
+	if err := c.doGet("/ping", "ping devices", &result); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
 
 // GetVersion returns the ESPHome version string.
 func (c *ESPHomeClient) GetVersion() (string, error) {
-	resp, err := c.getClient().R().Get("/version")
-	if err != nil {
-		return "", fmt.Errorf("failed to get version: %w", err)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return "", fmt.Errorf("ESPHome dashboard returned status %d", resp.StatusCode())
-	}
-
 	var result struct {
 		Version string `json:"version"`
 	}
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return "", fmt.Errorf("failed to parse version response: %w", err)
+	if err := c.doGet("/version", "get version", &result); err != nil {
+		return "", err
 	}
 	return result.Version, nil
 }
@@ -166,13 +161,13 @@ func (c *ESPHomeClient) ReadConfig(configuration string) (string, error) {
 		SetQueryParam("configuration", configuration).
 		Get("/edit")
 	if err != nil {
-		return "", fmt.Errorf("failed to read config: %w", err)
+		return "", &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read config: %s", err)}
 	}
 	if resp.StatusCode() == http.StatusNotFound {
-		return "", fmt.Errorf("configuration %q not found", configuration)
+		return "", &APIError{Code: ErrCodeNotFound, Message: fmt.Sprintf("configuration %q not found", configuration)}
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return "", fmt.Errorf("ESPHome dashboard returned status %d", resp.StatusCode())
+		return "", &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("ESPHome dashboard returned status %d", resp.StatusCode())}
 	}
 	return string(resp.Body()), nil
 }
@@ -185,10 +180,10 @@ func (c *ESPHomeClient) WriteConfig(configuration, content string) error {
 		SetBody(content).
 		Post("/edit")
 	if err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to write config: %s", err)}
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("ESPHome dashboard returned status %d: %s", resp.StatusCode(), string(resp.Body()))
+		return &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("ESPHome dashboard returned status %d: %s", resp.StatusCode(), string(resp.Body()))}
 	}
 	return nil
 }
@@ -201,7 +196,7 @@ func (c *ESPHomeClient) WriteConfig(configuration, content string) error {
 func (c *ESPHomeClient) StreamCommand(path string, spawnMsg map[string]interface{}, callback func(ESPHomeStreamEvent)) (int, error) {
 	wsURL, err := c.buildWSURL(path)
 	if err != nil {
-		return -1, fmt.Errorf("failed to build WebSocket URL: %w", err)
+		return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to build WebSocket URL: %s", err)}
 	}
 
 	log.WithField("url", wsURL).Debug("ESPHome WebSocket connecting")
@@ -224,9 +219,9 @@ func (c *ESPHomeClient) StreamCommand(path string, spawnMsg map[string]interface
 	conn, resp, err := dialer.Dial(wsURL, headers)
 	if err != nil {
 		if resp != nil {
-			return -1, fmt.Errorf("ESPHome WebSocket connection failed (%d): %w", resp.StatusCode, err)
+			return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("ESPHome WebSocket connection failed (%d): %s", resp.StatusCode, err)}
 		}
-		return -1, fmt.Errorf("ESPHome WebSocket connection failed: %w", err)
+		return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("ESPHome WebSocket connection failed: %s", err)}
 	}
 	defer conn.Close()
 
@@ -238,7 +233,7 @@ func (c *ESPHomeClient) StreamCommand(path string, spawnMsg map[string]interface
 	log.WithField("msg", spawnMsg).Debug("Sending spawn message")
 
 	if err := conn.WriteJSON(spawnMsg); err != nil {
-		return -1, fmt.Errorf("failed to send spawn message: %w", err)
+		return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send spawn message: %s", err)}
 	}
 
 	// Read events until exit
@@ -253,7 +248,7 @@ func (c *ESPHomeClient) StreamCommand(path string, spawnMsg map[string]interface
 			if exitCode >= 0 {
 				break
 			}
-			return exitCode, fmt.Errorf("WebSocket read error: %w", err)
+			return exitCode, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("WebSocket read error: %s", err)}
 		}
 
 		var event ESPHomeStreamEvent
@@ -317,7 +312,7 @@ func DiscoverESPHomeIngress(baseURL, token string) (*ESPHomeIngressInfo, error) 
 	// but the WebSocket supervisor/api command works reliably.
 	ws := NewWebSocketClient(base, token)
 	if err := ws.Connect(); err != nil {
-		return nil, fmt.Errorf("failed to connect to HA WebSocket: %w", err)
+		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to connect to HA WebSocket: %s", err)}
 	}
 	defer ws.Close()
 
@@ -344,7 +339,7 @@ func DiscoverESPHomeIngress(baseURL, token string) (*ESPHomeIngressInfo, error) 
 
 		state, _ := data["state"].(string)
 		if state != "started" && state != "" {
-			return nil, fmt.Errorf("ESPHome addon is installed but not running (state: %s)", state)
+			return nil, &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("ESPHome addon is installed but not running (state: %s)", state)}
 		}
 
 		ingressPath, _ := data["ingress_url"].(string)
@@ -364,16 +359,16 @@ func DiscoverESPHomeIngress(baseURL, token string) (*ESPHomeIngressInfo, error) 
 			"method":   "post",
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to create ingress session: %w", err)
+			return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to create ingress session: %s", err)}
 		}
 
 		sessionData, ok := sessionResult.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("unexpected ingress session response")
+			return nil, &APIError{Code: ErrCodeAPIError, Message: "unexpected ingress session response"}
 		}
 		session, _ := sessionData["session"].(string)
 		if session == "" {
-			return nil, fmt.Errorf("empty ingress session token returned")
+			return nil, &APIError{Code: ErrCodeAPIError, Message: "empty ingress session token returned"}
 		}
 
 		log.Debug("Created ingress session successfully")
@@ -384,7 +379,7 @@ func DiscoverESPHomeIngress(baseURL, token string) (*ESPHomeIngressInfo, error) 
 		}, nil
 	}
 
-	return nil, fmt.Errorf("ESPHome addon not found; set HAB_ESPHOME_URL to the ESPHome dashboard URL")
+	return nil, &APIError{Code: ErrCodeNotFound, Message: "ESPHome addon not found; set HAB_ESPHOME_URL to the ESPHome dashboard URL"}
 }
 
 // GetESPHomeClient creates a fully configured ESPHomeClient by resolving the URL.

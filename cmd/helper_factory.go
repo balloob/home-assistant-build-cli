@@ -35,17 +35,31 @@ type HelperDef struct {
 	// Category selects the API pattern for list/delete.
 	Category HelperCategory
 
+	// TypeDescription is a short human-readable description of what this helper
+	// type does. Used by the "helper types" command.
+	TypeDescription string
+	// CreateParams lists the parameter summaries shown by "helper types"
+	// (e.g., "name (required)", "icon", "initial (true/false)").
+	CreateParams []string
+
 	// Create command (all optional — if RunCreate is nil, no create subcommand is registered).
-	CreateShort    string
-	CreateLong     string
-	SetupFlags     func(cmd *cobra.Command)
-	RunCreate      func(cmd *cobra.Command, args []string) error
-	RequiredFlags  []string // Flag names to mark as required
+	CreateShort   string
+	CreateLong    string
+	SetupFlags    func(cmd *cobra.Command)
+	RunCreate     func(cmd *cobra.Command, args []string) error
+	RequiredFlags []string // Flag names to mark as required
 }
 
+// helperTypeRegistry collects every HelperDef registered via registerHelperType.
+// The "helper types" command reads this to produce its output, so new helper
+// types are automatically listed without maintaining a separate hardcoded list.
+var helperTypeRegistry []HelperDef
+
 // registerHelperType creates and registers parent, list, delete, and optionally create
-// subcommands for a helper type under the helperCmd parent.
+// subcommands for a helper type under the helperCmd parent. It also records the
+// definition in helperTypeRegistry for the "helper types" command.
 func registerHelperType(def HelperDef) {
+	helperTypeRegistry = append(helperTypeRegistry, def)
 	parentCmd := &cobra.Command{
 		Use:     def.CommandName,
 		Short:   def.Short,
@@ -271,6 +285,61 @@ func helperWSCreate(typeName, displayName string, buildParams func(cmd *cobra.Co
 	}
 }
 
+// configFlowStart initiates a config flow for the given integration and returns
+// the flow_id. This is the common first step shared by all config-flow helpers.
+func configFlowStart(rest client.RestAPI, typeName string) (string, error) {
+	flowResult, err := rest.ConfigFlowCreate(typeName)
+	if err != nil {
+		return "", fmt.Errorf("failed to start config flow: %w", err)
+	}
+	flowID, ok := flowResult["flow_id"].(string)
+	if !ok {
+		return "", fmt.Errorf("no flow_id in response")
+	}
+	return flowID, nil
+}
+
+// configFlowCheckAbort returns an error if the step result indicates an abort.
+// Returns nil if the result is not an abort.
+func configFlowCheckAbort(result map[string]interface{}) error {
+	if t, _ := result["type"].(string); t == "abort" {
+		reason, _ := result["reason"].(string)
+		return fmt.Errorf("config flow aborted: %s", reason)
+	}
+	return nil
+}
+
+// configFlowCheckFinal validates the final step of a config flow. It returns
+// a result map containing the title and entry_id on success, or an error if
+// the flow was aborted, returned an unexpected form, or had an unrecognised
+// result type.
+func configFlowCheckFinal(result map[string]interface{}) (map[string]interface{}, error) {
+	resultType, _ := result["type"].(string)
+	if resultType == "abort" {
+		reason, _ := result["reason"].(string)
+		return nil, fmt.Errorf("config flow aborted: %s", reason)
+	}
+	if resultType == "form" {
+		if errors, ok := result["errors"].(map[string]interface{}); ok && len(errors) > 0 {
+			return nil, fmt.Errorf("validation error: %v", errors)
+		}
+		return nil, fmt.Errorf("unexpected form step required: %v", result)
+	}
+	if resultType != "create_entry" {
+		return nil, fmt.Errorf("unexpected flow result type: %s", resultType)
+	}
+
+	out := map[string]interface{}{
+		"title": result["title"],
+	}
+	if entryResult, ok := result["result"].(map[string]interface{}); ok {
+		if entryID, ok := entryResult["entry_id"]; ok {
+			out["entry_id"] = entryID
+		}
+	}
+	return out, nil
+}
+
 // helperConfigFlowCreate returns a RunE function for simple single-step config flow
 // helper create commands. The buildFormData callback builds the form data map.
 func helperConfigFlowCreate(typeName, displayName string, buildFormData func(cmd *cobra.Command, name string) (map[string]interface{}, error)) func(*cobra.Command, []string) error {
@@ -283,14 +352,9 @@ func helperConfigFlowCreate(typeName, displayName string, buildFormData func(cmd
 			return err
 		}
 
-		flowResult, err := rest.ConfigFlowCreate(typeName)
+		flowID, err := configFlowStart(rest, typeName)
 		if err != nil {
-			return fmt.Errorf("failed to start config flow: %w", err)
-		}
-
-		flowID, ok := flowResult["flow_id"].(string)
-		if !ok {
-			return fmt.Errorf("no flow_id in response")
+			return err
 		}
 
 		formData, err := buildFormData(cmd, name)
@@ -303,33 +367,42 @@ func helperConfigFlowCreate(typeName, displayName string, buildFormData func(cmd
 			return fmt.Errorf("failed to create %s: %w", displayName, err)
 		}
 
-		resultType, _ := finalResult["type"].(string)
-		if resultType == "abort" {
-			reason, _ := finalResult["reason"].(string)
-			return fmt.Errorf("config flow aborted: %s", reason)
-		}
-		if resultType == "form" {
-			if errors, ok := finalResult["errors"].(map[string]interface{}); ok && len(errors) > 0 {
-				return fmt.Errorf("validation error: %v", errors)
-			}
-			return fmt.Errorf("unexpected form step required: %v", finalResult)
-		}
-		if resultType != "create_entry" {
-			return fmt.Errorf("unexpected flow result type: %s", resultType)
-		}
-
-		result := map[string]interface{}{
-			"title": finalResult["title"],
-		}
-		if entryResult, ok := finalResult["result"].(map[string]interface{}); ok {
-			if entryID, ok := entryResult["entry_id"]; ok {
-				result["entry_id"] = entryID
-			}
+		result, err := configFlowCheckFinal(finalResult)
+		if err != nil {
+			return err
 		}
 
 		output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name))
 		return nil
 	}
+}
+
+// validTimeUnits is the set of accepted time-unit abbreviations for derivative
+// and integration helpers.
+var validTimeUnits = map[string]bool{"s": true, "min": true, "h": true, "d": true}
+
+// validMetricPrefixes is the set of accepted SI metric prefixes.
+var validMetricPrefixes = map[string]bool{
+	"n": true, "µ": true, "m": true, "k": true,
+	"M": true, "G": true, "T": true, "P": true,
+}
+
+// validateOneOf checks that value is a key in the allowed map.
+// If value is empty and allowEmpty is true, validation passes.
+// Returns nil on success or a formatted error naming the invalid value and
+// listing the valid choices.
+func validateOneOf(value, label string, allowed map[string]bool, allowEmpty bool) error {
+	if value == "" && allowEmpty {
+		return nil
+	}
+	if !allowed[value] {
+		keys := make([]string, 0, len(allowed))
+		for k := range allowed {
+			keys = append(keys, k)
+		}
+		return fmt.Errorf("invalid %s: %s. Valid values: %s", label, value, strings.Join(keys, ", "))
+	}
+	return nil
 }
 
 // parseDuration converts HH:MM:SS format to a duration map for config flows.

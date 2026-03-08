@@ -144,17 +144,7 @@ func runOverview(cmd *cobra.Command, args []string) error {
 	}
 
 	if entitiesErr == nil {
-		helperDomains := map[string]bool{
-			"input_boolean":  true,
-			"input_number":   true,
-			"input_text":     true,
-			"input_select":   true,
-			"input_datetime": true,
-			"input_button":   true,
-			"counter":        true,
-			"timer":          true,
-			"schedule":       true,
-		}
+		// helperDomains is defined in shared.go.
 
 		helperCount := 0
 		for _, e := range entities {

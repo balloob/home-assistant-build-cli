@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -35,46 +34,20 @@ func runLabelRemove(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	textMode := getTextMode()
 
-	ws, err := getWSClient()
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
-
-	// First get current entity labels
-	entity, err := ws.EntityRegistryGet(entityID)
-	if err != nil {
-		return err
-	}
-
-	currentLabels, _ := entity["labels"].([]interface{})
-	labels := make([]string, 0, len(currentLabels))
-	found := false
-	for _, l := range currentLabels {
-		if ls, ok := l.(string); ok {
-			if ls == labelID {
+	return modifyEntityLabels(entityID, labelID, func(labels []string) ([]string, string) {
+		result := make([]string, 0, len(labels))
+		found := false
+		for _, l := range labels {
+			if l == labelID {
 				found = true
 				continue
 			}
-			labels = append(labels, ls)
+			result = append(result, l)
 		}
-	}
-
-	if !found {
-		output.PrintSuccess(nil, textMode, fmt.Sprintf("Entity %s does not have label %s.", entityID, labelID))
-		return nil
-	}
-
-	// Update entity with new labels
-	result, err := ws.EntityRegistryUpdate(entityID, map[string]interface{}{
-		"labels": labels,
+		if !found {
+			return nil, fmt.Sprintf("Entity %s does not have label %s.", entityID, labelID)
+		}
+		return result, fmt.Sprintf("Label %s removed from %s.", labelID, entityID)
 	})
-	if err != nil {
-		return err
-	}
-
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Label %s removed from %s.", labelID, entityID))
-	return nil
 }

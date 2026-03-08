@@ -86,11 +86,11 @@ func (c *WebSocketClient) Connect() error {
 	msg, err := c.readMessage()
 	if err != nil {
 		c.conn.Close()
-		return fmt.Errorf("failed to read auth_required: %w", err)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read auth_required: %s", err)}
 	}
 	if msg.Type != "auth_required" {
 		c.conn.Close()
-		return fmt.Errorf("unexpected message type: %s", msg.Type)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("unexpected message type: %s", msg.Type)}
 	}
 
 	log.Debug("Received auth_required, sending auth")
@@ -102,14 +102,14 @@ func (c *WebSocketClient) Connect() error {
 	}
 	if err := c.conn.WriteJSON(authMsg); err != nil {
 		c.conn.Close()
-		return fmt.Errorf("failed to send auth: %w", err)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send auth: %s", err)}
 	}
 
 	// Read auth result
 	msg, err = c.readMessage()
 	if err != nil {
 		c.conn.Close()
-		return fmt.Errorf("failed to read auth result: %w", err)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read auth result: %s", err)}
 	}
 
 	if msg.Type == "auth_invalid" {
@@ -122,7 +122,7 @@ func (c *WebSocketClient) Connect() error {
 	}
 	if msg.Type != "auth_ok" {
 		c.conn.Close()
-		return fmt.Errorf("unexpected auth response: %s", msg.Type)
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("unexpected auth response: %s", msg.Type)}
 	}
 
 	log.Debug("WebSocket authenticated successfully")
@@ -244,7 +244,7 @@ func (c *WebSocketClient) handleMessage(msg *WSMessage) {
 // SendCommand sends a command and waits for a response
 func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interface{}) (interface{}, error) {
 	if !c.authenticated {
-		return nil, fmt.Errorf("not connected")
+		return nil, &APIError{Code: ErrCodeConnectionError, Message: "not connected"}
 	}
 
 	// Build message (without ID — assigned inside the write lock below)
@@ -280,7 +280,7 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, fmt.Errorf("failed to send command: %w", writeErr)
+		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send command: %s", writeErr)}
 	}
 
 	// Wait for response
@@ -290,15 +290,7 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed"}
 		}
 		if !resp.Success {
-			code := ErrCodeAPIError
-			errMsg := "unknown error"
-			if resp.Error != nil {
-				if resp.Error.Code != "" {
-					code = resp.Error.Code
-				}
-				errMsg = resp.Error.Message
-			}
-			return nil, &APIError{Code: code, Message: errMsg}
+			return nil, wsResponseError(resp)
 		}
 		return resp.Result, nil
 
@@ -308,6 +300,21 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		c.pendingMu.Unlock()
 		return nil, &APIError{Code: ErrCodeTimeout, Message: "command timed out"}
 	}
+}
+
+// wsResponseError converts a failed WSMessage into an *APIError.
+// It extracts the code and message from the WSError field, falling back to
+// defaults when the fields are absent.
+func wsResponseError(resp *WSMessage) *APIError {
+	code := ErrCodeAPIError
+	errMsg := "unknown error"
+	if resp.Error != nil {
+		if resp.Error.Code != "" {
+			code = resp.Error.Code
+		}
+		errMsg = resp.Error.Message
+	}
+	return &APIError{Code: code, Message: errMsg}
 }
 
 // sendListCommand sends a command and asserts the result is a []interface{}.

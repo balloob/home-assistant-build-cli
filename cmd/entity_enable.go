@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -20,22 +17,5 @@ func init() {
 }
 
 func runEntityEnable(cmd *cobra.Command, args []string) error {
-	entityID := args[0]
-	textMode := getTextMode()
-
-	ws, err := getWSClient()
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
-
-	result, err := ws.EntityRegistryUpdate(entityID, map[string]interface{}{
-		"disabled_by": nil,
-	})
-	if err != nil {
-		return err
-	}
-
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Entity %s enabled.", entityID))
-	return nil
+	return entitySetDisabled(args[0], false)
 }
