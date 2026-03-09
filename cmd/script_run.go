@@ -14,9 +14,11 @@ var (
 )
 
 var scriptRunCmd = &cobra.Command{
-	Use:     "run [script_id]",
-	Short:   "Execute a script",
-	Long:    `Execute a script with optional variables.`,
+	Use:   "run [script_id]",
+	Short: "Execute a script",
+	Long:  `Execute a script with optional variables. The "script." prefix is added automatically if omitted.`,
+	Example: `  hab script run morning_routine
+  hab script run script.notify_user -d '{"message":"Hello","title":"Alert"}'`,
 	GroupID: scriptGroupCommands,
 	Args:    cobra.MaximumNArgs(1),
 	RunE:    runScriptRun,

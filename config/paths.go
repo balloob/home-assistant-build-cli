@@ -1,3 +1,5 @@
+// Package config manages configuration file paths and application settings
+// for the hab CLI. Configuration is stored under ~/.config/home-assistant-builder/.
 package config
 
 import (

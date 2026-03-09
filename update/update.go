@@ -1,3 +1,5 @@
+// Package update checks for and installs new releases of the hab binary from
+// GitHub Releases.
 package update
 
 import (

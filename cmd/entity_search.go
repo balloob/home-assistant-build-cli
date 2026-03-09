@@ -14,7 +14,9 @@ var entitySearchCmd = &cobra.Command{
 	Use:   "search <query>",
 	Short: "Fuzzy search for entities",
 	Long:  `Search for entities by entity ID or friendly name.`,
-	Args:  cobra.ExactArgs(1),
+	Example: `  hab entity search kitchen
+  hab entity search temperature -n 20`,
+	Args: cobra.ExactArgs(1),
 	RunE:  runEntitySearch,
 }
 
@@ -61,8 +63,12 @@ func runEntitySearch(cmd *cobra.Command, args []string) error {
 		entityIDLower := strings.ToLower(entityID)
 		friendlyNameLower := strings.ToLower(friendlyName)
 
+		// Entity ID matches rank higher (base 100) than friendly name matches
+		// (base 50). Subtracting the string length favors shorter, more
+		// specific matches (e.g. "light.kitchen" scores above
+		// "light.kitchen_counter_left").
 		if strings.Contains(entityIDLower, query) {
-			score = 100 - len(entityID) // Prefer shorter matches
+			score = 100 - len(entityID)
 		} else if strings.Contains(friendlyNameLower, query) {
 			score = 50 - len(friendlyName)
 		}

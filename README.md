@@ -16,7 +16,7 @@ Or build locally:
 
 ```bash
 git clone https://github.com/balloob/home-assistant-build-cli
-cd hab
+cd home-assistant-build-cli
 go build -o hab .
 ```
 
@@ -70,6 +70,8 @@ hab esphome config-write living-room.yaml -f config.yaml
 
 # Validate, build, and flash
 hab esphome validate living-room.yaml
+hab esphome build living-room.yaml
+hab esphome upload living-room.yaml
 hab esphome run living-room.yaml
 
 # Stream live logs
@@ -81,8 +83,8 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 ## Features
 
 - **Hierarchical Help**: Top-level `--help` shows command groups, not all sub-commands
-- **Structured Output**: JSON output by default for easy parsing
-- **Text Mode**: Human-readable output with `--text` flag
+- **Text Output**: Human-readable text output by default
+- **JSON Mode**: Machine-parseable JSON with `--json` flag
 - **OAuth Support**: Full OAuth2 flow for authentication
 - **WebSocket & REST**: Uses both APIs for optimal functionality
 - **Auto-Update**: Checks for updates automatically and supports self-updating via `hab update`
@@ -118,7 +120,13 @@ Run `hab <command> --help` for more information on each command.
 
 ## Output Format
 
-By default, all commands output JSON:
+By default, all commands output human-readable text. Use `--json` for machine-parseable JSON:
+
+```bash
+hab entity get light.living_room --json
+```
+
+JSON output uses a standard envelope:
 
 ```json
 {
@@ -128,12 +136,6 @@ By default, all commands output JSON:
     "timestamp": "2024-01-15T10:30:00Z"
   }
 }
-```
-
-Use `--text` for human-readable output:
-
-```bash
-hab entity get light.living_room --text
 ```
 
 ## Input Formats
@@ -204,7 +206,7 @@ Configuration is stored in `~/.config/home-assistant-builder/`:
 ```bash
 # Clone the repository
 git clone https://github.com/balloob/home-assistant-build-cli
-cd hab
+cd home-assistant-build-cli
 
 # Build
 go build -o hab .

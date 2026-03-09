@@ -21,7 +21,11 @@ var actionCallCmd = &cobra.Command{
 	Use:   "call [domain.action]",
 	Short: "Call an action with data",
 	Long:  `Call a Home Assistant action (service) with optional data.`,
-	Args:  cobra.MaximumNArgs(1),
+	Example: `  hab action call light.turn_on -e light.kitchen
+  hab action call climate.set_temperature -e climate.living_room -d '{"temperature": 22}'
+  hab action call weather.get_forecasts -e weather.home -d '{"type":"daily"}' -r
+  hab action call light.turn_off -a living_room`,
+	Args: cobra.MaximumNArgs(1),
 	RunE:  runActionCall,
 }
 

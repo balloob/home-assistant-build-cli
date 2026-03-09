@@ -18,6 +18,9 @@ var entityGetCmd = &cobra.Command{
 
 Use --related to show related automations, scripts, scenes, and devices.
 Use --device to include the parent device information.`,
+	Example: `  hab entity get light.kitchen
+  hab entity get sensor.temperature -D
+  hab entity get light.kitchen -r`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runEntityGet,
 }

@@ -66,6 +66,8 @@ func init() {
 		IDFlagName:   "automation",
 		ResolveID:    resolveAutomationConfigID,
 		GroupID:      automationGroupCommands,
+		CreateExample: `  hab automation create my_lights -d '{"alias":"Evening Lights","triggers":[{"trigger":"sun","event":"sunset"}],"actions":[{"action":"light.turn_on","target":{"entity_id":"light.living_room"}}]}'
+  hab automation create morning_routine -f automation.yaml`,
 	})
 
 	RegisterSubComponentCRUD(SubComponentConfig{

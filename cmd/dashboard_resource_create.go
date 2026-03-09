@@ -59,10 +59,11 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 	}
 
 	createCmd := &cobra.Command{
-		Use:   createUse,
-		Short: fmt.Sprintf("Create a new %s", name),
-		Long:  longDesc,
-		Args:  argsValidator,
+		Use:     createUse,
+		Short:   fmt.Sprintf("Create a new %s", name),
+		Long:    longDesc,
+		Example: cfg.CreateExample,
+		Args:    argsValidator,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			urlPath := args[0]
 			viewIndex := -1

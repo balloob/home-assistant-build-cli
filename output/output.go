@@ -1,3 +1,5 @@
+// Package output formats command results as JSON response envelopes or
+// human-readable text for terminal display.
 package output
 
 import (
@@ -6,6 +8,21 @@ import (
 	"sort"
 	"strings"
 	"time"
+)
+
+// Text-mode table formatting limits. These keep terminal output readable
+// without overwhelming the screen.
+const (
+	// maxTableColumns is the maximum number of columns shown in a table.
+	maxTableColumns = 6
+	// maxTableRows is the maximum number of rows shown before truncation.
+	maxTableRows = 50
+	// maxCellWidth is the maximum character width of a single table cell
+	// before the value is truncated with "...".
+	maxCellWidth = 30
+	// maxDictArrayItems is the maximum number of array items shown when
+	// rendering a dict value that contains an array.
+	maxDictArrayItems = 10
 )
 
 // Response represents the standard JSON output format
@@ -157,8 +174,8 @@ func formatDictList(data []interface{}) string {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	if len(keys) > 6 { // Limit columns
-		keys = keys[:6]
+	if len(keys) > maxTableColumns {
+		keys = keys[:maxTableColumns]
 	}
 
 	var lines []string
@@ -173,9 +190,8 @@ func formatDictList(data []interface{}) string {
 	lines = append(lines, strings.Repeat("-", len(header)))
 
 	// Rows
-	maxRows := 50
 	for i, item := range data {
-		if i >= maxRows {
+		if i >= maxTableRows {
 			break
 		}
 		m, ok := item.(map[string]interface{})
@@ -186,16 +202,16 @@ func formatDictList(data []interface{}) string {
 		for _, k := range keys {
 			v := m[k]
 			str := formatValue(v)
-			if len(str) > 30 {
-				str = str[:27] + "..."
+			if len(str) > maxCellWidth {
+				str = str[:maxCellWidth-3] + "..."
 			}
 			values = append(values, str)
 		}
 		lines = append(lines, strings.Join(values, " | "))
 	}
 
-	if len(data) > maxRows {
-		lines = append(lines, fmt.Sprintf("... and %d more items", len(data)-maxRows))
+	if len(data) > maxTableRows {
+		lines = append(lines, fmt.Sprintf("... and %d more items", len(data)-maxTableRows))
 	}
 
 	return strings.Join(lines, "\n")
@@ -228,10 +244,9 @@ func formatDict(data map[string]interface{}) string {
 			}
 		case []interface{}:
 			lines = append(lines, fmt.Sprintf("%s:", keyLabel))
-			maxItems := 10
 			for i, item := range v {
-				if i >= maxItems {
-					lines = append(lines, fmt.Sprintf("  ... and %d more", len(v)-maxItems))
+				if i >= maxDictArrayItems {
+					lines = append(lines, fmt.Sprintf("  ... and %d more", len(v)-maxDictArrayItems))
 					break
 				}
 				if m, ok := item.(map[string]interface{}); ok {

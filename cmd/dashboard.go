@@ -103,6 +103,9 @@ func init() {
 If view_index is not specified, uses the last view. If no views exist, creates one.
 If section is not specified, uses the last section. If no sections exist, creates one.
 If type is not specified, defaults to "tile".`,
+		CreateExample: `  hab dashboard card create my-dashboard --entity light.kitchen
+  hab dashboard card create my-dashboard 0 -s 1 --entity sensor.temperature
+  hab dashboard card create my-dashboard 0 -d '{"type":"entities","entities":["light.bedroom","light.hallway"]}'`,
 		CreateFlags: []DashboardResourceFlag{
 			{Name: "type", Usage: "Card type (e.g., entities, button, markdown)", ConfigKey: "type"},
 			{Name: "entity", Usage: "Entity ID (for simple entity cards)", ConfigKey: "entity"},

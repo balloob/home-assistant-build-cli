@@ -15,7 +15,9 @@ var entityHistoryCmd = &cobra.Command{
 	Use:   "history [entity_id]",
 	Short: "Get state history",
 	Long:  `Get the state history for an entity.`,
-	Args:  cobra.MaximumNArgs(1),
+	Example: `  hab entity history sensor.temperature
+  hab entity history sensor.temperature -s "2025-01-01T00:00:00Z" -e "2025-01-02T00:00:00Z"`,
+	Args: cobra.MaximumNArgs(1),
 	RunE:  runEntityHistory,
 }
 
