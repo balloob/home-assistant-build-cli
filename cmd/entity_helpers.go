@@ -301,6 +301,41 @@ func printEntityText(e map[string]interface{}, indent string) {
 	}
 }
 
+// ──────────────────────────────────────────────────────────
+// Config ID resolution
+// ──────────────────────────────────────────────────────────
+
+// resolveStateConfigID converts a domain entity_id (e.g. "scene.romantic" or
+// a raw config ID) to the internal numeric config ID stored in
+// attributes.id on the entity's state.  This is the same pattern used by
+// automations and scenes whose REST config endpoints require an internal ID.
+//
+// If the entity is not found (e.g. the caller already passed a raw config ID),
+// the input is returned as-is after stripping the domain prefix.
+func resolveStateConfigID(restClient interface {
+	GetState(entityID string) (map[string]interface{}, error)
+}, domain, entityOrConfigID string) (string, error) {
+	entityID := ensureDomainPrefix(entityOrConfigID, domain)
+
+	state, err := restClient.GetState(entityID)
+	if err != nil {
+		// Fall back: assume the caller passed the raw internal ID directly.
+		return strings.TrimPrefix(entityOrConfigID, domain+"."), nil
+	}
+
+	attrs, ok := state["attributes"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("%s %s has no attributes", domain, entityID)
+	}
+
+	configID, ok := attrs["id"].(string)
+	if !ok || configID == "" {
+		return "", fmt.Errorf("%s %s has no internal config ID in attributes", domain, entityID)
+	}
+
+	return configID, nil
+}
+
 // modifyEntityLabels fetches an entity's current labels, applies a modifier
 // function, and updates the entity registry.  The modifier returns the new
 // label list and a message.  If the returned list is nil, the message is

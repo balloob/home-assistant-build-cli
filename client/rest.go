@@ -320,6 +320,40 @@ func (c *RestClient) GetHistory(entityID string, startTime, endTime string) ([]i
 	return c.getList(endpoint)
 }
 
+// GetLogbook returns logbook entries, optionally filtered by entity and time range
+func (c *RestClient) GetLogbook(entityID string, startTime, endTime string) ([]interface{}, error) {
+	endpoint := "logbook"
+	if startTime != "" {
+		endpoint = "logbook/" + startTime
+	}
+
+	q := url.Values{}
+	if entityID != "" {
+		q.Set("entity", entityID)
+	}
+	if endTime != "" {
+		q.Set("end_time", endTime)
+	}
+	if encoded := q.Encode(); encoded != "" {
+		endpoint += "?" + encoded
+	}
+
+	return c.getList(endpoint)
+}
+
+// RenderTemplate renders a Jinja2 template using the Home Assistant template engine
+func (c *RestClient) RenderTemplate(template string) (string, error) {
+	body := map[string]interface{}{"template": template}
+	result, err := c.Post("template", body)
+	if err != nil {
+		return "", err
+	}
+	if s, ok := result.(string); ok {
+		return s, nil
+	}
+	return fmt.Sprintf("%v", result), nil
+}
+
 // Config Flow methods
 
 // ConfigFlowCreate starts a new config flow for an integration

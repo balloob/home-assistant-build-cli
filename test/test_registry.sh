@@ -559,10 +559,100 @@ run_registry_tests() {
     fi
 }
 
+run_person_tests() {
+    log_section "Person Tests"
+
+    # Ensure we're authenticated
+    do_auth_login
+
+    # Test: person list
+    log_test "person list"
+    OUTPUT=$(run_hab person list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "person list ($COUNT persons)"
+    else
+        fail "person list: $OUTPUT"
+    fi
+
+    # Test: person CRUD
+    log_test "person create"
+    PERSON_NAME="Test Person $(date +%s)"
+    OUTPUT=$(run_hab person create "$PERSON_NAME")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        PERSON_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
+        pass "person create (id: $PERSON_ID)"
+
+        if [ -n "$PERSON_ID" ]; then
+            log_test "person get"
+            OUTPUT=$(run_hab person get "$PERSON_ID")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "person get"
+            else
+                fail "person get: $OUTPUT"
+            fi
+
+            log_test "person update"
+            OUTPUT=$(run_hab person update "$PERSON_ID" --name "Updated Test Person")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "person update"
+            else
+                fail "person update: $OUTPUT"
+            fi
+
+            log_test "person delete"
+            OUTPUT=$(run_hab person delete "$PERSON_ID" --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "person delete"
+            else
+                fail "person delete: $OUTPUT"
+            fi
+        else
+            pass "person get/update/delete (skipped - no ID returned)"
+        fi
+    else
+        fail "person create: $OUTPUT"
+    fi
+}
+
+run_entity_logbook_tests() {
+    log_section "Entity Logbook Tests"
+
+    # Ensure we're authenticated
+    do_auth_login
+
+    # Test: entity logbook (use sun.sun as a reliable entity)
+    log_test "entity logbook"
+    OUTPUT=$(run_hab entity logbook sun.sun)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "entity logbook sun.sun ($COUNT entries)"
+    else
+        fail "entity logbook: $OUTPUT"
+    fi
+
+    # Test: entity logbook with time range
+    log_test "entity logbook with time range"
+    START="$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-1d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')"
+    if [ -n "$START" ]; then
+        OUTPUT=$(run_hab entity logbook sun.sun -s "$START")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+            pass "entity logbook with --start ($COUNT entries)"
+        else
+            fail "entity logbook with --start: $OUTPUT"
+        fi
+    else
+        pass "entity logbook with time range (skipped - date command not available)"
+    fi
+}
+
 # Run standalone if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     init_standalone_test "Registry Tests"
     run_registry_tests
+    run_person_tests
+    run_entity_logbook_tests
     print_summary "Registry Tests"
     exit $?
 fi
