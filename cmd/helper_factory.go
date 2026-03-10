@@ -151,7 +151,7 @@ func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf 
 		return err
 	}
 
-	var result []map[string]interface{}
+	result := make([]map[string]interface{}, 0, len(entries))
 	for _, e := range entries {
 		entry, ok := e.(map[string]interface{})
 		if !ok {

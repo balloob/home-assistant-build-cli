@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
@@ -38,9 +39,20 @@ var helperDomains = map[string]bool{
 	"schedule":       true,
 }
 
-// getAuthManager creates a new auth.Manager using the configured config dir.
+// authManagerOnce ensures the auth.Manager is created once per CLI invocation,
+// avoiding redundant credential file reads and decryption when commands use
+// both REST and WebSocket clients.
+var (
+	authManagerOnce sync.Once
+	cachedAuthMgr   *auth.Manager
+)
+
+// getAuthManager returns a cached auth.Manager using the configured config dir.
 func getAuthManager() *auth.Manager {
-	return auth.NewManager(viper.GetString("config"))
+	authManagerOnce.Do(func() {
+		cachedAuthMgr = auth.NewManager(viper.GetString("config"))
+	})
+	return cachedAuthMgr
 }
 
 // getWSClient creates an authenticated, connected WebSocket client.
@@ -214,7 +226,7 @@ func renderBriefCore[T any](items []T, textMode bool, idField, nameField string,
 			fmt.Printf("%s (%s)\n", name, id)
 		}
 	} else {
-		var brief []map[string]interface{}
+		brief := make([]map[string]interface{}, 0, len(items))
 		for _, item := range items {
 			brief = append(brief, buildBrief(item))
 		}

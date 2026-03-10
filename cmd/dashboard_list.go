@@ -64,7 +64,7 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 				}
 			}
 		} else {
-			var brief []map[string]interface{}
+			brief := make([]map[string]interface{}, 0, len(dashboards))
 			for _, d := range dashboards {
 				if dashboard, ok := d.(map[string]interface{}); ok {
 					brief = append(brief, map[string]interface{}{

@@ -66,20 +66,27 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		statesErr   error
 	)
 
+	// Only fetch devices when needed: device/area/floor filtering or
+	// text-mode output (which groups entities by device).
+	needDevices := entityListDevice != "" || entityListArea != "" || entityListFloor != "" || textMode
+
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		registry, registryErr = ws.EntityRegistryList()
 	}()
 	go func() {
 		defer wg.Done()
-		devices, _ = ws.DeviceRegistryList()
-	}()
-	go func() {
-		defer wg.Done()
 		states, statesErr = ws.GetStates()
 	}()
+	if needDevices {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			devices, _ = ws.DeviceRegistryList()
+		}()
+	}
 	if entityListFloor != "" {
 		wg.Add(1)
 		go func() {
@@ -135,7 +142,7 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 				}
 			}
 		} else {
-			var brief []map[string]interface{}
+			brief := make([]map[string]interface{}, 0, len(entities))
 			for _, item := range entities {
 				brief = append(brief, map[string]interface{}{
 					"entity_id": item["entity_id"],

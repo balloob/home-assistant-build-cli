@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -161,14 +162,17 @@ func (c *RestClient) handleResponse(resp *resty.Response) (interface{}, error) {
 
 func (c *RestClient) handleError(resp *resty.Response) error {
 	statusCode := resp.StatusCode()
-	body := string(resp.Body())
 
-	// Try to parse error message from JSON
+	// Try to extract structured error message from JSON first,
+	// falling back to the raw response body.
 	var errResp struct {
 		Message string `json:"message"`
 	}
+	var body string
 	if err := json.Unmarshal(resp.Body(), &errResp); err == nil && errResp.Message != "" {
 		body = errResp.Message
+	} else {
+		body = string(resp.Body())
 	}
 
 	switch statusCode {
@@ -302,20 +306,18 @@ func (c *RestClient) GetHistory(entityID string, startTime, endTime string) ([]i
 	}
 
 	// Build query params
-	params := ""
+	q := url.Values{}
 	if entityID != "" {
-		params = "?filter_entity_id=" + entityID
+		q.Set("filter_entity_id", entityID)
 	}
 	if endTime != "" {
-		if params == "" {
-			params = "?"
-		} else {
-			params += "&"
-		}
-		params += "end_time=" + endTime
+		q.Set("end_time", endTime)
+	}
+	if encoded := q.Encode(); encoded != "" {
+		endpoint += "?" + encoded
 	}
 
-	return c.getList(endpoint + params)
+	return c.getList(endpoint)
 }
 
 // Config Flow methods

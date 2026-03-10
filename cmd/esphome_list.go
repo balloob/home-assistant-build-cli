@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/output"
@@ -28,12 +29,29 @@ func runESPHomeList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	devices, err := esClient.GetDevices()
-	if err != nil {
-		return err
-	}
+	// Fetch devices and ping status concurrently — these are independent
+	// REST calls to the ESPHome dashboard.
+	var (
+		devices *client.ESPHomeDeviceList
+		ping    map[string]*bool
+		devErr  error
+	)
 
-	ping, _ := esClient.GetPing() // best-effort, don't fail if ping fails
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		devices, devErr = esClient.GetDevices()
+	}()
+	go func() {
+		defer wg.Done()
+		ping, _ = esClient.GetPing() // best-effort, don't fail if ping fails
+	}()
+	wg.Wait()
+
+	if devErr != nil {
+		return devErr
+	}
 
 	if textMode {
 		if len(devices.Configured) == 0 && len(devices.Importable) == 0 {

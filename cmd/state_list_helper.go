@@ -50,7 +50,7 @@ func listDomainEntities(cfg stateListConfig) error {
 	prefix := cfg.domain + "."
 
 	// Collect items matching the domain.
-	var items []map[string]interface{}
+	items := make([]map[string]interface{}, 0, len(states)/4)
 	for _, s := range states {
 		state, ok := s.(map[string]interface{})
 		if !ok {

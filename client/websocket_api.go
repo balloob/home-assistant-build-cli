@@ -318,7 +318,7 @@ func (c *WebSocketClient) SearchRelated(itemType, itemID string) (map[string][]s
 	if m, ok := result.(map[string]interface{}); ok {
 		for key, value := range m {
 			if arr, ok := value.([]interface{}); ok {
-				var items []string
+				items := make([]string, 0, len(arr))
 				for _, item := range arr {
 					if str, ok := item.(string); ok {
 						items = append(items, str)
