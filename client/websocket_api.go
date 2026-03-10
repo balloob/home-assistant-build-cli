@@ -414,5 +414,79 @@ func (c *WebSocketClient) ResolveEntityToConfigEntry(entityID string) (string, e
 	return "", nil
 }
 
+// Person registry operations
+
+// PersonRegistryList returns all person entries
+func (c *WebSocketClient) PersonRegistryList() ([]interface{}, error) {
+	result, err := c.SendCommand("person/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	// HA returns {"storage": [...], "config": [...]} — merge both lists
+	if m, ok := result.(map[string]interface{}); ok {
+		var persons []interface{}
+		if storage, ok := m["storage"].([]interface{}); ok {
+			persons = append(persons, storage...)
+		}
+		if config, ok := m["config"].([]interface{}); ok {
+			persons = append(persons, config...)
+		}
+		return persons, nil
+	}
+	if list, ok := result.([]interface{}); ok {
+		return list, nil
+	}
+	return nil, fmt.Errorf("unexpected response from person/list")
+}
+
+// PersonRegistryCreate creates a new person
+func (c *WebSocketClient) PersonRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("person/create", "name", name, params)
+}
+
+// PersonRegistryUpdate updates a person
+func (c *WebSocketClient) PersonRegistryUpdate(personID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("person/update", "id", personID, params)
+}
+
+// PersonRegistryDelete deletes a person
+func (c *WebSocketClient) PersonRegistryDelete(personID string) error {
+	return c.sendDelete("person/delete", "id", personID)
+}
+
+// Category registry operations
+
+// CategoryRegistryList returns all categories for a given scope
+func (c *WebSocketClient) CategoryRegistryList(scope string) ([]interface{}, error) {
+	params := map[string]interface{}{"scope": scope}
+	return c.sendListCommand("config/category_registry/list", params)
+}
+
+// CategoryRegistryCreate creates a new category in a scope
+func (c *WebSocketClient) CategoryRegistryCreate(scope, name string, params map[string]interface{}) (map[string]interface{}, error) {
+	p := map[string]interface{}{
+		"scope": scope,
+		"name":  name,
+	}
+	for k, v := range params {
+		p[k] = v
+	}
+	return c.sendMapCommand("config/category_registry/create", p)
+}
+
+// CategoryRegistryUpdate updates a category
+func (c *WebSocketClient) CategoryRegistryUpdate(categoryID string, params map[string]interface{}) (map[string]interface{}, error) {
+	return c.mergeAndSend("config/category_registry/update", "category_id", categoryID, params)
+}
+
+// CategoryRegistryDelete deletes a category
+func (c *WebSocketClient) CategoryRegistryDelete(scope, categoryID string) error {
+	_, err := c.SendCommand("config/category_registry/delete", map[string]interface{}{
+		"scope":       scope,
+		"category_id": categoryID,
+	})
+	return err
+}
+
 
 

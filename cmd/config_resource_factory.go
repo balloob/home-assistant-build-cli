@@ -29,6 +29,10 @@ type ConfigResourceConfig struct {
 	GroupID string
 	// CreateExample is the Cobra Example text for the create command.
 	CreateExample string
+	// RequiredCreateField is the field that must be present in the create
+	// payload. Defaults to "alias" if empty (automation/script behaviour).
+	// Set to "name" for resources like scenes.
+	RequiredCreateField string
 }
 
 // RegisterConfigResourceCRUD generates and registers get, create, update, and
@@ -96,8 +100,12 @@ func registerConfigCreate(cfg ConfigResourceConfig) {
 				return err
 			}
 
-			if _, ok := config["alias"]; !ok {
-				return fmt.Errorf("%s must have an 'alias' field", cfg.ResourceName)
+			requiredField := cfg.RequiredCreateField
+			if requiredField == "" {
+				requiredField = "alias"
+			}
+			if _, ok := config[requiredField]; !ok {
+				return fmt.Errorf("%s must have a '%s' field", cfg.ResourceName, requiredField)
 			}
 
 			restClient, err := getRESTClient()

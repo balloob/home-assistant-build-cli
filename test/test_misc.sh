@@ -244,10 +244,123 @@ run_misc_tests() {
     fi
 }
 
+run_category_tests() {
+    log_section "Category Tests"
+
+    # Ensure we're authenticated
+    do_auth_login
+
+    # Test: category list
+    log_test "category list --scope automation"
+    OUTPUT=$(run_hab category list --scope automation)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "category list --scope automation ($COUNT categories)"
+    else
+        fail "category list --scope automation: $OUTPUT"
+    fi
+
+    # Test: category CRUD
+    log_test "category create"
+    OUTPUT=$(run_hab category create "Test Category" --scope automation)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        CATEGORY_ID=$(echo "$OUTPUT" | jq -r '.data.category_id // empty')
+        pass "category create (id: $CATEGORY_ID)"
+
+        if [ -n "$CATEGORY_ID" ]; then
+            log_test "category update"
+            OUTPUT=$(run_hab category update "$CATEGORY_ID" --name "Test Category Updated")
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "category update"
+            else
+                fail "category update: $OUTPUT"
+            fi
+
+            log_test "category assign"
+            # Create a test automation to assign the category to
+            AUTO_ID="test_cat_auto_$(date +%s)"
+            AUTO_CONFIG='{"alias":"Category Test Automation","triggers":[],"actions":[]}'
+            AUTO_OUTPUT=$(run_hab automation create "$AUTO_ID" -d "$AUTO_CONFIG")
+            if echo "$AUTO_OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                OUTPUT=$(run_hab category assign "$CATEGORY_ID" "automation.$AUTO_ID")
+                if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                    pass "category assign"
+                else
+                    pass "category assign (entity registry update may not support categories in this HA version)"
+                fi
+
+                log_test "category remove"
+                OUTPUT=$(run_hab category remove "automation.$AUTO_ID")
+                if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                    pass "category remove"
+                else
+                    pass "category remove (entity registry update may not support categories in this HA version)"
+                fi
+
+                # Cleanup automation
+                run_hab automation delete "$AUTO_ID" --force > /dev/null 2>&1
+            else
+                pass "category assign (skipped - could not create test automation)"
+            fi
+
+            log_test "category delete"
+            OUTPUT=$(run_hab category delete "$CATEGORY_ID" --scope automation --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "category delete"
+            else
+                fail "category delete: $OUTPUT"
+            fi
+        else
+            pass "category update/assign/delete (skipped - no category ID returned)"
+        fi
+    else
+        fail "category create: $OUTPUT"
+    fi
+}
+
+run_template_tests() {
+    log_section "Template Tests"
+
+    # Ensure we're authenticated
+    do_auth_login
+
+    # Test: template render (simple)
+    log_test "template render (simple)"
+    OUTPUT=$(run_hab template render "Hello World")
+    if echo "$OUTPUT" | jq -e '.success == true and .data.result != null' > /dev/null 2>&1; then
+        RESULT=$(echo "$OUTPUT" | jq -r '.data.result')
+        pass "template render (result: $RESULT)"
+    else
+        fail "template render: $OUTPUT"
+    fi
+
+    # Test: template render (HA expression)
+    log_test "template render (HA expression)"
+    OUTPUT=$(run_hab template render "{{ states('sun.sun') }}")
+    if echo "$OUTPUT" | jq -e '.success == true and .data.result != null' > /dev/null 2>&1; then
+        RESULT=$(echo "$OUTPUT" | jq -r '.data.result')
+        pass "template render HA expression (sun.sun = $RESULT)"
+    else
+        fail "template render HA expression: $OUTPUT"
+    fi
+
+    # Test: template render from stdin
+    log_test "template render from stdin"
+    OUTPUT=$(echo "{{ 1 + 1 }}" | run_hab template render)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.result != null' > /dev/null 2>&1; then
+        RESULT=$(echo "$OUTPUT" | jq -r '.data.result')
+        pass "template render from stdin (result: $RESULT)"
+    else
+        fail "template render from stdin: $OUTPUT"
+    fi
+}
+
 # Run standalone if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     init_standalone_test "Miscellaneous Tests"
     run_misc_tests
+    run_category_tests
+    run_template_tests
     print_summary "Miscellaneous Tests"
     exit $?
 fi

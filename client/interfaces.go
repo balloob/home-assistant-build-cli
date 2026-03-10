@@ -25,6 +25,8 @@ var (
 	_ SearchAPI           = (*WebSocketClient)(nil)
 	_ HelperAPI           = (*WebSocketClient)(nil)
 	_ ConfigAPI           = (*WebSocketClient)(nil)
+	_ PersonRegistryAPI   = (*WebSocketClient)(nil)
+	_ CategoryRegistryAPI = (*WebSocketClient)(nil)
 )
 
 // ---------------------------------------------------------------------------
@@ -121,6 +123,23 @@ type HelperAPI interface {
 	HelperDelete(helperType, helperID string) error
 }
 
+// PersonRegistryAPI provides CRUD operations on the person registry.
+type PersonRegistryAPI interface {
+	PersonRegistryList() ([]interface{}, error)
+	PersonRegistryCreate(name string, params map[string]interface{}) (map[string]interface{}, error)
+	PersonRegistryUpdate(personID string, params map[string]interface{}) (map[string]interface{}, error)
+	PersonRegistryDelete(personID string) error
+}
+
+// CategoryRegistryAPI provides CRUD operations on the category registry.
+// Categories are scoped per table (e.g. "automation", "script", "scene", "helpers").
+type CategoryRegistryAPI interface {
+	CategoryRegistryList(scope string) ([]interface{}, error)
+	CategoryRegistryCreate(scope, name string, params map[string]interface{}) (map[string]interface{}, error)
+	CategoryRegistryUpdate(categoryID string, params map[string]interface{}) (map[string]interface{}, error)
+	CategoryRegistryDelete(scope, categoryID string) error
+}
+
 // ConfigAPI provides config flow and config entry operations.
 type ConfigAPI interface {
 	ConfigFlowInit(handler string, context map[string]interface{}) (map[string]interface{}, error)
@@ -154,6 +173,8 @@ type WebSocketAPI interface {
 	SearchAPI
 	HelperAPI
 	ConfigAPI
+	PersonRegistryAPI
+	CategoryRegistryAPI
 }
 
 // ESPHomeAPI defines the interface for operations against the ESPHome Dashboard.
@@ -191,6 +212,8 @@ type RestAPI interface {
 	Restart() error
 	GetErrorLog() (string, error)
 	GetHistory(entityID string, startTime, endTime string) ([]interface{}, error)
+	GetLogbook(entityID string, startTime, endTime string) ([]interface{}, error)
+	RenderTemplate(template string) (string, error)
 
 	// Config flow methods
 	ConfigFlowCreate(handler string) (map[string]interface{}, error)
