@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -16,11 +17,10 @@ type WebSocketClient struct {
 	Token         string
 	Timeout       time.Duration
 	VerifySSL     bool
-	conn          *websocket.Conn
-	writeMu       sync.Mutex // serialises conn.WriteJSON; gorilla/websocket does not allow concurrent writes
-	messageID     int
-	messageIDMu   sync.Mutex
-	pending       map[int]chan *WSMessage
+	conn      *websocket.Conn
+	writeMu   sync.Mutex // serialises conn.WriteJSON; gorilla/websocket does not allow concurrent writes
+	messageID atomic.Int64
+	pending   map[int]chan *WSMessage
 	pendingMu     sync.RWMutex
 	subscriptions map[int]func(map[string]interface{})
 	subsMu        sync.RWMutex
@@ -160,10 +160,7 @@ func (c *WebSocketClient) Close() error {
 }
 
 func (c *WebSocketClient) nextID() int {
-	c.messageIDMu.Lock()
-	defer c.messageIDMu.Unlock()
-	c.messageID++
-	return c.messageID
+	return int(c.messageID.Add(1))
 }
 
 func (c *WebSocketClient) readMessage() (*WSMessage, error) {
@@ -289,6 +286,9 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 	}
 
 	// Wait for response
+	timer := time.NewTimer(c.Timeout)
+	defer timer.Stop()
+
 	select {
 	case resp := <-respCh:
 		if resp == nil {
@@ -299,7 +299,7 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		}
 		return resp.Result, nil
 
-	case <-time.After(c.Timeout):
+	case <-timer.C:
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()

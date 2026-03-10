@@ -47,7 +47,7 @@ func runEntitySearch(cmd *cobra.Command, args []string) error {
 		score        int
 	}
 
-	var matches []match
+	matches := make([]match, 0, len(states)/4)
 	for _, s := range states {
 		state, ok := s.(map[string]interface{})
 		if !ok {
@@ -94,7 +94,7 @@ func runEntitySearch(cmd *cobra.Command, args []string) error {
 	}
 
 	// Convert to output format
-	var results []map[string]interface{}
+	results := make([]map[string]interface{}, 0, len(matches))
 	for _, m := range matches {
 		results = append(results, map[string]interface{}{
 			"entity_id": m.entityID,

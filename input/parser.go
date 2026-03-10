@@ -48,11 +48,15 @@ func ParseInput(data, file, format string) (map[string]interface{}, error) {
 
 	// Auto-detect format if not specified
 	if format == "" {
-		trimmed := strings.TrimSpace(string(inputData))
-		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
-			format = "json"
-		} else {
-			format = "yaml"
+		format = "yaml" // default
+		for _, b := range inputData {
+			switch b {
+			case ' ', '\t', '\n', '\r':
+				continue
+			case '{', '[':
+				format = "json"
+			}
+			break
 		}
 	}
 
@@ -64,13 +68,8 @@ func ParseInput(data, file, format string) (map[string]interface{}, error) {
 			return nil, fmt.Errorf("invalid JSON: %w", err)
 		}
 	case "yaml":
-		// Convert YAML to JSON first, then to map
-		jsonData, err := yaml.YAMLToJSON(inputData)
-		if err != nil {
+		if err := yaml.Unmarshal(inputData, &result); err != nil {
 			return nil, fmt.Errorf("invalid YAML: %w", err)
-		}
-		if err := json.Unmarshal(jsonData, &result); err != nil {
-			return nil, fmt.Errorf("failed to parse YAML: %w", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported format: %s", format)

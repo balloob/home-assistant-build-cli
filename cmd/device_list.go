@@ -53,7 +53,7 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var result []map[string]interface{}
+	result := make([]map[string]interface{}, 0, len(devices))
 	for _, d := range devices {
 		device, ok := d.(map[string]interface{})
 		if !ok {

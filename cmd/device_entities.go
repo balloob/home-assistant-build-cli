@@ -38,7 +38,7 @@ func runDeviceEntities(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var result []map[string]interface{}
+	result := make([]map[string]interface{}, 0, len(entities)/4)
 	for _, e := range entities {
 		entity, ok := e.(map[string]interface{})
 		if !ok {

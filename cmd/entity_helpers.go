@@ -50,7 +50,7 @@ func resolveEntityArea(regEntry map[string]interface{}, deviceAreaMap map[string
 
 // buildRegistryMap creates a lookup map from entity_id to registry entry.
 func buildRegistryMap(registry []interface{}) map[string]map[string]interface{} {
-	m := make(map[string]map[string]interface{})
+	m := make(map[string]map[string]interface{}, len(registry))
 	for _, e := range registry {
 		if entry, ok := e.(map[string]interface{}); ok {
 			if entityID, ok := entry["entity_id"].(string); ok {
@@ -64,8 +64,8 @@ func buildRegistryMap(registry []interface{}) map[string]map[string]interface{} 
 // buildDeviceMaps creates device name and device area lookup maps from device
 // registry data. The names map prefers name_by_user over name.
 func buildDeviceMaps(devices []interface{}) (deviceNames map[string]string, deviceAreas map[string]string) {
-	deviceNames = make(map[string]string)
-	deviceAreas = make(map[string]string)
+	deviceNames = make(map[string]string, len(devices))
+	deviceAreas = make(map[string]string, len(devices))
 	for _, d := range devices {
 		if device, ok := d.(map[string]interface{}); ok {
 			deviceID, _ := device["id"].(string)
@@ -86,7 +86,7 @@ func buildDeviceMaps(devices []interface{}) (deviceNames map[string]string, devi
 
 // buildAreaFloorMap creates an area_id to floor_id lookup map.
 func buildAreaFloorMap(areas []interface{}) map[string]string {
-	m := make(map[string]string)
+	m := make(map[string]string, len(areas))
 	for _, a := range areas {
 		if area, ok := a.(map[string]interface{}); ok {
 			areaID, _ := area["area_id"].(string)
@@ -124,7 +124,7 @@ func filterAndBuildEntities(
 	areaFloorMap map[string]string,
 	f entityFilterCriteria,
 ) []map[string]interface{} {
-	var entities []map[string]interface{}
+	entities := make([]map[string]interface{}, 0, len(states))
 
 	for _, s := range states {
 		state, ok := s.(map[string]interface{})
