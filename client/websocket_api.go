@@ -446,12 +446,12 @@ func (c *WebSocketClient) PersonRegistryCreate(name string, params map[string]in
 
 // PersonRegistryUpdate updates a person
 func (c *WebSocketClient) PersonRegistryUpdate(personID string, params map[string]interface{}) (map[string]interface{}, error) {
-	return c.mergeAndSend("person/update", "id", personID, params)
+	return c.mergeAndSend("person/update", "person_id", personID, params)
 }
 
 // PersonRegistryDelete deletes a person
 func (c *WebSocketClient) PersonRegistryDelete(personID string) error {
-	return c.sendDelete("person/delete", "id", personID)
+	return c.sendDelete("person/delete", "person_id", personID)
 }
 
 // Category registry operations
