@@ -27,6 +27,10 @@ var (
 	_ ConfigAPI           = (*WebSocketClient)(nil)
 	_ PersonRegistryAPI   = (*WebSocketClient)(nil)
 	_ CategoryRegistryAPI = (*WebSocketClient)(nil)
+	_ IntegrationAPI      = (*WebSocketClient)(nil)
+	_ TodoAPI             = (*WebSocketClient)(nil)
+	_ NotificationAPI     = (*WebSocketClient)(nil)
+	_ RepairAPI           = (*WebSocketClient)(nil)
 )
 
 // ---------------------------------------------------------------------------
@@ -149,6 +153,32 @@ type ConfigAPI interface {
 	ResolveEntityToConfigEntry(entityID string) (string, error)
 }
 
+// IntegrationAPI provides management operations on config entries (integrations).
+// It extends the basic ConfigEntriesList/ConfigEntryDelete on ConfigAPI with
+// single-entry lookup, enable/disable, and reload.
+type IntegrationAPI interface {
+	ConfigEntryGet(entryID string) (map[string]interface{}, error)
+	ConfigEntrySetDisabled(entryID string, disabledBy interface{}) (map[string]interface{}, error)
+}
+
+// TodoAPI provides read access to to-do list items.
+// Item mutations go through the REST service call API (todo.add_item, etc.).
+type TodoAPI interface {
+	TodoItemList(entityID string) ([]interface{}, error)
+}
+
+// NotificationAPI provides read access to persistent notifications.
+// Create/dismiss go through the REST service call API.
+type NotificationAPI interface {
+	NotificationList() ([]interface{}, error)
+}
+
+// RepairAPI provides access to the HA repairs/issues system.
+type RepairAPI interface {
+	RepairListIssues() ([]interface{}, error)
+	RepairIgnoreIssue(domain, issueID string, ignore bool) error
+}
+
 // ---------------------------------------------------------------------------
 // Composed interfaces
 // ---------------------------------------------------------------------------
@@ -175,6 +205,10 @@ type WebSocketAPI interface {
 	ConfigAPI
 	PersonRegistryAPI
 	CategoryRegistryAPI
+	IntegrationAPI
+	TodoAPI
+	NotificationAPI
+	RepairAPI
 }
 
 // ESPHomeAPI defines the interface for operations against the ESPHome Dashboard.
@@ -214,6 +248,9 @@ type RestAPI interface {
 	GetHistory(entityID string, startTime, endTime string) ([]interface{}, error)
 	GetLogbook(entityID string, startTime, endTime string) ([]interface{}, error)
 	RenderTemplate(template string) (string, error)
+	GetEvents() ([]interface{}, error)
+	FireEvent(eventType string, data map[string]interface{}) error
+	ConfigEntryReload(entryID string) (map[string]interface{}, error)
 
 	// Config flow methods
 	ConfigFlowCreate(handler string) (map[string]interface{}, error)

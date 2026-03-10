@@ -56,6 +56,172 @@ hab area list
 hab area create "Kitchen"
 ```
 
+### Scenes
+
+```bash
+# List all scenes
+hab scene list
+
+# Get scene details
+hab scene get scene.movie_mode
+
+# Create a scene
+hab scene create movie_mode -d '{"alias": "Movie Mode", "entities": {"light.living_room": {"state": "on", "brightness": 50}}}'
+
+# Activate a scene
+hab scene activate scene.movie_mode
+
+# Delete a scene
+hab scene delete movie_mode
+```
+
+### Persons
+
+```bash
+# List all persons
+hab person list
+
+# Create a person
+hab person create "John Doe"
+
+# Update a person
+hab person update <person_id> --name "Jane Doe"
+
+# Delete a person
+hab person delete <person_id>
+```
+
+### Categories
+
+```bash
+# List categories for a scope
+hab category list automation
+
+# Create a category
+hab category create automation "Security"
+
+# Assign a category to an entity
+hab category assign automation <entity_id> <category_id>
+
+# Remove a category assignment
+hab category remove automation <entity_id>
+```
+
+### Templates
+
+```bash
+# Render a Jinja2 template inline
+hab template render "{{ states('sun.sun') }}"
+
+# Render from a file
+hab template render -f template.j2
+```
+
+### Entity Logbook
+
+```bash
+# View logbook entries for an entity
+hab entity logbook light.living_room
+hab entity logbook light.living_room --start "2024-01-01T00:00:00Z" --end "2024-01-02T00:00:00Z"
+```
+
+### To-Do Lists
+
+```bash
+# List all to-do list entities
+hab todo lists
+
+# List items in a to-do list
+hab todo items todo.shopping_list
+
+# Add an item
+hab todo add todo.shopping_list "Buy milk"
+hab todo add todo.shopping_list "Doctor appointment" --due "2024-06-15"
+hab todo add todo.shopping_list "Meeting" --due "2024-06-15T14:00:00" --description "Project review"
+
+# Complete / uncomplete an item
+hab todo complete todo.shopping_list "Buy milk"
+hab todo uncomplete todo.shopping_list "Buy milk"
+
+# Update an item
+hab todo update todo.shopping_list "Buy milk" --summary "Buy oat milk" --due "2024-06-16"
+
+# Remove an item
+hab todo remove todo.shopping_list "Buy milk"
+```
+
+### Notifications
+
+```bash
+# List persistent notifications
+hab notification list
+
+# Create a notification
+hab notification create "Backup completed successfully" --title "Backup"
+
+# Dismiss a notification
+hab notification dismiss <notification_id>
+```
+
+### Calendar Events
+
+```bash
+# List upcoming events (defaults to next 7 days)
+hab calendar list calendar.personal
+hab calendar list calendar.personal --start "2024-06-01T00:00:00Z" --end "2024-06-30T23:59:59Z"
+
+# Create a timed event
+hab calendar create calendar.personal "Team Meeting" --start "2024-06-15T10:00:00" --end "2024-06-15T11:00:00"
+
+# Create an all-day event
+hab calendar create calendar.personal "Holiday" --start "2024-12-25" --end "2024-12-26" --all-day
+
+# Delete an event
+hab calendar delete calendar.personal <event_uid>
+```
+
+### Integrations
+
+```bash
+# List all integrations
+hab integration list
+hab integration list --domain mqtt
+
+# Get details for a specific integration
+hab integration get <entry_id>
+
+# Reload an integration
+hab integration reload <entry_id>
+
+# Enable / disable an integration
+hab integration enable <entry_id>
+hab integration disable <entry_id>
+```
+
+### Events
+
+```bash
+# List all registered event types
+hab event list
+
+# Fire a custom event
+hab event fire my_custom_event
+hab event fire my_custom_event --data '{"device_id": "abc123", "action": "triggered"}'
+hab event fire my_custom_event --file event_data.yaml
+```
+
+### Repairs
+
+```bash
+# List all repair issues
+hab repairs list
+hab repairs list --severity critical
+
+# Ignore / unignore a repair issue
+hab repairs ignore <domain> <issue_id>
+hab repairs unignore <domain> <issue_id>
+```
+
 ### ESPHome
 
 Requires the ESPHome add-on. The ESPHome Dashboard URL is auto-discovered via the HA Supervisor; set `HAB_ESPHOME_URL` to override.
@@ -107,9 +273,14 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 | `category` | Manage entity categories |
 | `helper` | Manage helper entities |
 | `template` | Render Jinja2 templates |
+| `todo` | Manage to-do list items |
+| `notification` | Manage persistent notifications |
+| `integration` | Manage integrations (config entries) |
+| `event` | List event types and fire events |
+| `repairs` | Manage Home Assistant repair issues |
 | `dashboard` | Manage dashboards |
 | `backup` | Backup and restore |
-| `calendar` | Manage calendar events |
+| `calendar` | Manage calendar events (includes `create` and `delete` subcommands) |
 | `blueprint` | Manage blueprints |
 | `system` | System operations |
 | `device` | Device management |

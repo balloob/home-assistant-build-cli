@@ -45,8 +45,8 @@ Tests are organized by feature into separate files:
 - **test/test_dashboard.sh**: Dashboard, views, badges, sections, cards CRUD
 - **test/test_helpers.sh**: Helper types (input_boolean, counter, timer, group, etc.)
 - **test/test_template.sh**: Template entity types (sensor, binary_sensor, switch, number, etc.)
-- **test/test_calendar_todo.sh**: Local calendar and to-do list helpers
-- **test/test_misc.sh**: Actions, zones, backups, blueprints, categories, template render
+- **test/test_calendar_todo.sh**: Local calendar and to-do list helpers; todo item CRUD; calendar create/delete
+- **test/test_misc.sh**: Actions, zones, backups, blueprints, categories, template render, notifications, integrations, events, repairs
 
 Each test file can:
 1. Run **standalone**: `./test/test_automation.sh` - starts its own empty-hass instance

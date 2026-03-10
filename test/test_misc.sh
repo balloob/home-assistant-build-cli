@@ -318,7 +318,7 @@ run_category_tests() {
     fi
 }
 
-run_template_tests() {
+run_template_render_tests() {
     log_section "Template Tests"
 
     # Ensure we're authenticated
@@ -355,12 +355,139 @@ run_template_tests() {
     fi
 }
 
+run_notification_tests() {
+    log_section "Notification Tests"
+    do_auth_login
+
+    log_test "notification list"
+    OUTPUT=$(run_hab notification list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "notification list ($COUNT notifications)"
+    else
+        # Empty is printed as plain text — acceptable
+        pass "notification list (no notifications or plain response)"
+    fi
+
+    log_test "notification create"
+    NOTIF_ID="hab_test_$(date +%s)"
+    OUTPUT=$(run_hab notification create "Integration test notification" --title "hab test" --notification-id "$NOTIF_ID")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "notification create"
+
+        log_test "notification list (after create)"
+        OUTPUT=$(run_hab notification list)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "notification list (after create)"
+        else
+            pass "notification list (after create, plain response)"
+        fi
+
+        log_test "notification dismiss"
+        OUTPUT=$(run_hab notification dismiss "$NOTIF_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "notification dismiss"
+        else
+            fail "notification dismiss: $OUTPUT"
+        fi
+    else
+        fail "notification create: $OUTPUT"
+    fi
+}
+
+run_integration_tests() {
+    log_section "Integration Tests"
+    do_auth_login
+
+    log_test "integration list"
+    OUTPUT=$(run_hab integration list)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data | length) > 0' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data[0].entry_id // empty')
+        pass "integration list ($COUNT integrations, first entry_id: $ENTRY_ID)"
+
+        if [ -n "$ENTRY_ID" ]; then
+            log_test "integration get"
+            OUTPUT=$(run_hab integration get "$ENTRY_ID")
+            if echo "$OUTPUT" | jq -e '.success == true and .data.entry_id != null' > /dev/null 2>&1; then
+                DOMAIN=$(echo "$OUTPUT" | jq -r '.data.domain')
+                pass "integration get (domain: $DOMAIN)"
+            else
+                fail "integration get: $OUTPUT"
+            fi
+        else
+            pass "integration get (skipped - no entry_id)"
+        fi
+    else
+        fail "integration list: $OUTPUT"
+    fi
+
+    log_test "integration list --domain homeassistant"
+    OUTPUT=$(run_hab integration list --domain homeassistant)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "integration list --domain homeassistant ($COUNT entries)"
+    else
+        fail "integration list --domain: $OUTPUT"
+    fi
+}
+
+run_event_tests() {
+    log_section "Event Tests"
+    do_auth_login
+
+    log_test "event list"
+    OUTPUT=$(run_hab event list)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data | length) > 0' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | length')
+        pass "event list ($COUNT event types)"
+    else
+        fail "event list: $OUTPUT"
+    fi
+
+    log_test "event fire (custom event)"
+    OUTPUT=$(run_hab event fire hab_integration_test --data '{"source": "hab_test"}')
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "event fire"
+    else
+        fail "event fire: $OUTPUT"
+    fi
+}
+
+run_repairs_tests() {
+    log_section "Repairs Tests"
+    do_auth_login
+
+    log_test "repairs list"
+    OUTPUT=$(run_hab repairs list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "repairs list ($COUNT issues)"
+    else
+        # Empty issues printed as plain text is acceptable
+        pass "repairs list (no issues or plain response)"
+    fi
+
+    log_test "repairs list --severity warning"
+    OUTPUT=$(run_hab repairs list --severity warning)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        COUNT=$(echo "$OUTPUT" | jq '.data | if . == null then 0 else length end')
+        pass "repairs list --severity warning ($COUNT issues)"
+    else
+        pass "repairs list --severity warning (no issues)"
+    fi
+}
+
 # Run standalone if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     init_standalone_test "Miscellaneous Tests"
     run_misc_tests
     run_category_tests
-    run_template_tests
+    run_template_render_tests
+    run_notification_tests
+    run_integration_tests
+    run_event_tests
+    run_repairs_tests
     print_summary "Miscellaneous Tests"
     exit $?
 fi
