@@ -96,13 +96,17 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 | `auth` | Authentication management |
 | `automation` | Manage automations |
 | `script` | Manage scripts |
-| `entity` | Entity operations |
+| `scene` | Manage scenes |
+| `entity` | Entity operations (includes `logbook` subcommand) |
 | `action` | Call actions |
 | `area` | Manage areas |
 | `floor` | Manage floors |
 | `zone` | Manage zones |
 | `label` | Manage labels |
+| `person` | Manage persons |
+| `category` | Manage entity categories |
 | `helper` | Manage helper entities |
+| `template` | Render Jinja2 templates |
 | `dashboard` | Manage dashboards |
 | `backup` | Backup and restore |
 | `calendar` | Manage calendar events |

@@ -39,14 +39,14 @@ Tests are organized by feature into separate files:
 
 - **test/lib/common.sh**: Shared functions, colors, test helpers
 - **test/test_core.sh**: Auth login/logout/status, system info/health
-- **test/test_registry.sh**: Entity, device, area, floor, label CRUD operations
-- **test/test_automation.sh**: Automation and automation-trigger/condition/action CRUD
+- **test/test_registry.sh**: Entity, device, area, floor, label, person CRUD operations; entity logbook
+- **test/test_automation.sh**: Automation and automation-trigger/condition/action CRUD; scene CRUD
 - **test/test_script.sh**: Script and script-action CRUD
 - **test/test_dashboard.sh**: Dashboard, views, badges, sections, cards CRUD
 - **test/test_helpers.sh**: Helper types (input_boolean, counter, timer, group, etc.)
 - **test/test_template.sh**: Template entity types (sensor, binary_sensor, switch, number, etc.)
 - **test/test_calendar_todo.sh**: Local calendar and to-do list helpers
-- **test/test_misc.sh**: Actions, zones, backups, blueprints
+- **test/test_misc.sh**: Actions, zones, backups, blueprints, categories, template render
 
 Each test file can:
 1. Run **standalone**: `./test/test_automation.sh` - starts its own empty-hass instance
