@@ -139,15 +139,15 @@ hab todo add todo.shopping_list "Buy milk"
 hab todo add todo.shopping_list "Doctor appointment" --due "2024-06-15"
 hab todo add todo.shopping_list "Meeting" --due "2024-06-15T14:00:00" --description "Project review"
 
-# Complete / uncomplete an item
-hab todo complete todo.shopping_list "Buy milk"
-hab todo uncomplete todo.shopping_list "Buy milk"
+# Complete / uncomplete an item (use item UID from 'todo items')
+hab todo complete todo.shopping_list abc123
+hab todo uncomplete todo.shopping_list abc123
 
 # Update an item
-hab todo update todo.shopping_list "Buy milk" --summary "Buy oat milk" --due "2024-06-16"
+hab todo update todo.shopping_list abc123 --summary "Buy oat milk" --due "2024-06-16"
 
 # Remove an item
-hab todo remove todo.shopping_list "Buy milk"
+hab todo remove todo.shopping_list abc123
 ```
 
 ### Notifications
@@ -171,10 +171,10 @@ hab calendar list calendar.personal
 hab calendar list calendar.personal --start "2024-06-01T00:00:00Z" --end "2024-06-30T23:59:59Z"
 
 # Create a timed event
-hab calendar create calendar.personal "Team Meeting" --start "2024-06-15T10:00:00" --end "2024-06-15T11:00:00"
+hab calendar create calendar.personal --summary "Team Meeting" --start "2024-06-15T10:00:00" --end "2024-06-15T11:00:00"
 
 # Create an all-day event
-hab calendar create calendar.personal "Holiday" --start "2024-12-25" --end "2024-12-26" --all-day
+hab calendar create calendar.personal --summary "Holiday" --start "2024-12-25" --end "2024-12-26" --all-day
 
 # Delete an event
 hab calendar delete calendar.personal <event_uid>
