@@ -269,7 +269,7 @@ run_category_tests() {
 
         if [ -n "$CATEGORY_ID" ]; then
             log_test "category update"
-            OUTPUT=$(run_hab category update "$CATEGORY_ID" --name "Test Category Updated")
+            OUTPUT=$(run_hab category update "$CATEGORY_ID" --scope automation --name "Test Category Updated")
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                 pass "category update"
             else

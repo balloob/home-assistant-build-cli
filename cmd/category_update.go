@@ -8,22 +8,25 @@ import (
 )
 
 var (
-	categoryUpdateName string
-	categoryUpdateIcon string
+	categoryUpdateName  string
+	categoryUpdateIcon  string
+	categoryUpdateScope string
 )
 
 var categoryUpdateCmd = &cobra.Command{
 	Use:   "update <category_id>",
 	Short: "Update a category",
 	Long:  `Update an existing category's name or icon.`,
-	Example: `  hab category update abc123 --name "Critical Alerts"
-  hab category update abc123 --icon mdi:alert`,
+	Example: `  hab category update abc123 --scope automation --name "Critical Alerts"
+  hab category update abc123 --scope automation --icon mdi:alert`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCategoryUpdate,
 }
 
 func init() {
 	categoryCmd.AddCommand(categoryUpdateCmd)
+	categoryUpdateCmd.Flags().StringVar(&categoryUpdateScope, "scope", "", "Scope of the category: automation, script, scene, helpers (required)")
+	categoryUpdateCmd.MarkFlagRequired("scope")
 	categoryUpdateCmd.Flags().StringVar(&categoryUpdateName, "name", "", "New name for the category")
 	categoryUpdateCmd.Flags().StringVar(&categoryUpdateIcon, "icon", "", "New icon for the category")
 }
@@ -32,7 +35,13 @@ func runCategoryUpdate(cmd *cobra.Command, args []string) error {
 	categoryID := args[0]
 	textMode := getTextMode()
 
-	params := map[string]interface{}{}
+	if !validCategoryScopes[categoryUpdateScope] {
+		return fmt.Errorf("invalid scope '%s'. Valid values: automation, script, scene, helpers", categoryUpdateScope)
+	}
+
+	params := map[string]interface{}{
+		"scope": categoryUpdateScope,
+	}
 	if categoryUpdateName != "" {
 		params["name"] = categoryUpdateName
 	}
