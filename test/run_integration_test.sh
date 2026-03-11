@@ -2,7 +2,7 @@
 # Integration test orchestrator for hab CLI using empty-hass
 # Usage: ./run_integration_test.sh [test_group...]
 #
-# Test groups: core, registry, automation, script, dashboard, helpers, template, calendar, misc
+# Test groups: core, registry, automation, script, dashboard, helpers, template, calendar, misc, notification, integration, event, repairs
 # Run all tests: ./run_integration_test.sh (no arguments)
 # Run specific tests: ./run_integration_test.sh core registry
 
@@ -18,21 +18,25 @@ source "$ORCHESTRATOR_DIR/lib/common.sh"
 trap cleanup EXIT
 
 # Order of test execution (matters for dependencies)
-TEST_ORDER=(core registry automation script dashboard helpers template calendar misc)
+TEST_ORDER=(core registry automation script dashboard helpers template calendar misc notification integration event repairs)
 
 # Get the test function for a given group (Bash 3.x compatible - no associative arrays)
 get_test_function() {
     local group="$1"
     case "$group" in
-        core)       echo "run_core_tests" ;;
-        registry)   echo "run_registry_tests" ;;
-        automation) echo "run_automation_tests" ;;
-        script)     echo "run_script_tests" ;;
-        dashboard)  echo "run_dashboard_tests" ;;
-        helpers)    echo "run_helpers_tests" ;;
-        template)   echo "run_template_tests" ;;
-        calendar)   echo "run_calendar_todo_tests" ;;
-        misc)       echo "run_misc_tests" ;;
+        core)         echo "run_core_tests" ;;
+        registry)     echo "run_registry_tests run_person_tests run_entity_logbook_tests" ;;
+        automation)   echo "run_automation_tests run_scene_tests" ;;
+        script)       echo "run_script_tests" ;;
+        dashboard)    echo "run_dashboard_tests" ;;
+        helpers)      echo "run_helpers_tests" ;;
+        template)     echo "run_template_tests" ;;
+        calendar)     echo "run_calendar_todo_tests run_calendar_create_delete_tests" ;;
+        misc)         echo "run_misc_tests run_category_tests run_template_render_tests" ;;
+        notification) echo "run_notification_tests" ;;
+        integration)  echo "run_integration_tests" ;;
+        event)        echo "run_event_tests" ;;
+        repairs)      echo "run_repairs_tests" ;;
         *)          echo "" ;;
     esac
 }
@@ -62,8 +66,12 @@ print_usage() {
     echo "  dashboard  - Dashboard, views, badges, sections, cards tests"
     echo "  helpers    - Helper types (input_boolean, counter, timer, group, etc.)"
     echo "  template   - Template entity tests"
-    echo "  calendar   - Calendar and to-do list tests"
-    echo "  misc       - Actions, zones, backups, blueprints tests"
+    echo "  calendar      - Calendar and to-do list tests"
+    echo "  misc          - Actions, zones, backups, blueprints, categories tests"
+    echo "  notification  - Persistent notification tests"
+    echo "  integration   - Integration (config entry) tests"
+    echo "  event         - Event bus tests"
+    echo "  repairs       - Repairs/issues tests"
     echo ""
     echo "Examples:"
     echo "  $0              # Run all tests"
@@ -97,10 +105,12 @@ run_tests() {
 
     # Run each test group
     for group in "${groups[@]}"; do
-        local func
-        func=$(get_test_function "$group")
+        local funcs
+        funcs=$(get_test_function "$group")
         echo -e "\n${BLUE}Running test group: $group${NC}"
-        $func
+        for func in $funcs; do
+            $func
+        done
     done
 }
 

@@ -446,12 +446,12 @@ func (c *WebSocketClient) PersonRegistryCreate(name string, params map[string]in
 
 // PersonRegistryUpdate updates a person
 func (c *WebSocketClient) PersonRegistryUpdate(personID string, params map[string]interface{}) (map[string]interface{}, error) {
-	return c.mergeAndSend("person/update", "id", personID, params)
+	return c.mergeAndSend("person/update", "person_id", personID, params)
 }
 
 // PersonRegistryDelete deletes a person
 func (c *WebSocketClient) PersonRegistryDelete(personID string) error {
-	return c.sendDelete("person/delete", "id", personID)
+	return c.sendDelete("person/delete", "person_id", personID)
 }
 
 // Category registry operations
@@ -488,5 +488,103 @@ func (c *WebSocketClient) CategoryRegistryDelete(scope, categoryID string) error
 	return err
 }
 
+// Integration (config entry) operations
 
+// ConfigEntryGet returns a single config entry by entry_id
+func (c *WebSocketClient) ConfigEntryGet(entryID string) (map[string]interface{}, error) {
+	result, err := c.SendCommand("config_entries/get_single", map[string]interface{}{
+		"entry_id": entryID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Response is {"config_entry": {...}}
+	if m, ok := result.(map[string]interface{}); ok {
+		if entry, ok := m["config_entry"].(map[string]interface{}); ok {
+			return entry, nil
+		}
+		return nil, fmt.Errorf("unexpected response from config_entries/get_single: missing config_entry key")
+	}
+	return nil, fmt.Errorf("unexpected response from config_entries/get_single")
+}
+
+// ConfigEntrySetDisabled enables or disables a config entry.
+// Pass "user" to disable, nil to enable.
+func (c *WebSocketClient) ConfigEntrySetDisabled(entryID string, disabledBy interface{}) (map[string]interface{}, error) {
+	return c.sendMapCommand("config_entries/disable", map[string]interface{}{
+		"entry_id":    entryID,
+		"disabled_by": disabledBy,
+	})
+}
+
+// Todo item operations
+
+// TodoItemList returns the items for a to-do list entity
+func (c *WebSocketClient) TodoItemList(entityID string) ([]interface{}, error) {
+	result, err := c.SendCommand("todo/item/list", map[string]interface{}{
+		"entity_id": entityID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Response is {"items": [...]}
+	if m, ok := result.(map[string]interface{}); ok {
+		if items, ok := m["items"].([]interface{}); ok {
+			return items, nil
+		}
+		return []interface{}{}, nil
+	}
+	return nil, fmt.Errorf("unexpected response from todo/item/list")
+}
+
+// Persistent notification operations
+
+// NotificationList returns all current persistent notifications
+func (c *WebSocketClient) NotificationList() ([]interface{}, error) {
+	result, err := c.SendCommand("persistent_notification/get", nil)
+	if err != nil {
+		return nil, err
+	}
+	// Response is a list of notification objects
+	if list, ok := result.([]interface{}); ok {
+		return list, nil
+	}
+	// May also come back as a map keyed by notification_id
+	if m, ok := result.(map[string]interface{}); ok {
+		items := make([]interface{}, 0, len(m))
+		for _, v := range m {
+			items = append(items, v)
+		}
+		return items, nil
+	}
+	return []interface{}{}, nil
+}
+
+// Repairs operations
+
+// RepairListIssues returns all active repair issues
+func (c *WebSocketClient) RepairListIssues() ([]interface{}, error) {
+	result, err := c.SendCommand("repairs/list_issues", nil)
+	if err != nil {
+		return nil, err
+	}
+	// Response is {"issues": [...]}
+	if m, ok := result.(map[string]interface{}); ok {
+		if issues, ok := m["issues"].([]interface{}); ok {
+			return issues, nil
+		}
+		return []interface{}{}, nil
+	}
+	return nil, fmt.Errorf("unexpected response from repairs/list_issues")
+}
+
+// RepairIgnoreIssue ignores or un-ignores a repair issue
+func (c *WebSocketClient) RepairIgnoreIssue(domain, issueID string, ignore bool) error {
+	_, err := c.SendCommand("repairs/ignore_issue", map[string]interface{}{
+		"domain":   domain,
+		"issue_id": issueID,
+		"ignore":   ignore,
+	})
+	return err
+}
 

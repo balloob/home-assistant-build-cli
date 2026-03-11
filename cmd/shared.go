@@ -316,6 +316,26 @@ func (f *ListFlags) RenderBriefFields(items []interface{}, textMode bool, idFiel
 }
 
 // ---------------------------------------------------------------------------
+// Service call helpers
+// ---------------------------------------------------------------------------
+
+// callServiceAction calls a Home Assistant service action via REST and prints
+// a success message. It is a convenience wrapper used by commands that map
+// directly to a single service call (todo, notification, calendar, etc.).
+func callServiceAction(domain, service, successMsg string, data map[string]interface{}) error {
+	textMode := getTextMode()
+	restClient, err := getRESTClient()
+	if err != nil {
+		return err
+	}
+	if _, err := restClient.CallService(domain, service, data); err != nil {
+		return err
+	}
+	output.PrintSuccess(nil, textMode, successMsg)
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 // Input helpers
 // ---------------------------------------------------------------------------
 

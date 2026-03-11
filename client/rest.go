@@ -375,3 +375,22 @@ func (c *RestClient) ConfigEntryDelete(entryID string) error {
 	_, err := c.Delete("config/config_entries/entry/" + entryID)
 	return err
 }
+
+// ConfigEntryReload reloads a config entry by ID
+func (c *RestClient) ConfigEntryReload(entryID string) (map[string]interface{}, error) {
+	return c.postMap("config/config_entries/entry/"+entryID+"/reload", nil)
+}
+
+// GetEvents returns all registered event types and their listener counts
+func (c *RestClient) GetEvents() ([]interface{}, error) {
+	return c.getList("events")
+}
+
+// FireEvent fires a custom event on the Home Assistant event bus
+func (c *RestClient) FireEvent(eventType string, data map[string]interface{}) error {
+	if data == nil {
+		data = map[string]interface{}{}
+	}
+	_, err := c.Post("events/"+eventType, data)
+	return err
+}

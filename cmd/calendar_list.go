@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"net/url"
 	"time"
 
@@ -64,7 +63,7 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 	}
 
 	if result == nil {
-		fmt.Println("No events found.")
+		output.PrintOutput([]interface{}{}, textMode, "No events found.")
 		return nil
 	}
 
