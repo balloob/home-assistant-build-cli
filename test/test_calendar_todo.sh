@@ -116,7 +116,9 @@ run_calendar_todo_tests() {
         # Todo item management tests (new: todo add/items/complete/uncomplete/update/remove)
         # ==========================================================================
         sleep 1  # Wait for entity to appear in state
-        TODO_ENTITY=$(run_hab entity list | jq -r '.data[] | select(.entity_id | startswith("todo.")) | .entity_id' | head -1)
+        # Derive entity_id from the name we created (HA slugifies: "Test Todo 123" -> "todo.test_todo_123")
+        TODO_ENTITY_SLUG=$(echo "$TODO_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
+        TODO_ENTITY="todo.${TODO_ENTITY_SLUG}"
 
         if [ -n "$TODO_ENTITY" ]; then
             log_test "todo lists"
