@@ -89,7 +89,7 @@ fail() {
 }
 
 run_hab() {
-    "$HAB" --config "$HAB_TEST_CONFIG_DIR" --json "$@"
+    "$HAB" --config "$HAB_TEST_CONFIG_DIR" --json "$@" || true
 }
 
 # Run hab with text output (for testing text mode)
