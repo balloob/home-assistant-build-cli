@@ -138,7 +138,7 @@ run_calendar_todo_tests() {
             fi
 
             log_test "todo add"
-            OUTPUT=$(run_hab todo add "$TODO_ENTITY" "Buy milk" --description "Semi-skimmed")
+            OUTPUT=$(run_hab todo add "$TODO_ENTITY" "Buy milk" --description "Semi-skimmed") || true
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                 pass "todo add"
             else
@@ -146,7 +146,7 @@ run_calendar_todo_tests() {
             fi
 
             log_test "todo add with due date"
-            OUTPUT=$(run_hab todo add "$TODO_ENTITY" "Doctor appointment" --due "2099-12-31")
+            OUTPUT=$(run_hab todo add "$TODO_ENTITY" "Doctor appointment" --due "2099-12-31") || true
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                 pass "todo add with due date"
             else
@@ -161,7 +161,7 @@ run_calendar_todo_tests() {
 
                 if [ -n "$ITEM_UID" ]; then
                     log_test "todo complete"
-                    OUTPUT=$(run_hab todo complete "$TODO_ENTITY" "$ITEM_UID")
+                    OUTPUT=$(run_hab todo complete "$TODO_ENTITY" "$ITEM_UID") || true
                     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                         pass "todo complete"
                     else
@@ -169,7 +169,7 @@ run_calendar_todo_tests() {
                     fi
 
                     log_test "todo uncomplete"
-                    OUTPUT=$(run_hab todo uncomplete "$TODO_ENTITY" "$ITEM_UID")
+                    OUTPUT=$(run_hab todo uncomplete "$TODO_ENTITY" "$ITEM_UID") || true
                     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                         pass "todo uncomplete"
                     else
@@ -177,7 +177,7 @@ run_calendar_todo_tests() {
                     fi
 
                     log_test "todo update"
-                    OUTPUT=$(run_hab todo update "$TODO_ENTITY" "$ITEM_UID" --summary "Buy oat milk")
+                    OUTPUT=$(run_hab todo update "$TODO_ENTITY" "$ITEM_UID" --summary "Buy oat milk") || true
                     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                         pass "todo update"
                     else
@@ -185,7 +185,7 @@ run_calendar_todo_tests() {
                     fi
 
                     log_test "todo remove"
-                    OUTPUT=$(run_hab todo remove "$TODO_ENTITY" "$ITEM_UID")
+                    OUTPUT=$(run_hab todo remove "$TODO_ENTITY" "$ITEM_UID") || true
                     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                         pass "todo remove"
                     else

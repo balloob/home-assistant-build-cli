@@ -371,7 +371,7 @@ run_notification_tests() {
 
     log_test "notification create"
     NOTIF_ID="hab_test_$(date +%s)"
-    OUTPUT=$(run_hab notification create "Integration test notification" --title "hab test" --notification-id "$NOTIF_ID")
+    OUTPUT=$(run_hab notification create "Integration test notification" --title "hab test" --notification-id "$NOTIF_ID") || true
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         pass "notification create"
 
@@ -384,7 +384,7 @@ run_notification_tests() {
         fi
 
         log_test "notification dismiss"
-        OUTPUT=$(run_hab notification dismiss "$NOTIF_ID")
+        OUTPUT=$(run_hab notification dismiss "$NOTIF_ID") || true
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             pass "notification dismiss"
         else
@@ -446,7 +446,7 @@ run_event_tests() {
     fi
 
     log_test "event fire (custom event)"
-    OUTPUT=$(run_hab event fire hab_integration_test --data '{"source": "hab_test"}')
+    OUTPUT=$(run_hab event fire hab_integration_test --data '{"source": "hab_test"}') || true
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         pass "event fire"
     else
