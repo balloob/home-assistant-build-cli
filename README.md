@@ -280,6 +280,7 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 | `repairs` | Manage Home Assistant repair issues |
 | `dashboard` | Manage dashboards |
 | `backup` | Backup and restore |
+| `energy` | Manage energy dashboard preferences |
 | `calendar` | Manage calendar events (includes `create` and `delete` subcommands) |
 | `blueprint` | Manage blueprints |
 | `system` | System operations |

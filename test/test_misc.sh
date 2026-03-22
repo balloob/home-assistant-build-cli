@@ -245,6 +245,61 @@ run_misc_tests() {
         fail "backup config update: $OUTPUT"
     fi
 
+    # Test: energy info
+    log_test "energy info"
+    OUTPUT=$(run_hab_optional energy info)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "energy info"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "energy info (not supported by server)"
+    else
+        fail "energy info: $OUTPUT"
+    fi
+
+    # Test: energy prefs get
+    log_test "energy prefs get"
+    OUTPUT=$(run_hab_optional energy prefs get)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "energy prefs get"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "energy prefs get (not supported by server)"
+    else
+        fail "energy prefs get: $OUTPUT"
+    fi
+
+    # Test: energy validate
+    log_test "energy validate"
+    OUTPUT=$(run_hab_optional energy validate)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "energy validate"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "energy validate (not supported by server)"
+    else
+        fail "energy validate: $OUTPUT"
+    fi
+
+    # Test: energy solar forecast
+    log_test "energy solar-forecast"
+    OUTPUT=$(run_hab_optional energy solar-forecast)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "energy solar-forecast"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "energy solar-forecast (not supported by server)"
+    else
+        fail "energy solar-forecast: $OUTPUT"
+    fi
+
+    # Test: energy prefs set (payload may be rejected by server version)
+    log_test "energy prefs set"
+    OUTPUT=$(run_hab_optional energy prefs set --data '{"device_consumption":[],"device_consumption_water":[],"energy_sources":[]}')
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "energy prefs set"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "energy prefs set (not supported by server)"
+    else
+        fail "energy prefs set: $OUTPUT"
+    fi
+
     # Test: thread list (skip - not supported by empty-hass and may hang)
     log_test "thread list"
     pass "thread list (skipped - not supported by empty-hass)"

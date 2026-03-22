@@ -573,6 +573,41 @@ func (c *WebSocketClient) BackupConfigUpdate(params map[string]interface{}) (map
 	return c.sendMapCommand("backup/config/update", req)
 }
 
+// Energy operations
+
+// EnergyInfo returns metadata for the energy dashboard.
+func (c *WebSocketClient) EnergyInfo() (map[string]interface{}, error) {
+	return c.sendMapCommand("energy/info", nil)
+}
+
+// EnergyGetPrefs returns saved energy dashboard preferences.
+func (c *WebSocketClient) EnergyGetPrefs() (map[string]interface{}, error) {
+	return c.sendMapCommand("energy/get_prefs", nil)
+}
+
+// EnergySavePrefs updates energy dashboard preferences.
+func (c *WebSocketClient) EnergySavePrefs(params map[string]interface{}) (map[string]interface{}, error) {
+	req := make(map[string]interface{}, len(params))
+	for k, v := range params {
+		req[k] = v
+	}
+	return c.sendMapCommand("energy/save_prefs", req)
+}
+
+// EnergyValidate validates energy dashboard preferences.
+func (c *WebSocketClient) EnergyValidate(params map[string]interface{}) (map[string]interface{}, error) {
+	req := make(map[string]interface{}, len(params))
+	for k, v := range params {
+		req[k] = v
+	}
+	return c.sendMapCommand("energy/validate", req)
+}
+
+// EnergySolarForecast returns configured solar forecast data.
+func (c *WebSocketClient) EnergySolarForecast() (map[string]interface{}, error) {
+	return c.sendMapCommand("energy/solar_forecast", nil)
+}
+
 // Todo item operations
 
 // TodoItemList returns the items for a to-do list entity
