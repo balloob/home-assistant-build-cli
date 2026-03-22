@@ -152,6 +152,28 @@ run_misc_tests() {
         fail "zone create: $OUTPUT"
     fi
 
+    # Test: backup agents (may not be supported by empty-hass)
+    log_test "backup agents"
+    OUTPUT=$(run_hab_optional backup agents)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "backup agents"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "backup agents (not supported by server)"
+    else
+        fail "backup agents: $OUTPUT"
+    fi
+
+    # Test: backup config get (may not be supported by empty-hass)
+    log_test "backup config get"
+    OUTPUT=$(run_hab_optional backup config get)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "backup config get"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "backup config get (not supported by server)"
+    else
+        fail "backup config get: $OUTPUT"
+    fi
+
     # Test: backup list (may not be supported by empty-hass)
     log_test "backup list"
     OUTPUT=$(run_hab backup list 2>&1)
@@ -164,14 +186,63 @@ run_misc_tests() {
         fail "backup list: $OUTPUT"
     fi
 
+    BACKUP_ID=""
+
     # Test: backup create (may not work with empty-hass)
     log_test "backup create"
     OUTPUT=$(run_hab_optional backup create)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        BACKUP_ID=$(echo "$OUTPUT" | jq -r '.data.backup_id // empty')
         pass "backup create"
     else
         # Backup create not supported by empty-hass - CLI command was executed
         pass "backup create (not available in empty-hass)"
+    fi
+
+    if [ -n "$BACKUP_ID" ]; then
+        # Test: backup get
+        log_test "backup get"
+        OUTPUT=$(run_hab backup get "$BACKUP_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "backup get"
+        else
+            fail "backup get: $OUTPUT"
+        fi
+
+        # Test: backup restore (may not be allowed in test environment)
+        log_test "backup restore"
+        OUTPUT=$(run_hab_optional backup restore "$BACKUP_ID" --agent backup.local)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "backup restore"
+        elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+            pass "backup restore (not supported by server)"
+        else
+            fail "backup restore: $OUTPUT"
+        fi
+
+        # Test: backup delete
+        log_test "backup delete"
+        OUTPUT=$(run_hab_optional backup delete "$BACKUP_ID" --force)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "backup delete"
+        elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+            pass "backup delete (not supported by server)"
+        else
+            fail "backup delete: $OUTPUT"
+        fi
+    else
+        pass "backup get/restore/delete (skipped - no backup_id returned)"
+    fi
+
+    # Test: backup config update (may not be supported by empty-hass)
+    log_test "backup config update"
+    OUTPUT=$(run_hab_optional backup config update --data '{"retention":{"days":7}}')
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "backup config update"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "backup config update (not supported by server)"
+    else
+        fail "backup config update: $OUTPUT"
     fi
 
     # Test: thread list (skip - not supported by empty-hass and may hang)

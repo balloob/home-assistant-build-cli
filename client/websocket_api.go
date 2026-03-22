@@ -517,6 +517,62 @@ func (c *WebSocketClient) ConfigEntrySetDisabled(entryID string, disabledBy inte
 	})
 }
 
+// Backup operations
+
+// BackupInfo returns backup overview information.
+func (c *WebSocketClient) BackupInfo() (map[string]interface{}, error) {
+	return c.sendMapCommand("backup/info", nil)
+}
+
+// BackupDetails returns details for a specific backup.
+func (c *WebSocketClient) BackupDetails(backupID string) (map[string]interface{}, error) {
+	return c.sendMapCommand("backup/details", map[string]interface{}{
+		"backup_id": backupID,
+	})
+}
+
+// BackupDelete deletes a backup by ID.
+func (c *WebSocketClient) BackupDelete(backupID string) error {
+	return c.sendDelete("backup/delete", "backup_id", backupID)
+}
+
+// BackupGenerate creates a new backup with optional parameters.
+func (c *WebSocketClient) BackupGenerate(params map[string]interface{}) (map[string]interface{}, error) {
+	req := make(map[string]interface{}, len(params))
+	for k, v := range params {
+		req[k] = v
+	}
+	return c.sendMapCommand("backup/generate", req)
+}
+
+// BackupRestore restores a backup with the provided restore parameters.
+func (c *WebSocketClient) BackupRestore(params map[string]interface{}) (map[string]interface{}, error) {
+	req := make(map[string]interface{}, len(params))
+	for k, v := range params {
+		req[k] = v
+	}
+	return c.sendMapCommand("backup/restore", req)
+}
+
+// BackupAgentsInfo returns backup agent information.
+func (c *WebSocketClient) BackupAgentsInfo() (map[string]interface{}, error) {
+	return c.sendMapCommand("backup/agents/info", nil)
+}
+
+// BackupConfigInfo returns backup configuration.
+func (c *WebSocketClient) BackupConfigInfo() (map[string]interface{}, error) {
+	return c.sendMapCommand("backup/config/info", nil)
+}
+
+// BackupConfigUpdate updates backup configuration.
+func (c *WebSocketClient) BackupConfigUpdate(params map[string]interface{}) (map[string]interface{}, error) {
+	req := make(map[string]interface{}, len(params))
+	for k, v := range params {
+		req[k] = v
+	}
+	return c.sendMapCommand("backup/config/update", req)
+}
+
 // Todo item operations
 
 // TodoItemList returns the items for a to-do list entity
@@ -587,4 +643,3 @@ func (c *WebSocketClient) RepairIgnoreIssue(domain, issueID string, ignore bool)
 	})
 	return err
 }
-

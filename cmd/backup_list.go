@@ -28,16 +28,14 @@ func runBackupList(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	result, err := ws.SendCommand("backup/info", nil)
+	result, err := ws.BackupInfo()
 	if err != nil {
 		return err
 	}
 
 	var backups []interface{}
-	if resultMap, ok := result.(map[string]interface{}); ok {
-		if b, ok := resultMap["backups"].([]interface{}); ok {
-			backups = b
-		}
+	if b, ok := result["backups"].([]interface{}); ok {
+		backups = b
 	}
 
 	if backups == nil {
