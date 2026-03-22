@@ -29,6 +29,7 @@ var (
 	_ CategoryRegistryAPI = (*WebSocketClient)(nil)
 	_ IntegrationAPI      = (*WebSocketClient)(nil)
 	_ BackupAPI           = (*WebSocketClient)(nil)
+	_ EnergyAPI           = (*WebSocketClient)(nil)
 	_ TodoAPI             = (*WebSocketClient)(nil)
 	_ NotificationAPI     = (*WebSocketClient)(nil)
 	_ RepairAPI           = (*WebSocketClient)(nil)
@@ -174,6 +175,15 @@ type BackupAPI interface {
 	BackupConfigUpdate(params map[string]interface{}) (map[string]interface{}, error)
 }
 
+// EnergyAPI provides energy dashboard information and preference operations.
+type EnergyAPI interface {
+	EnergyInfo() (map[string]interface{}, error)
+	EnergyGetPrefs() (map[string]interface{}, error)
+	EnergySavePrefs(params map[string]interface{}) (map[string]interface{}, error)
+	EnergyValidate(params map[string]interface{}) (map[string]interface{}, error)
+	EnergySolarForecast() (map[string]interface{}, error)
+}
+
 // TodoAPI provides read access to to-do list items.
 // Item mutations go through the REST service call API (todo.add_item, etc.).
 type TodoAPI interface {
@@ -220,6 +230,7 @@ type WebSocketAPI interface {
 	CategoryRegistryAPI
 	IntegrationAPI
 	BackupAPI
+	EnergyAPI
 	TodoAPI
 	NotificationAPI
 	RepairAPI
