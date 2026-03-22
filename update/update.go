@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/home-assistant/hab/config"
+	"github.com/home-assistant/hab/internal/fileutil"
 )
 
 const (
@@ -86,7 +87,7 @@ func SaveUpdateCheck(configDir string, check *UpdateCheck) error {
 		return err
 	}
 
-	return os.WriteFile(getUpdateCheckPath(configDir), data, 0600)
+	return fileutil.WriteFileAtomic(getUpdateCheckPath(configDir), data, 0600)
 }
 
 // NeedsCheck returns true if we should check for updates
@@ -269,58 +270,6 @@ func DownloadUpdate(downloadURL string) (tmpPath string, err error) {
 	}
 
 	return tmpPath, nil
-}
-
-// InstallUpdate replaces the current binary with the new one
-func InstallUpdate(newBinaryPath string) error {
-	// Get current executable path
-	execPath, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("failed to get executable path: %w", err)
-	}
-
-	// Resolve symlinks to get actual binary path
-	execPath, err = filepath.EvalSymlinks(execPath)
-	if err != nil {
-		return fmt.Errorf("failed to resolve executable path: %w", err)
-	}
-
-	// On Windows, we need to rename the old binary first
-	if runtime.GOOS == "windows" {
-		oldPath := execPath + ".old"
-		os.Remove(oldPath) // Remove any previous .old file
-		if err := os.Rename(execPath, oldPath); err != nil {
-			return fmt.Errorf("failed to rename old binary: %w", err)
-		}
-	}
-
-	// Move new binary to executable path
-	if err := os.Rename(newBinaryPath, execPath); err != nil {
-		// If rename fails (cross-device), try copy
-		if err := copyFile(newBinaryPath, execPath); err != nil {
-			return fmt.Errorf("failed to install new binary: %w", err)
-		}
-		os.Remove(newBinaryPath)
-	}
-
-	return nil
-}
-
-func copyFile(src, dst string) error {
-	source, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer source.Close()
-
-	dest, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-	if err != nil {
-		return err
-	}
-	defer dest.Close()
-
-	_, err = io.Copy(dest, source)
-	return err
 }
 
 // PrintUpdateNotice prints a notice about available updates to stderr

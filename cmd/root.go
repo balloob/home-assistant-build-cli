@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/home-assistant/hab/auth"
@@ -32,7 +31,7 @@ var (
 var ExitWithError = false
 
 var rootCmd = &cobra.Command{
-	Use:   path.Base(os.Args[0]),
+	Use:   executableName(os.Args[0]),
 	Short: "Home Assistant Builder - Build Home Assistant configurations",
 	Long: `Home Assistant Builder (hab) is a CLI utility designed for LLMs
 to build and manage Home Assistant configurations.
@@ -62,6 +61,19 @@ Output is human-readable text by default. Use --json for machine-parseable JSON 
 		// Check for updates (skip for update and version commands)
 		checkUpdateOnStartup(cmd)
 	},
+}
+
+func executableName(arg0 string) string {
+	if arg0 == "" {
+		return "hab"
+	}
+
+	lastSeparator := strings.LastIndexAny(arg0, `/\`)
+	if lastSeparator >= 0 && lastSeparator+1 < len(arg0) {
+		return arg0[lastSeparator+1:]
+	}
+
+	return arg0
 }
 
 // Execute runs the root command

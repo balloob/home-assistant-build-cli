@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -73,10 +74,11 @@ func TestEnsureConfigDir(t *testing.T) {
 	if !info.IsDir() {
 		t.Error("expected a directory")
 	}
-	// Check permissions (Unix only)
-	perm := info.Mode().Perm()
-	if perm != 0700 {
-		t.Errorf("permissions = %o, want 0700", perm)
+	if runtime.GOOS != "windows" {
+		perm := info.Mode().Perm()
+		if perm != 0700 {
+			t.Errorf("permissions = %o, want 0700", perm)
+		}
 	}
 }
 
