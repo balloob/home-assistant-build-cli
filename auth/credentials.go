@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/home-assistant/hab/config"
+	"github.com/home-assistant/hab/internal/fileutil"
 )
 
 const (
@@ -137,7 +138,7 @@ func SaveCredentials(creds *Credentials, configDir string) error {
 	}
 
 	credsPath := config.GetCredentialsPath(configDir)
-	return os.WriteFile(credsPath, encrypted, 0600)
+	return fileutil.WriteFileAtomic(credsPath, encrypted, 0600)
 }
 
 // DeleteCredentials removes stored credentials.

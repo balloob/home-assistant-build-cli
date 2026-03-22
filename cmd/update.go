@@ -127,9 +127,24 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(os.Stderr, "Installing update...")
 	}
 
-	if err := update.InstallUpdate(tmpPath); err != nil {
+	installResult, err := update.InstallUpdate(tmpPath)
+	if err != nil {
 		os.Remove(tmpPath) // Clean up temp file
 		printUpdateError(textMode, "INSTALL_FAILED", "Failed to install update: "+err.Error(), "You may need to run with elevated permissions", nil)
+		return nil
+	}
+
+	if installResult != nil && installResult.Deferred {
+		if textMode {
+			fmt.Fprintln(os.Stderr, "Finalizing update. This process will now exit; success will be printed after replacement completes.")
+		} else {
+			output.PrintOutput(map[string]interface{}{
+				"previous_version": Version,
+				"new_version":      check.LatestVersion,
+				"updated":          false,
+				"deferred":         true,
+			}, false, "Update handoff started")
+		}
 		return nil
 	}
 
