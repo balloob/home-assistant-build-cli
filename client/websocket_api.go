@@ -608,6 +608,57 @@ func (c *WebSocketClient) EnergySolarForecast() (map[string]interface{}, error) 
 	return c.sendMapCommand("energy/solar_forecast", nil)
 }
 
+// Diagnostics operations
+
+// DiagnosticsList returns all diagnostics handlers.
+func (c *WebSocketClient) DiagnosticsList() ([]interface{}, error) {
+	return c.sendListCommand("diagnostics/list", nil)
+}
+
+// DiagnosticsGet returns diagnostics handler details for a domain.
+func (c *WebSocketClient) DiagnosticsGet(domain string) (map[string]interface{}, error) {
+	return c.sendMapCommand("diagnostics/get", map[string]interface{}{
+		"domain": domain,
+	})
+}
+
+// Network operations
+
+// NetworkGet returns network configuration.
+func (c *WebSocketClient) NetworkGet() (map[string]interface{}, error) {
+	return c.sendMapCommand("network", nil)
+}
+
+// NetworkURL returns internal/external/cloud URLs.
+func (c *WebSocketClient) NetworkURL() (map[string]interface{}, error) {
+	return c.sendMapCommand("network/url", nil)
+}
+
+// NetworkConfigure updates configured network adapters.
+func (c *WebSocketClient) NetworkConfigure(adapters []string) ([]interface{}, error) {
+	result, err := c.SendCommand("network/configure", map[string]interface{}{
+		"config": map[string]interface{}{
+			"configured_adapters": adapters,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if list, ok := result.([]interface{}); ok {
+		return list, nil
+	}
+	if list, ok := result.([]string); ok {
+		values := make([]interface{}, len(list))
+		for i, value := range list {
+			values[i] = value
+		}
+		return values, nil
+	}
+
+	return nil, fmt.Errorf("unexpected response from network/configure")
+}
+
 // Todo item operations
 
 // TodoItemList returns the items for a to-do list entity
