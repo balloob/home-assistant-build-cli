@@ -281,6 +281,8 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 | `dashboard` | Manage dashboards |
 | `backup` | Backup and restore |
 | `energy` | Manage energy dashboard preferences |
+| `diagnostics` | Inspect diagnostics handlers |
+| `network` | Manage network settings |
 | `calendar` | Manage calendar events (includes `create` and `delete` subcommands) |
 | `blueprint` | Manage blueprints |
 | `system` | System operations |

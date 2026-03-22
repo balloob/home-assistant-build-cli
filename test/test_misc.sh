@@ -300,6 +300,64 @@ run_misc_tests() {
         fail "energy prefs set: $OUTPUT"
     fi
 
+    # Test: diagnostics list
+    log_test "diagnostics list"
+    OUTPUT=$(run_hab_optional diagnostics list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "diagnostics list"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "diagnostics list (not supported by server)"
+    else
+        fail "diagnostics list: $OUTPUT"
+    fi
+
+    # Test: diagnostics get (choose first domain when available)
+    log_test "diagnostics get"
+    DIAG_DOMAIN=$(echo "$OUTPUT" | jq -r '.data[0].domain // empty' 2>/dev/null)
+    if [ -n "$DIAG_DOMAIN" ]; then
+        GET_OUTPUT=$(run_hab_optional diagnostics get "$DIAG_DOMAIN")
+        if echo "$GET_OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "diagnostics get"
+        elif echo "$GET_OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+            pass "diagnostics get (not supported by server)"
+        else
+            fail "diagnostics get: $GET_OUTPUT"
+        fi
+    else
+        pass "diagnostics get (skipped - no diagnostics domains available)"
+    fi
+
+    # Test: network get
+    log_test "network get"
+    OUTPUT=$(run_hab_optional network get)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "network get"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "network get (not supported by server)"
+    else
+        fail "network get: $OUTPUT"
+    fi
+
+    # Test: network url
+    log_test "network url"
+    OUTPUT=$(run_hab_optional network url)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "network url"
+    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "network url (not supported by server)"
+    else
+        fail "network url: $OUTPUT"
+    fi
+
+    # Test: network configure safety guard
+    log_test "network configure (guard)"
+    OUTPUT=$(run_hab_optional network configure --adapters eth0)
+    if echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "network configure (guard)"
+    else
+        fail "network configure (guard): $OUTPUT"
+    fi
+
     # Test: thread list (skip - not supported by empty-hass and may hang)
     log_test "thread list"
     pass "thread list (skipped - not supported by empty-hass)"

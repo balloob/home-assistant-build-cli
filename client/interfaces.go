@@ -30,6 +30,8 @@ var (
 	_ IntegrationAPI      = (*WebSocketClient)(nil)
 	_ BackupAPI           = (*WebSocketClient)(nil)
 	_ EnergyAPI           = (*WebSocketClient)(nil)
+	_ DiagnosticsAPI      = (*WebSocketClient)(nil)
+	_ NetworkAPI          = (*WebSocketClient)(nil)
 	_ TodoAPI             = (*WebSocketClient)(nil)
 	_ NotificationAPI     = (*WebSocketClient)(nil)
 	_ RepairAPI           = (*WebSocketClient)(nil)
@@ -184,6 +186,19 @@ type EnergyAPI interface {
 	EnergySolarForecast() (map[string]interface{}, error)
 }
 
+// DiagnosticsAPI provides integration diagnostics metadata operations.
+type DiagnosticsAPI interface {
+	DiagnosticsList() ([]interface{}, error)
+	DiagnosticsGet(domain string) (map[string]interface{}, error)
+}
+
+// NetworkAPI provides network configuration and URL operations.
+type NetworkAPI interface {
+	NetworkGet() (map[string]interface{}, error)
+	NetworkURL() (map[string]interface{}, error)
+	NetworkConfigure(adapters []string) ([]interface{}, error)
+}
+
 // TodoAPI provides read access to to-do list items.
 // Item mutations go through the REST service call API (todo.add_item, etc.).
 type TodoAPI interface {
@@ -231,6 +246,8 @@ type WebSocketAPI interface {
 	IntegrationAPI
 	BackupAPI
 	EnergyAPI
+	DiagnosticsAPI
+	NetworkAPI
 	TodoAPI
 	NotificationAPI
 	RepairAPI
