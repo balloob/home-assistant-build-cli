@@ -31,7 +31,7 @@ func runBackupCreate(cmd *cobra.Command, args []string) error {
 		params["name"] = args[0]
 	}
 
-	result, err := ws.SendCommand("backup/generate", params)
+	result, err := ws.BackupGenerate(params)
 	if err != nil {
 		return err
 	}

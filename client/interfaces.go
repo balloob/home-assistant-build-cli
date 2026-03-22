@@ -28,6 +28,7 @@ var (
 	_ PersonRegistryAPI   = (*WebSocketClient)(nil)
 	_ CategoryRegistryAPI = (*WebSocketClient)(nil)
 	_ IntegrationAPI      = (*WebSocketClient)(nil)
+	_ BackupAPI           = (*WebSocketClient)(nil)
 	_ TodoAPI             = (*WebSocketClient)(nil)
 	_ NotificationAPI     = (*WebSocketClient)(nil)
 	_ RepairAPI           = (*WebSocketClient)(nil)
@@ -48,7 +49,7 @@ type WebSocketConnection interface {
 }
 
 // WebSocketCommander provides the generic SendCommand escape hatch for
-// domains that do not yet have dedicated typed methods (dashboards, backups,
+// domains that do not yet have dedicated typed methods (dashboards,
 // blueprints, threads, traces, etc.).
 type WebSocketCommander interface {
 	SendCommand(cmdType string, params map[string]interface{}) (interface{}, error)
@@ -161,6 +162,18 @@ type IntegrationAPI interface {
 	ConfigEntrySetDisabled(entryID string, disabledBy interface{}) (map[string]interface{}, error)
 }
 
+// BackupAPI provides backup lifecycle operations.
+type BackupAPI interface {
+	BackupInfo() (map[string]interface{}, error)
+	BackupDetails(backupID string) (map[string]interface{}, error)
+	BackupDelete(backupID string) error
+	BackupGenerate(params map[string]interface{}) (map[string]interface{}, error)
+	BackupRestore(params map[string]interface{}) (map[string]interface{}, error)
+	BackupAgentsInfo() (map[string]interface{}, error)
+	BackupConfigInfo() (map[string]interface{}, error)
+	BackupConfigUpdate(params map[string]interface{}) (map[string]interface{}, error)
+}
+
 // TodoAPI provides read access to to-do list items.
 // Item mutations go through the REST service call API (todo.add_item, etc.).
 type TodoAPI interface {
@@ -206,6 +219,7 @@ type WebSocketAPI interface {
 	PersonRegistryAPI
 	CategoryRegistryAPI
 	IntegrationAPI
+	BackupAPI
 	TodoAPI
 	NotificationAPI
 	RepairAPI
