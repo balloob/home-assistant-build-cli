@@ -635,7 +635,7 @@ func (c *WebSocketClient) NetworkURL() (map[string]interface{}, error) {
 }
 
 // NetworkConfigure updates configured network adapters.
-func (c *WebSocketClient) NetworkConfigure(adapters []string) ([]interface{}, error) {
+func (c *WebSocketClient) NetworkConfigure(adapters []string) (map[string]interface{}, error) {
 	result, err := c.SendCommand("network/configure", map[string]interface{}{
 		"config": map[string]interface{}{
 			"configured_adapters": adapters,
@@ -645,15 +645,8 @@ func (c *WebSocketClient) NetworkConfigure(adapters []string) ([]interface{}, er
 		return nil, err
 	}
 
-	if list, ok := result.([]interface{}); ok {
-		return list, nil
-	}
-	if list, ok := result.([]string); ok {
-		values := make([]interface{}, len(list))
-		for i, value := range list {
-			values[i] = value
-		}
-		return values, nil
+	if data, ok := result.(map[string]interface{}); ok {
+		return data, nil
 	}
 
 	return nil, fmt.Errorf("unexpected response from network/configure")

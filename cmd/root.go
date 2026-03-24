@@ -79,9 +79,9 @@ func executableName(arg0 string) string {
 // Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		code, msg := classifyError(err)
+		code, msg, details := classifyError(err)
 		if viper.GetBool("json") {
-			fmt.Println(output.FormatError(code, msg, nil))
+			fmt.Println(output.FormatError(code, msg, details))
 		} else {
 			fmt.Fprintln(os.Stderr, msg)
 		}
@@ -91,20 +91,20 @@ func Execute() {
 
 // classifyError extracts a structured error code and user-facing message from err.
 // It checks for known error types (APIError, auth sentinel) and falls back to UNKNOWN_ERROR.
-func classifyError(err error) (code string, msg string) {
+func classifyError(err error) (code string, msg string, details map[string]any) {
 	// Check for auth sentinel first (it's a plain error, not an APIError)
 	if errors.Is(err, auth.ErrNotAuthenticated) {
-		return client.ErrCodeAuthRequired, "Not authenticated. Run 'hab auth login' to authenticate."
+		return client.ErrCodeAuthRequired, "Not authenticated. Run 'hab auth login' to authenticate.", nil
 	}
 
 	// Check for structured API errors (from REST or WebSocket)
 	var apiErr *client.APIError
 	if errors.As(err, &apiErr) {
-		return apiErr.Code, apiErr.Message
+		return apiErr.Code, apiErr.Message, apiErr.Details
 	}
 
 	// Fallback
-	return client.ErrCodeUnknownError, err.Error()
+	return client.ErrCodeUnknownError, err.Error(), nil
 }
 
 func init() {

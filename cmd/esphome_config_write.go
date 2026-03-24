@@ -19,7 +19,7 @@ var esphomeConfigWriteCmd = &cobra.Command{
 
 The configuration argument is the YAML filename (e.g. "living-room.yaml").
 Provide the YAML content via --data (inline string) or --file (path to local file).`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runESPHomeConfigWrite,
 }
 
@@ -30,7 +30,10 @@ func init() {
 }
 
 func runESPHomeConfigWrite(cmd *cobra.Command, args []string) error {
-	configuration := args[0]
+	configuration, err := resolveESPHomeConfiguration(args, 0)
+	if err != nil {
+		return err
+	}
 	textMode := getTextMode()
 
 	var content string

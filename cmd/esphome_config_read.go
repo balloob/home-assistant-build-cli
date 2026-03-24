@@ -14,7 +14,7 @@ var esphomeConfigReadCmd = &cobra.Command{
 
 The configuration argument is the YAML filename (e.g. "living-room.yaml").
 Returns the raw YAML content of the device configuration.`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runESPHomeConfigRead,
 }
 
@@ -23,7 +23,10 @@ func init() {
 }
 
 func runESPHomeConfigRead(cmd *cobra.Command, args []string) error {
-	configuration := args[0]
+	configuration, err := resolveESPHomeConfiguration(args, 0)
+	if err != nil {
+		return err
+	}
 	textMode := getTextMode()
 
 	esClient, err := getESPHomeClient()
@@ -41,7 +44,7 @@ func runESPHomeConfigRead(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	output.PrintOutput(map[string]interface{}{
+	output.PrintOutput(map[string]any{
 		"configuration": configuration,
 		"content":       content,
 	}, false, "")

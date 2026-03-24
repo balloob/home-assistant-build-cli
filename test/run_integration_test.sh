@@ -2,7 +2,7 @@
 # Integration test orchestrator for hab CLI using empty-hass
 # Usage: ./run_integration_test.sh [test_group...]
 #
-# Test groups: core, registry, automation, script, dashboard, helpers, template, calendar, misc, notification, integration, event, repairs
+# Test groups: core, registry, automation, script, dashboard, helpers, template, calendar, esphome, misc, notification, integration, event, repairs
 # Run all tests: ./run_integration_test.sh (no arguments)
 # Run specific tests: ./run_integration_test.sh core registry
 
@@ -18,7 +18,7 @@ source "$ORCHESTRATOR_DIR/lib/common.sh"
 trap cleanup EXIT
 
 # Order of test execution (matters for dependencies)
-TEST_ORDER=(core registry automation script dashboard helpers template calendar misc notification integration event repairs)
+TEST_ORDER=(core registry automation script dashboard helpers template calendar esphome misc notification integration event repairs)
 
 # Get the test function for a given group (Bash 3.x compatible - no associative arrays)
 get_test_function() {
@@ -32,6 +32,7 @@ get_test_function() {
         helpers)      echo "run_helpers_tests" ;;
         template)     echo "run_template_tests" ;;
         calendar)     echo "run_calendar_todo_tests run_calendar_create_delete_tests" ;;
+        esphome)      echo "run_esphome_tests" ;;
         misc)         echo "run_misc_tests run_category_tests run_template_render_tests" ;;
         notification) echo "run_notification_tests" ;;
         integration)  echo "run_integration_tests" ;;
@@ -51,6 +52,7 @@ source_test_files() {
     source "$ORCHESTRATOR_DIR/test_helpers.sh"
     source "$ORCHESTRATOR_DIR/test_template.sh"
     source "$ORCHESTRATOR_DIR/test_calendar_todo.sh"
+    source "$ORCHESTRATOR_DIR/test_esphome.sh"
     source "$ORCHESTRATOR_DIR/test_misc.sh"
 }
 
@@ -67,6 +69,7 @@ print_usage() {
     echo "  helpers    - Helper types (input_boolean, counter, timer, group, etc.)"
     echo "  template   - Template entity tests"
     echo "  calendar      - Calendar and to-do list tests"
+    echo "  esphome      - ESPHome workflows and migration tests"
     echo "  misc          - Actions, zones, backups, blueprints, categories tests"
     echo "  notification  - Persistent notification tests"
     echo "  integration   - Integration (config entry) tests"

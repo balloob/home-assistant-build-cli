@@ -20,7 +20,7 @@ type ESPHomeStreamConfig struct {
 	WSPath  string // WebSocket endpoint path, e.g. "/compile"
 	HasPort bool   // whether to add --port flag
 	// ExtraFields are additional key-value pairs merged into the spawn message.
-	ExtraFields map[string]interface{}
+	ExtraFields map[string]any
 }
 
 // RegisterESPHomeStream generates and registers a streaming subcommand on
@@ -32,9 +32,12 @@ func RegisterESPHomeStream(cfg ESPHomeStreamConfig) {
 		Use:   cfg.Use,
 		Short: cfg.Short,
 		Long:  cfg.Long,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configuration := args[0]
+			configuration, err := resolveESPHomeConfiguration(args, 0)
+			if err != nil {
+				return err
+			}
 			textMode := getTextMode()
 
 			esClient, err := getESPHomeClient()
@@ -42,7 +45,7 @@ func RegisterESPHomeStream(cfg ESPHomeStreamConfig) {
 				return err
 			}
 
-			spawnMsg := map[string]interface{}{
+			spawnMsg := map[string]any{
 				"type":          "spawn",
 				"configuration": configuration,
 			}
@@ -75,17 +78,7 @@ func init() {
 The configuration argument is the YAML filename (e.g. "living-room.yaml").
 Output is streamed in real-time as the build progresses.`,
 		WSPath:      "/compile",
-		ExtraFields: map[string]interface{}{"only_generate": false},
-	})
-
-	RegisterESPHomeStream(ESPHomeStreamConfig{
-		Use:   "validate <configuration>",
-		Short: "Validate ESPHome device configuration",
-		Long: `Validate an ESPHome device configuration without compiling.
-
-The configuration argument is the YAML filename (e.g. "living-room.yaml").
-Output is streamed in real-time.`,
-		WSPath: "/validate",
+		ExtraFields: map[string]any{"only_generate": false},
 	})
 
 	RegisterESPHomeStream(ESPHomeStreamConfig{

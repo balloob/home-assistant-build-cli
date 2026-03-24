@@ -32,6 +32,7 @@ const (
 type APIError struct {
 	Code    string
 	Message string
+	Details map[string]any
 }
 
 func (e *APIError) Error() string {
@@ -41,4 +42,9 @@ func (e *APIError) Error() string {
 // NewError creates a new APIError with the given code and message.
 func NewError(code, message string) *APIError {
 	return &APIError{Code: code, Message: message}
+}
+
+// NewDetailedError creates a new APIError with structured details.
+func NewDetailedError(code, message string, details map[string]any) *APIError {
+	return &APIError{Code: code, Message: message, Details: details}
 }
