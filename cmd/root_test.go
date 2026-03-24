@@ -1,6 +1,10 @@
 package cmd
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/home-assistant/hab/client"
+)
 
 func TestExecutableName(t *testing.T) {
 	tests := []struct {
@@ -20,5 +24,24 @@ func TestExecutableName(t *testing.T) {
 				t.Errorf("executableName(%q) = %q, want %q", tt.arg0, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestClassifyErrorIncludesDetails(t *testing.T) {
+	err := &client.APIError{
+		Code:    client.ErrCodeValidationError,
+		Message: "validation failed",
+		Details: map[string]any{"line": 12},
+	}
+
+	code, msg, details := classifyError(err)
+	if code != client.ErrCodeValidationError {
+		t.Fatalf("code = %q, want %q", code, client.ErrCodeValidationError)
+	}
+	if msg != "validation failed" {
+		t.Fatalf("msg = %q, want validation failed", msg)
+	}
+	if details["line"] != 12 {
+		t.Fatalf("details = %#v, want line 12", details)
 	}
 }

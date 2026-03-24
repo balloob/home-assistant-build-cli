@@ -7,18 +7,23 @@ import (
 	"strings"
 
 	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+var esphomeDevice string
 
 var esphomeCmd = &cobra.Command{
 	Use:     "esphome",
 	Short:   "Manage ESPHome devices",
-	Long:    `List, build, validate, and manage ESPHome devices via the ESPHome Dashboard.`,
+	Long:    `Create, validate, build, patch, and manage ESPHome devices via the ESPHome Dashboard.`,
 	GroupID: "other",
 }
 
 func init() {
 	rootCmd.AddCommand(esphomeCmd)
+	esphomeCmd.PersistentFlags().StringVar(&esphomeDevice, "device", "", "ESPHome configuration filename to use (falls back to saved context)")
 }
 
 // getESPHomeClient is the shared helper used by all esphome subcommands.
@@ -55,7 +60,7 @@ func decodeESPHomeAnsi(s string) string {
 
 // streamToOutput is a shared helper that handles streaming ESPHome WebSocket
 // commands (build, logs, validate, upload, run) with proper text/JSON output.
-func streamToOutput(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[string]interface{}, textMode bool) error {
+func streamToOutput(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[string]any, textMode bool) error {
 	if textMode {
 		exitCode, err := esClient.StreamCommand(wsPath, spawnMsg, func(event client.ESPHomeStreamEvent) {
 			switch event.Event {
@@ -88,4 +93,23 @@ func streamToOutput(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[stri
 		return fmt.Errorf("process exited with code %d", exitCode)
 	}
 	return nil
+}
+
+func resolveESPHomeConfiguration(args []string, index int) (string, error) {
+	if esphomeDevice != "" {
+		return esphomeDevice, nil
+	}
+	if len(args) > index {
+		return args[index], nil
+	}
+
+	ctx, err := config.LoadESPHomeContext(viper.GetString("config"))
+	if err != nil {
+		return "", fmt.Errorf("load ESPHome context: %w", err)
+	}
+	if ctx != nil && ctx.Configuration != "" {
+		return ctx.Configuration, nil
+	}
+
+	return "", fmt.Errorf("configuration is required (argument, --device, or 'hab esphome context use <configuration>')")
 }

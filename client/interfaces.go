@@ -258,7 +258,13 @@ type WebSocketAPI interface {
 type ESPHomeAPI interface {
 	GetDevices() (*ESPHomeDeviceList, error)
 	GetPing() (map[string]*bool, error)
+	GetBoards(platform string) ([]ESPHomeBoard, error)
 	GetVersion() (string, error)
+	GetSerialPorts() ([]ESPHomeSerialPort, error)
+	GetInfo(configuration string) (map[string]interface{}, error)
+	CreateConfig(req ESPHomeCreateRequest) (*ESPHomeCreateResponse, error)
+	ImportConfig(req ESPHomeImportRequest) (*ESPHomeImportResponse, error)
+	GetJSONConfig(configuration string) (map[string]interface{}, error)
 	ReadConfig(configuration string) (string, error)
 	WriteConfig(configuration, content string) error
 	StreamCommand(path string, spawnMsg map[string]interface{}, callback func(ESPHomeStreamEvent)) (int, error)

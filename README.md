@@ -227,18 +227,51 @@ hab repairs unignore <domain> <issue_id>
 Requires the ESPHome add-on. The ESPHome Dashboard URL is auto-discovered via the HA Supervisor; set `HAB_ESPHOME_URL` to override.
 
 ```bash
+# Create or import devices
+hab esphome create living-room --platform esp32 --board nodemcu-32s --ssid MyWifi --psk secret
+hab esphome create --list-presets
+hab esphome create --preset-help relay
+hab esphome create garage-relay --platform esp32 --board esp32dev --preset relay --relay-pin 23
+hab esphome import smart-plug --project-name esphome.demo --package-url https://example.com/device.yaml
+
+# Catalog-driven scaffolding
+hab esphome catalog search atom --limit 5
+hab esphome catalog show M5Stack-AtomS3-Lite --include-yaml
+hab esphome create office-node --catalog M5Stack-AtomS3-Lite
+
+# Discover supported board IDs
+hab esphome boards esp32
+
+# Save a default device context for follow-up commands
+hab esphome context use living-room.yaml
+
 # List devices and their status
 hab esphome list
 
 # Read/write device configs
 hab esphome config-read living-room.yaml
 hab esphome config-write living-room.yaml -f config.yaml
+hab esphome config-patch living-room.yaml --set wifi.ssid='!secret wifi_ssid'
 
 # Validate, build, and flash
 hab esphome validate living-room.yaml
+hab esphome validate living-room.yaml --structured --json
 hab esphome build living-room.yaml
 hab esphome upload living-room.yaml
 hab esphome run living-room.yaml
+
+# Safer edit -> validate -> build/upload workflow
+hab esphome update living-room.yaml --set logger.level=DEBUG --upload
+
+# Serial recovery helpers and device metadata
+hab esphome serial ports
+hab esphome info living-room.yaml
+hab esphome serial probe --port /dev/ttyUSB0 --chip auto
+hab esphome serial erase-flash --port /dev/ttyUSB0 --chip esp32 --force
+
+# Tasmota migration helpers
+hab esphome migrate tasmota-template analyze --file template.json
+hab esphome migrate tasmota-template create migrated-node --platform esp8266 --board esp01_1m --file template.json
 
 # Stream live logs
 hab esphome logs living-room.yaml

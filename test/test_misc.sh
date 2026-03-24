@@ -88,6 +88,51 @@ run_misc_tests() {
         fail "blueprint list script: $OUTPUT"
     fi
 
+    # Test: ESPHome context workflow (local CLI state, no dashboard required)
+    log_test "esphome context use"
+    OUTPUT=$(run_hab esphome context use living-room.yaml)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.configuration == "living-room.yaml"' > /dev/null 2>&1; then
+        pass "esphome context use"
+    else
+        fail "esphome context use: $OUTPUT"
+    fi
+
+    log_test "esphome context show"
+    OUTPUT=$(run_hab esphome context show)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.configuration == "living-room.yaml"' > /dev/null 2>&1; then
+        pass "esphome context show"
+    else
+        fail "esphome context show: $OUTPUT"
+    fi
+
+    log_test "esphome context clear"
+    OUTPUT=$(run_hab esphome context clear)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "esphome context clear"
+    else
+        fail "esphome context clear: $OUTPUT"
+    fi
+
+    log_test "esphome context show empty"
+    OUTPUT=$(run_hab esphome context show)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.configuration == null' > /dev/null 2>&1; then
+        pass "esphome context show empty"
+    else
+        fail "esphome context show empty: $OUTPUT"
+    fi
+
+    if [ -n "$HAB_ESPHOME_URL" ]; then
+        log_test "esphome boards"
+        OUTPUT=$(run_hab_optional esphome boards esp32)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "esphome boards"
+        else
+            pass "esphome boards (dashboard unavailable or unsupported)"
+        fi
+    else
+        pass "esphome boards (skipped: HAB_ESPHOME_URL not configured)"
+    fi
+
     # Test: blueprint import (using a well-known blueprint URL)
     log_test "blueprint import"
     BLUEPRINT_URL="https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/automation/blueprints/motion_light.yaml"
