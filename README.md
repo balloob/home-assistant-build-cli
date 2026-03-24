@@ -224,60 +224,61 @@ hab repairs unignore <domain> <issue_id>
 
 ### ESPHome
 
-Requires the ESPHome add-on. The ESPHome Dashboard URL is auto-discovered via the HA Supervisor; set `HAB_ESPHOME_URL` to override.
+Requires the ESPHome add-on. The ESPHome Dashboard URL is auto-discovered via the HA Supervisor; set `HAB_ESPHOME_URL` to override. Serial recovery commands (`serial probe`, `serial erase-flash`) use `esptool`; install it, set `HAB_ESPTOOL_BIN`, or use `uvx esptool`.
 
 ```bash
-# Create or import devices
+# Create from scratch, preset, or catalog
 hab esphome create living-room --platform esp32 --board nodemcu-32s --ssid MyWifi --psk secret
 hab esphome create --list-presets
 hab esphome create --preset-help relay
 hab esphome create garage-relay --platform esp32 --board esp32dev --preset relay --relay-pin 23
-hab esphome import smart-plug --project-name esphome.demo --package-url https://example.com/device.yaml
-
-# Catalog-driven scaffolding
-hab esphome catalog search atom --limit 5
-hab esphome catalog show M5Stack-AtomS3-Lite --include-yaml
 hab esphome create office-plug --catalog Athom-Smart-Plug-PG01V3-EU16A
 
-# Discover supported board IDs
+# Import a package-backed device
+hab esphome import smart-plug --project-name esphome.demo --package-url https://example.com/device.yaml
+
+# Browse and search the community device catalog
+hab esphome catalog search atom --limit 5
+hab esphome catalog search plug --board esp32 --type relay --difficulty 2
+hab esphome catalog show M5Stack-AtomS3-Lite --include-yaml
+
+# Discover supported board IDs for a platform
 hab esphome boards esp32
 
-# Save a default device context for follow-up commands
+# Manage saved device context (reduces repetition in scripts)
 hab esphome context use living-room.yaml
+hab esphome context show
+hab esphome context clear
 
-# List devices and their status
+# List devices and read/write configs
 hab esphome list
-
-# Read/write device configs
+hab esphome info living-room.yaml
 hab esphome config-read living-room.yaml
 hab esphome config-write living-room.yaml -f config.yaml
 hab esphome config-patch living-room.yaml --set wifi.ssid='!secret wifi_ssid'
 
-# Validate, build, and flash
+# Validate and build
 hab esphome validate living-room.yaml
 hab esphome validate living-room.yaml --structured --json
 hab esphome build living-room.yaml
+
+# Safer update workflow: patch, validate, build, and optionally upload in one step
+hab esphome update living-room.yaml --set logger.level=DEBUG --upload
+hab esphome update living-room.yaml --file new-config.yaml --rollback-on-fail
+
+# Upload, run, and stream logs
 hab esphome upload living-room.yaml
 hab esphome run living-room.yaml
+hab esphome logs living-room.yaml
 
-# Safer edit -> validate -> build/upload workflow
-hab esphome update living-room.yaml --set logger.level=DEBUG --upload
-
-# Serial recovery helpers and device metadata
+# Serial recovery helpers (esptool, HAB_ESPTOOL_BIN, or uvx esptool)
 hab esphome serial ports
-hab esphome info living-room.yaml
 hab esphome serial probe --port /dev/ttyUSB0 --chip auto
 hab esphome serial erase-flash --port /dev/ttyUSB0 --chip esp32 --force
 
-# Serial helpers accept installed `esptool`, `HAB_ESPTOOL_BIN`, or `uvx esptool`
-uvx esptool version
-
-# Tasmota migration helpers
+# Migrate from Tasmota
 hab esphome migrate tasmota-template analyze --file template.json
 hab esphome migrate tasmota-template create migrated-node --platform esp8266 --board esp01_1m --file template.json
-
-# Stream live logs
-hab esphome logs living-room.yaml
 ```
 
 Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream output in real-time rather than returning a single JSON envelope.
@@ -290,6 +291,7 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 - **OAuth Support**: Full OAuth2 flow for authentication
 - **WebSocket & REST**: Uses both APIs for optimal functionality
 - **Auto-Update**: Checks for updates automatically and supports self-updating via `hab update`
+- **ESPHome Workflows**: Create, scaffold, validate, build, upload, and manage ESPHome devices via the dashboard API; includes catalog browsing, config patching with rollback, saved device context, structured validation, serial recovery helpers, and Tasmota template migration
 
 ## Commands
 
@@ -414,6 +416,7 @@ Configuration is stored in `~/.config/home-assistant-builder/`:
 - `HAB_ESPHOME_URL` - ESPHome Dashboard URL (auto-discovered from HA Supervisor if not set)
 - `HAB_ESPHOME_TOKEN` - Bearer token for ESPHome ingress proxy (overrides default credentials)
 - `HAB_ESPHOME_SESSION` - Ingress session token for ESPHome (required when accessing via HA Core ingress)
+- `HAB_ESPTOOL_BIN` - Path to `esptool` binary for `hab esphome serial probe` and `hab esphome serial erase-flash` (defaults to `esptool` on PATH, or `uvx esptool` if neither is found)
 
 ## Development
 
