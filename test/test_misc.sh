@@ -419,7 +419,6 @@ run_misc_tests() {
     else
         pass "network configure (idempotent apply) (skipped - no configured adapters)"
     fi
-
     # Test: thread list (skip - not supported by empty-hass and may hang)
     log_test "thread list"
     pass "thread list (skipped - not supported by empty-hass)"
