@@ -89,6 +89,35 @@ func ApplyPatch(content string, overlay map[string]any, setValues []string) (str
 	return restoreTaggedYAMLNodes(rendered, taggedNodes)
 }
 
+// SetDeviceName updates the effective ESPHome device name while preserving
+// substitution-based templates when possible.
+func SetDeviceName(content, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.TrimSpace(content) == "" {
+		return content, nil
+	}
+
+	config, err := ParseConfig(content)
+	if err != nil {
+		return "", err
+	}
+
+	currentName, substitutionKey := currentDeviceName(config)
+	if currentName == name {
+		return content, nil
+	}
+
+	if substitutionKey != "" {
+		return ApplyPatch(content, map[string]any{
+			"substitutions": map[string]any{substitutionKey: name},
+		}, nil)
+	}
+
+	return ApplyPatch(content, map[string]any{
+		"esphome": map[string]any{"name": name},
+	}, nil)
+}
+
 // ExtractCreateDetails returns useful values from generated YAML.
 func ExtractCreateDetails(content string) map[string]any {
 	config, err := ParseConfig(content)
@@ -166,6 +195,46 @@ func extractOTAPassword(value any) string {
 	}
 
 	return ""
+}
+
+func currentDeviceName(config map[string]any) (string, string) {
+	esphome, ok := config["esphome"].(map[string]any)
+	if !ok {
+		return "", ""
+	}
+
+	rawName, _ := esphome["name"].(string)
+	if substitutionKey, ok := substitutionReference(rawName); ok {
+		if substitutions, ok := config["substitutions"].(map[string]any); ok {
+			if currentName, ok := substitutions[substitutionKey].(string); ok {
+				return strings.TrimSpace(currentName), substitutionKey
+			}
+		}
+	}
+
+	return strings.TrimSpace(rawName), ""
+}
+
+func substitutionReference(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(value, "${") && strings.HasSuffix(value, "}") {
+		key := strings.TrimSpace(value[2 : len(value)-1])
+		if key == "" {
+			return "", false
+		}
+		return key, true
+	}
+
+	if !strings.HasPrefix(value, "$") {
+		return "", false
+	}
+
+	key := strings.TrimSpace(strings.TrimPrefix(value, "$"))
+	if key == "" {
+		return "", false
+	}
+
+	return key, true
 }
 
 func collectTaggedYAMLNodes(content string) ([]taggedYAMLNode, error) {

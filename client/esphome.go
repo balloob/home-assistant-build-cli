@@ -273,7 +273,7 @@ func (c *ESPHomeClient) GetInfo(configuration string) (map[string]any, error) {
 		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to get info: %s", err)}
 	}
 	if resp.StatusCode() == http.StatusNotFound {
-		return nil, &APIError{Code: ErrCodeNotFound, Message: fmt.Sprintf("configuration %q not found", configuration)}
+		return c.getInfoFallback(configuration)
 	}
 	if resp.StatusCode() != http.StatusOK {
 		return nil, parseESPHomeDashboardError(resp.StatusCode(), string(resp.Body()), "get info")
@@ -284,6 +284,216 @@ func (c *ESPHomeClient) GetInfo(configuration string) (map[string]any, error) {
 		return nil, &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse info response: %s", err)}
 	}
 	return result, nil
+}
+
+func (c *ESPHomeClient) getInfoFallback(configuration string) (map[string]any, error) {
+	parsed, err := c.GetJSONConfig(configuration)
+	if err != nil {
+		return nil, err
+	}
+
+	info := map[string]any{
+		"configuration": configuration,
+		"source":        "json_config",
+	}
+	mergeParsedESPHomeInfo(info, parsed)
+
+	devices, devicesErr := c.GetDevices()
+	if devicesErr == nil {
+		if device, ok := findESPHomeDevice(devices, configuration); ok {
+			mergeESPHomeDeviceInfo(info, device)
+			info["source"] = "devices+json_config"
+		}
+	}
+
+	if _, ok := info["esphome_version"]; !ok {
+		if version, err := c.GetVersion(); err == nil && version != "" {
+			info["esphome_version"] = version
+		}
+	}
+
+	return info, nil
+}
+
+func findESPHomeDevice(devices *ESPHomeDeviceList, configuration string) (ESPHomeDevice, bool) {
+	if devices == nil {
+		return ESPHomeDevice{}, false
+	}
+
+	for _, device := range devices.Configured {
+		if device.Configuration == configuration {
+			return device, true
+		}
+	}
+
+	return ESPHomeDevice{}, false
+}
+
+func mergeParsedESPHomeInfo(info map[string]any, parsed map[string]any) {
+	if esphome, ok := parsed["esphome"].(map[string]any); ok {
+		for _, key := range []string{"name", "friendly_name", "comment", "build_path"} {
+			if value, exists := esphome[key]; exists {
+				info[key] = value
+			}
+		}
+	}
+
+	loadedIntegrations := make([]string, 0, len(parsed))
+	for key := range parsed {
+		loadedIntegrations = append(loadedIntegrations, key)
+	}
+	slices.Sort(loadedIntegrations)
+	if len(loadedIntegrations) > 0 {
+		info["loaded_integrations"] = loadedIntegrations
+	}
+
+	if loadedPlatforms := extractESPHomeLoadedPlatforms(parsed); len(loadedPlatforms) > 0 {
+		info["loaded_platforms"] = loadedPlatforms
+	}
+
+	if corePlatform, espPlatform, framework := extractESPHomePlatformInfo(parsed); corePlatform != "" || espPlatform != "" || framework != "" {
+		if corePlatform != "" {
+			info["core_platform"] = corePlatform
+		}
+		if espPlatform != "" {
+			info["esp_platform"] = espPlatform
+		}
+		if framework != "" {
+			info["framework"] = framework
+		}
+	}
+
+	if mdns, ok := parsed["mdns"].(map[string]any); ok {
+		if disabled, ok := mdns["disabled"].(bool); ok {
+			info["no_mdns"] = disabled
+		}
+	}
+
+	name, _ := info["name"].(string)
+	buildPath, _ := info["build_path"].(string)
+	if name != "" && buildPath != "" {
+		info["firmware_bin_path"] = strings.TrimRight(buildPath, "/") + "/.pioenvs/" + name + "/firmware.bin"
+	}
+}
+
+func mergeESPHomeDeviceInfo(info map[string]any, device ESPHomeDevice) {
+	if _, ok := info["name"]; !ok && device.Name != "" {
+		info["name"] = device.Name
+	}
+	if _, ok := info["friendly_name"]; !ok && device.FriendlyName != "" {
+		info["friendly_name"] = device.FriendlyName
+	}
+	if _, ok := info["comment"]; !ok && device.Comment != nil {
+		info["comment"] = *device.Comment
+	}
+	if _, ok := info["loaded_integrations"]; !ok && len(device.LoadedIntegrations) > 0 {
+		info["loaded_integrations"] = device.LoadedIntegrations
+	}
+	if _, ok := info["esp_platform"]; !ok && device.TargetPlatform != "" {
+		info["esp_platform"] = device.TargetPlatform
+	}
+	if _, ok := info["core_platform"]; !ok {
+		if corePlatform := normalizeESPHomeCorePlatform(device.TargetPlatform); corePlatform != "" {
+			info["core_platform"] = corePlatform
+		}
+	}
+	if _, ok := info["esphome_version"]; !ok && device.CurrentVersion != "" {
+		info["esphome_version"] = device.CurrentVersion
+	}
+	if device.Address != "" {
+		info["address"] = device.Address
+	}
+	if device.Path != "" {
+		info["path"] = device.Path
+	}
+	if device.WebPort != nil {
+		info["web_port"] = *device.WebPort
+	}
+}
+
+func extractESPHomeLoadedPlatforms(parsed map[string]any) []string {
+	loaded := make([]string, 0)
+	seen := map[string]struct{}{}
+
+	for component, value := range parsed {
+		switch typed := value.(type) {
+		case map[string]any:
+			if platform, ok := typed["platform"].(string); ok && platform != "" {
+				entry := component + "/" + platform
+				if _, ok := seen[entry]; !ok {
+					seen[entry] = struct{}{}
+					loaded = append(loaded, entry)
+				}
+			}
+		case []any:
+			for _, item := range typed {
+				itemMap, ok := item.(map[string]any)
+				if !ok {
+					continue
+				}
+				platform, ok := itemMap["platform"].(string)
+				if !ok || platform == "" {
+					continue
+				}
+				entry := component + "/" + platform
+				if _, ok := seen[entry]; ok {
+					continue
+				}
+				seen[entry] = struct{}{}
+				loaded = append(loaded, entry)
+			}
+		}
+	}
+
+	slices.Sort(loaded)
+	return loaded
+}
+
+func extractESPHomePlatformInfo(parsed map[string]any) (string, string, string) {
+	for _, key := range []string{"esp32", "esp8266", "rp2040", "bk72xx", "ln882x", "rtl87xx"} {
+		section, ok := parsed[key].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		framework := ""
+		if frameworkMap, ok := section["framework"].(map[string]any); ok {
+			if value, ok := frameworkMap["type"].(string); ok {
+				framework = value
+			}
+		}
+
+		espPlatform := strings.ToUpper(key)
+		if key == "esp32" {
+			if variant, ok := section["variant"].(string); ok && variant != "" {
+				espPlatform = variant
+			}
+		}
+
+		return key, espPlatform, framework
+	}
+
+	return "", "", ""
+}
+
+func normalizeESPHomeCorePlatform(target string) string {
+	target = strings.ToLower(strings.TrimSpace(target))
+	switch {
+	case strings.HasPrefix(target, "esp32"):
+		return "esp32"
+	case strings.HasPrefix(target, "esp8266"):
+		return "esp8266"
+	case strings.HasPrefix(target, "rp2040"):
+		return "rp2040"
+	case strings.HasPrefix(target, "bk72"):
+		return "bk72xx"
+	case strings.HasPrefix(target, "ln882"):
+		return "ln882x"
+	case strings.HasPrefix(target, "rtl87"):
+		return "rtl87xx"
+	default:
+		return ""
+	}
 }
 
 // CreateConfig creates a new ESPHome configuration via the dashboard wizard.

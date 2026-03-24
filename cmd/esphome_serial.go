@@ -118,7 +118,7 @@ func init() {
 	for _, serialCmd := range []*cobra.Command{esphomeSerialProbeCmd, esphomeSerialEraseCmd} {
 		serialCmd.Flags().StringVar(&esphomeSerialPort, "port", "", "Serial port path (e.g. /dev/ttyUSB0 or COM3)")
 		serialCmd.Flags().StringVar(&esphomeSerialChip, "chip", "auto", "Target chip (auto, esp8266, esp32, esp32s2, esp32s3, esp32c3, esp32c6, esp32h2)")
-		serialCmd.Flags().StringVar(&esphomeSerialTool, "tool", "", "Path to esptool binary (defaults to HAB_ESPTOOL_BIN/esptool)")
+		serialCmd.Flags().StringVar(&esphomeSerialTool, "tool", "", "Path to esptool binary or uvx (defaults to HAB_ESPTOOL_BIN, esptool, uvx esptool, or python -m esptool)")
 		serialCmd.Flags().DurationVar(&esphomeSerialTimeout, "timeout", 2*time.Minute, "Command timeout")
 	}
 

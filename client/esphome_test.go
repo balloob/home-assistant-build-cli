@@ -196,3 +196,46 @@ func TestESPHomeGetInfo(t *testing.T) {
 		t.Fatalf("name = %#v, want kitchen", info["name"])
 	}
 }
+
+func TestESPHomeGetInfoFallsBackToJSONConfig(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/info":
+			w.WriteHeader(http.StatusNotFound)
+		case "/json-config":
+			_, _ = io.WriteString(w, `{"esphome":{"name":"plug-test","friendly_name":"Plug Test","build_path":"build/plug-test"},"esp32":{"variant":"ESP32C3","framework":{"type":"esp-idf"}},"switch":[{"platform":"gpio"}]}`)
+		case "/devices":
+			_, _ = io.WriteString(w, `{"configured":[{"name":"plug-test","friendly_name":"Plug Test","configuration":"plug-test.yaml","current_version":"2026.2.4","path":"/config/esphome/plug-test.yaml","address":"plug-test.local","target_platform":"ESP32C3"}],"importable":[]}`)
+		case "/version":
+			_, _ = io.WriteString(w, `{"version":"2026.2.4"}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	client := NewESPHomeClient(server.URL, "")
+	info, err := client.GetInfo("plug-test.yaml")
+	if err != nil {
+		t.Fatalf("GetInfo: %v", err)
+	}
+	if info["source"] != "devices+json_config" {
+		t.Fatalf("source = %#v, want devices+json_config", info["source"])
+	}
+	if info["name"] != "plug-test" {
+		t.Fatalf("name = %#v, want plug-test", info["name"])
+	}
+	if info["esp_platform"] != "ESP32C3" {
+		t.Fatalf("esp_platform = %#v, want ESP32C3", info["esp_platform"])
+	}
+	if info["core_platform"] != "esp32" {
+		t.Fatalf("core_platform = %#v, want esp32", info["core_platform"])
+	}
+	if info["framework"] != "esp-idf" {
+		t.Fatalf("framework = %#v, want esp-idf", info["framework"])
+	}
+	loadedPlatforms, ok := info["loaded_platforms"].([]string)
+	if !ok || len(loadedPlatforms) != 1 || loadedPlatforms[0] != "switch/gpio" {
+		t.Fatalf("loaded_platforms = %#v, want [switch/gpio]", info["loaded_platforms"])
+	}
+}

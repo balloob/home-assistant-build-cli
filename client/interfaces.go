@@ -196,7 +196,7 @@ type DiagnosticsAPI interface {
 type NetworkAPI interface {
 	NetworkGet() (map[string]interface{}, error)
 	NetworkURL() (map[string]interface{}, error)
-	NetworkConfigure(adapters []string) ([]interface{}, error)
+	NetworkConfigure(adapters []string) (map[string]interface{}, error)
 }
 
 // TodoAPI provides read access to to-do list items.

@@ -8,6 +8,47 @@ import (
 	"testing"
 )
 
+func TestNormalizePackageImportURL(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "github blob URL",
+			input: "https://github.com/athom-tech/esp32-configs/blob/main/athom-smart-plug.yaml",
+			want:  "github://athom-tech/esp32-configs/athom-smart-plug.yaml@main",
+		},
+		{
+			name:  "raw github URL",
+			input: "https://raw.githubusercontent.com/athom-tech/esp32-configs/main/athom-smart-plug.yaml",
+			want:  "github://athom-tech/esp32-configs/athom-smart-plug.yaml@main",
+		},
+		{
+			name:  "github package URL stays unchanged",
+			input: "github://athom-tech/esp32-configs/athom-smart-plug.yaml@main",
+			want:  "github://athom-tech/esp32-configs/athom-smart-plug.yaml@main",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizePackageImportURL(tt.input)
+			if got != tt.want {
+				t.Fatalf("normalizePackageImportURL(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeLinkedYAMLURL(t *testing.T) {
+	got := normalizeLinkedYAMLURL("http://catalog.test", "https://github.com/esphome/esphome-devices/blob/main/src/docs/devices/dev-a/dev-a.yaml")
+	want := "http://catalog.test/esphome/esphome-devices/main/src/docs/devices/dev-a/dev-a.yaml"
+	if got != want {
+		t.Fatalf("normalizeLinkedYAMLURL() = %q, want %q", got, want)
+	}
+}
+
 func TestGetDeviceWithLinkedYAML(t *testing.T) {
 	server := mockCatalogServer(t)
 	defer server.Close()

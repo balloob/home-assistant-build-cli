@@ -382,6 +382,7 @@ run_misc_tests() {
     else
         fail "network get: $OUTPUT"
     fi
+    NETWORK_GET_OUTPUT="$OUTPUT"
 
     # Test: network url
     log_test "network url"
@@ -401,6 +402,22 @@ run_misc_tests() {
         pass "network configure (guard)"
     else
         fail "network configure (guard): $OUTPUT"
+    fi
+
+    # Test: network configure idempotent apply
+    log_test "network configure (idempotent apply)"
+    CONFIGURED_ADAPTERS=$(echo "$NETWORK_GET_OUTPUT" | jq -r '.data.configured_adapters // [] | join(",")' 2>/dev/null)
+    if [ -n "$CONFIGURED_ADAPTERS" ]; then
+        OUTPUT=$(run_hab_optional network configure --adapters "$CONFIGURED_ADAPTERS" --apply)
+        if echo "$OUTPUT" | jq -e '.success == true and .data.configured_adapters != null' > /dev/null 2>&1; then
+            pass "network configure (idempotent apply)"
+        elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+            pass "network configure (idempotent apply) (not supported by server)"
+        else
+            fail "network configure (idempotent apply): $OUTPUT"
+        fi
+    else
+        pass "network configure (idempotent apply) (skipped - no configured adapters)"
     fi
 
     # Test: thread list (skip - not supported by empty-hass and may hang)

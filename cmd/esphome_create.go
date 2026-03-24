@@ -195,6 +195,7 @@ func createESPHomeFromCatalog(esClient client.ESPHomeAPI, deviceName string) (st
 		"catalog_yaml_path":  device.YAMLPath,
 	}
 
+	var importErr error
 	if strings.TrimSpace(device.PackageImportURL) != "" {
 		importResult, err := esClient.ImportConfig(client.ESPHomeImportRequest{
 			Name:             deviceName,
@@ -204,15 +205,22 @@ func createESPHomeFromCatalog(esClient client.ESPHomeAPI, deviceName string) (st
 			Encryption:       false,
 		})
 		if err != nil {
-			return "", nil, err
+			importErr = err
+			data["package_import_url"] = device.PackageImportURL
+			data["import_fallback"] = true
+			data["import_error"] = err.Error()
+		} else {
+			data["create_type"] = "catalog_import"
+			data["project_name"] = device.ProjectName
+			data["package_import_url"] = device.PackageImportURL
+			return importResult.Configuration, data, nil
 		}
-		data["create_type"] = "catalog_import"
-		data["project_name"] = device.ProjectName
-		data["package_import_url"] = device.PackageImportURL
-		return importResult.Configuration, data, nil
 	}
 
 	if strings.TrimSpace(device.YAMLContent) == "" {
+		if importErr != nil {
+			return "", nil, importErr
+		}
 		return "", nil, fmt.Errorf("catalog device %q has no import URL or YAML content", device.Slug)
 	}
 
@@ -225,8 +233,37 @@ func createESPHomeFromCatalog(esClient client.ESPHomeAPI, deviceName string) (st
 		return "", nil, err
 	}
 
+	if err := alignCatalogConfigurationName(esClient, result.Configuration); err != nil {
+		return "", nil, err
+	}
+
 	data["create_type"] = "catalog_upload"
 	return result.Configuration, data, nil
+}
+
+func alignCatalogConfigurationName(esClient client.ESPHomeAPI, configuration string) error {
+	original, err := esClient.ReadConfig(configuration)
+	if err != nil {
+		return err
+	}
+
+	deviceName := strings.TrimSuffix(configuration, ".yaml")
+	updated, err := esphomeconfig.SetDeviceName(original, deviceName)
+	if err != nil {
+		return err
+	}
+	if updated == original {
+		return nil
+	}
+
+	if err := esClient.WriteConfig(configuration, updated); err != nil {
+		return err
+	}
+	if _, err := esClient.GetJSONConfig(configuration); err != nil {
+		return withESPHomeRollbackError(err, rollbackESPHomeConfig(esClient, configuration, original))
+	}
+
+	return nil
 }
 
 func buildESPHomeCreateRequest(name string) (client.ESPHomeCreateRequest, error) {

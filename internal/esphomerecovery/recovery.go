@@ -9,6 +9,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
+)
+
+var (
+	lookPath              = exec.LookPath
+	commandContext        = exec.CommandContext
+	pythonSupportsESPTool = probePythonESPTool
 )
 
 // Options configures esptool-based operations.
@@ -87,17 +94,24 @@ func EraseFlash(ctx context.Context, options Options) (*CommandResult, error) {
 
 func resolveTool(explicitTool string) (string, []string, error) {
 	if tool := strings.TrimSpace(explicitTool); tool != "" {
-		return tool, nil, nil
+		resolved, args := normalizeResolvedTool(tool)
+		return resolved, args, nil
 	}
 
 	if tool := strings.TrimSpace(os.Getenv("HAB_ESPTOOL_BIN")); tool != "" {
-		return tool, nil, nil
+		resolved, args := normalizeResolvedTool(tool)
+		return resolved, args, nil
 	}
 
 	for _, candidate := range []string{"esptool", "esptool.py"} {
-		if resolved, err := exec.LookPath(candidate); err == nil {
-			return resolved, nil, nil
+		if resolved, err := lookPath(candidate); err == nil {
+			tool, args := normalizeResolvedTool(resolved)
+			return tool, args, nil
 		}
+	}
+
+	if resolved, err := lookPath("uvx"); err == nil {
+		return resolved, []string{"esptool"}, nil
 	}
 
 	pythonCandidates := []string{"python3", "python"}
@@ -105,7 +119,7 @@ func resolveTool(explicitTool string) (string, []string, error) {
 		pythonCandidates = append(pythonCandidates, "py")
 	}
 	for _, candidate := range pythonCandidates {
-		if resolved, err := exec.LookPath(candidate); err == nil {
+		if resolved, err := lookPath(candidate); err == nil && pythonSupportsESPTool(resolved) {
 			if filepath.Base(resolved) == "py.exe" || filepath.Base(resolved) == "py" {
 				return resolved, []string{"-3", "-m", "esptool"}, nil
 			}
@@ -113,7 +127,31 @@ func resolveTool(explicitTool string) (string, []string, error) {
 		}
 	}
 
-	return "", nil, fmt.Errorf("esptool not found (set HAB_ESPTOOL_BIN or install esptool)")
+	return "", nil, fmt.Errorf("esptool not found (set HAB_ESPTOOL_BIN, install esptool, or install uvx for `uvx esptool`)")
+}
+
+func normalizeResolvedTool(tool string) (string, []string) {
+	base := strings.ToLower(filepath.Base(strings.TrimSpace(tool)))
+	if base == "uvx" || base == "uvx.exe" {
+		return tool, []string{"esptool"}
+	}
+	return tool, nil
+}
+
+func probePythonESPTool(tool string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	args := []string{"-c", "import esptool"}
+	if filepath.Base(tool) == "py.exe" || filepath.Base(tool) == "py" {
+		args = []string{"-3", "-c", "import esptool"}
+	}
+
+	cmd := commandContext(ctx, tool, args...)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
 }
 
 func normalizeChip(value string) (string, error) {
@@ -128,7 +166,7 @@ func normalizeChip(value string) (string, error) {
 }
 
 func run(ctx context.Context, tool string, args []string) (*CommandResult, error) {
-	cmd := exec.CommandContext(ctx, tool, args...)
+	cmd := commandContext(ctx, tool, args...)
 
 	stdout := bytes.Buffer{}
 	stderr := bytes.Buffer{}

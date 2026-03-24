@@ -17,6 +17,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type githubYAMLRef struct {
+	Owner string
+	Repo  string
+	Ref   string
+	Path  string
+}
+
 const (
 	defaultAPIRoot = "https://api.github.com"
 	defaultRawRoot = "https://raw.githubusercontent.com"
@@ -170,7 +177,7 @@ func (c *Client) GetDevice(ctx context.Context, slug string) (*Device, error) {
 			ProjectURL: stringField(frontmatter, "project-url"),
 		},
 		ProjectName:      stringField(frontmatter, "project-name"),
-		PackageImportURL: stringField(frontmatter, "package_import_url"),
+		PackageImportURL: normalizePackageImportURL(stringField(frontmatter, "package_import_url")),
 		MarkdownPath:     markdownPath,
 	}
 
@@ -183,7 +190,7 @@ func (c *Client) GetDevice(ctx context.Context, slug string) (*Device, error) {
 
 	if device.PackageImportURL == "" {
 		if projectURL := strings.TrimSpace(device.ProjectURL); isYAMLURL(projectURL) {
-			device.PackageImportURL = projectURL
+			device.PackageImportURL = normalizePackageImportURL(projectURL)
 		}
 	}
 
@@ -264,6 +271,7 @@ func (c *Client) readLinkedYAML(ctx context.Context, slug, markdown string) (str
 	}
 
 	if isHTTPURL(link) {
+		link = normalizeLinkedYAMLURL(c.rawRoot, link)
 		content, err := c.getURL(ctx, link)
 		if err != nil {
 			return "", "", err
@@ -470,4 +478,104 @@ func isYAMLURL(value string) bool {
 func isHTTPURL(value string) bool {
 	value = strings.ToLower(strings.TrimSpace(value))
 	return strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://")
+}
+
+func normalizePackageImportURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	if strings.HasPrefix(strings.ToLower(value), "github://") {
+		return value
+	}
+
+	ref, ok := parseGitHubYAMLRef(value)
+	if !ok {
+		return value
+	}
+
+	return fmt.Sprintf("github://%s/%s/%s@%s", ref.Owner, ref.Repo, ref.Path, ref.Ref)
+}
+
+func normalizeLinkedYAMLURL(rawRoot, value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	ref, ok := parseGitHubYAMLRef(value)
+	if !ok {
+		return value
+	}
+
+	base := strings.TrimRight(rawRoot, "/")
+	return fmt.Sprintf("%s/%s/%s/%s/%s", base, ref.Owner, ref.Repo, ref.Ref, ref.Path)
+}
+
+func parseGitHubYAMLRef(value string) (githubYAMLRef, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return githubYAMLRef{}, false
+	}
+
+	if strings.HasPrefix(strings.ToLower(value), "github://") {
+		trimmed := strings.TrimPrefix(value, "github://")
+		owner, rest, ok := strings.Cut(trimmed, "/")
+		if !ok {
+			return githubYAMLRef{}, false
+		}
+		repo, pathWithRef, ok := strings.Cut(rest, "/")
+		if !ok {
+			return githubYAMLRef{}, false
+		}
+		at := strings.LastIndex(pathWithRef, "@")
+		if at <= 0 || at == len(pathWithRef)-1 {
+			return githubYAMLRef{}, false
+		}
+		ref := strings.TrimSpace(pathWithRef[at+1:])
+		path := strings.Trim(pathWithRef[:at], "/")
+		if owner == "" || repo == "" || ref == "" || !isYAMLURL(path) {
+			return githubYAMLRef{}, false
+		}
+		return githubYAMLRef{Owner: owner, Repo: repo, Ref: ref, Path: path}, true
+	}
+
+	u, err := url.Parse(value)
+	if err != nil {
+		return githubYAMLRef{}, false
+	}
+
+	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
+	switch strings.ToLower(u.Host) {
+	case "github.com":
+		if len(segments) < 5 || segments[2] != "blob" {
+			return githubYAMLRef{}, false
+		}
+		path := strings.Join(segments[4:], "/")
+		if !isYAMLURL(path) {
+			return githubYAMLRef{}, false
+		}
+		return githubYAMLRef{
+			Owner: segments[0],
+			Repo:  segments[1],
+			Ref:   segments[3],
+			Path:  path,
+		}, true
+	case "raw.githubusercontent.com":
+		if len(segments) < 4 {
+			return githubYAMLRef{}, false
+		}
+		path := strings.Join(segments[3:], "/")
+		if !isYAMLURL(path) {
+			return githubYAMLRef{}, false
+		}
+		return githubYAMLRef{
+			Owner: segments[0],
+			Repo:  segments[1],
+			Ref:   segments[2],
+			Path:  path,
+		}, true
+	default:
+		return githubYAMLRef{}, false
+	}
 }

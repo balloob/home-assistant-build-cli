@@ -237,7 +237,7 @@ hab esphome import smart-plug --project-name esphome.demo --package-url https://
 # Catalog-driven scaffolding
 hab esphome catalog search atom --limit 5
 hab esphome catalog show M5Stack-AtomS3-Lite --include-yaml
-hab esphome create office-node --catalog M5Stack-AtomS3-Lite
+hab esphome create office-plug --catalog Athom-Smart-Plug-PG01V3-EU16A
 
 # Discover supported board IDs
 hab esphome boards esp32
@@ -268,6 +268,9 @@ hab esphome serial ports
 hab esphome info living-room.yaml
 hab esphome serial probe --port /dev/ttyUSB0 --chip auto
 hab esphome serial erase-flash --port /dev/ttyUSB0 --chip esp32 --force
+
+# Serial helpers accept installed `esptool`, `HAB_ESPTOOL_BIN`, or `uvx esptool`
+uvx esptool version
 
 # Tasmota migration helpers
 hab esphome migrate tasmota-template analyze --file template.json
