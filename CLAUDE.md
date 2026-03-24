@@ -46,7 +46,8 @@ Tests are organized by feature into separate files:
 - **test/test_helpers.sh**: Helper types (input_boolean, counter, timer, group, etc.)
 - **test/test_template.sh**: Template entity types (sensor, binary_sensor, switch, number, etc.)
 - **test/test_calendar_todo.sh**: Local calendar and to-do list helpers; todo item CRUD; calendar create/delete
-- **test/test_misc.sh**: Actions, zones, backups, blueprints, categories, template render, notifications, integrations, events, repairs
+- **test/test_misc.sh**: Actions, zones, backups, blueprints, categories, template render, notifications, integrations, events, repairs, diagnostics, network, ESPHome context
+- **test/test_esphome.sh**: ESPHome create/import, catalog, config, validate, build, update, migrate, serial, boards, context
 
 Each test file can:
 1. Run **standalone**: `./test/test_automation.sh` - starts its own empty-hass instance
@@ -60,9 +61,14 @@ When running all tests via `./test/run_integration_test.sh`, empty-hass is start
 
 - **cmd/**: Cobra command definitions organized by feature (auth, entity, automation, etc.)
 - **auth/**: Authentication handling - OAuth flow, token refresh, credential storage
-- **client/**: API clients (RestClient for HTTP, output formatting)
-- **config/**: Configuration paths and settings (uses viper)
-- **input/**: Input parsing for YAML/JSON data
+- **client/**: API clients (RestClient for HTTP, output formatting), WebSocket client, ESPHome dashboard client
+- **config/**: Configuration paths and settings (uses viper), ESPHome device context persistence
+- **input/**: Input parsing for YAML/JSON data, structured patch helpers
+- **internal/esphomecatalog/**: ESPHome community device catalog client and parser
+- **internal/esphomeconfig/**: ESPHome YAML config helpers (patch, validate, device name alignment)
+- **internal/esphomepreset/**: ESPHome preset scaffolding helpers
+- **internal/esphomerecovery/**: Serial recovery via esptool (probe, erase-flash)
+- **internal/esphometasmota/**: Tasmota GPIO template analysis and conversion
 
 ### Key Patterns
 
@@ -78,6 +84,8 @@ When running all tests via `./test/run_integration_test.sh`, empty-hass is start
 
 - REST API via `client.RestClient` (uses resty) for state queries, service calls
 - WebSocket API via `client.WebSocketClient` for registry operations (areas, floors, labels, devices)
+- ESPHome Dashboard REST API via `client.ESPHomeClient` for device management, wizard, import, and config operations
+- ESPHome Dashboard WebSocket API via `client.ESPHomeClient.StreamCommand` for streaming operations (build, validate, upload, logs)
 
 ### Learning Domain Interactions
 
@@ -101,4 +109,5 @@ When adding new commands:
    - Template entity commands: `test/test_template.sh`
    - Calendar/to-do commands: `test/test_calendar_todo.sh`
    - Other commands: `test/test_misc.sh`
+   - ESPHome commands: `test/test_esphome.sh`
 3. Use `client.PrintOutput()` or `client.PrintSuccess()` for consistent output
