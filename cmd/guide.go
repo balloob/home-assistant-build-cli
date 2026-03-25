@@ -14,7 +14,7 @@ var guideCmd = &cobra.Command{
 	Use:     "guide [topic]",
 	Short:   "Display built-in usage guides",
 	Long:    "Display embedded guides for using hab effectively, including LLM-focused workflows.",
-	Example: "  hab guide\n  hab guide discovery\n  hab guide dashboard --json\n  hab guide list --json",
+	Example: "hab guide\nhab guide discovery\nhab guide dashboard --json\nhab guide list --json",
 	Args:    cobra.MaximumNArgs(1),
 	GroupID: "start",
 	RunE:    runGuide,

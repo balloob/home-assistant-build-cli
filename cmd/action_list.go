@@ -9,9 +9,9 @@ var actionListCmd = &cobra.Command{
 	Use:   "list [domain]",
 	Short: "List available actions",
 	Long:  `List all available actions, optionally filtered by domain.`,
-	Example: `  hab action list
-  hab action list light
-  hab action list climate --json`,
+	Example: `hab action list
+hab action list light
+hab action list climate --json`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runActionList,
 }

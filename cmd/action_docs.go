@@ -14,8 +14,8 @@ var actionDocsCmd = &cobra.Command{
 	Use:   "docs [domain.action]",
 	Short: "Show action documentation",
 	Long:  `Show the documentation for a specific action including available fields.`,
-	Example: `  hab action docs light.turn_on
-  hab action docs --action climate.set_temperature --json`,
+	Example: `hab action docs light.turn_on
+hab action docs --action climate.set_temperature --json`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runActionDocs,
 }

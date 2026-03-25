@@ -109,10 +109,12 @@ func classifyError(err error) (code string, msg string, details map[string]any) 
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	cobra.AddTemplateFunc("formatExamples", formatExamples)
 
 	// Silence usage and errors - we handle error display ourselves
 	rootCmd.SilenceUsage = true
 	rootCmd.SilenceErrors = true
+	rootCmd.SetUsageTemplate(usageTemplate)
 
 	// Disable shell completion command (not useful for LLM usage)
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
