@@ -21,6 +21,8 @@ var dashboardCreateCmd = &cobra.Command{
 	Long: `Create a new storage-mode dashboard.
 
 The dashboard is initialized with a single section-based view, ready for adding cards.`,
+	Example: `  hab dashboard create kitchen-dashboard --title "Kitchen"
+  hab dashboard create --url-path office-dashboard --title "Office" --icon mdi:desk`,
 	GroupID: dashboardGroupCommands,
 	Args:    cobra.MaximumNArgs(1),
 	RunE:    runDashboardCreate,

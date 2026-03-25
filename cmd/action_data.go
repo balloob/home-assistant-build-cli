@@ -9,8 +9,11 @@ var actionDataCmd = &cobra.Command{
 	Use:   "data [domain]",
 	Short: "List actions that return data",
 	Long:  `List all actions that return data (response type = always), optionally filtered by domain.`,
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runActionData,
+	Example: `  hab action data
+  hab action data weather
+  hab action data --json`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runActionData,
 }
 
 func init() {

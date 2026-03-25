@@ -45,7 +45,7 @@ When in doubt about whether a modern API exists, check the Go release notes or s
 
 ## Project Overview
 
-Home Assistant Builder (`hab`) is a CLI utility designed for LLMs to build and manage Home Assistant configurations. It outputs JSON by default for easy parsing and uses both REST and WebSocket APIs to communicate with Home Assistant.
+Home Assistant Builder (`hab`) is a CLI utility designed for LLMs to build and manage Home Assistant configurations. It outputs human-readable text by default and supports machine-parseable JSON with `--json`. It uses both REST and WebSocket APIs to communicate with Home Assistant.
 
 ## Build and Test Commands
 

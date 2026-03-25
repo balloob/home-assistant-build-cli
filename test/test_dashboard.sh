@@ -8,13 +8,40 @@ source "$SCRIPT_DIR/lib/common.sh"
 run_dashboard_tests() {
     log_section "Dashboard Tests"
 
-    # Test: dashboard guide (no auth required)
-    log_test "dashboard guide"
-    OUTPUT=$(run_hab dashboard guide 2>&1)
-    if echo "$OUTPUT" | grep -q "Dashboard Creation Guide"; then
-        pass "dashboard guide"
+    # Test: guide topic listing (no auth required)
+    log_test "guide list"
+    OUTPUT=$(run_hab guide list)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data | length) > 0' > /dev/null 2>&1; then
+        pass "guide list"
     else
-        fail "dashboard guide: $OUTPUT"
+        fail "guide list: $OUTPUT"
+    fi
+
+    # Test: top-level dashboard guide in text mode (no auth required)
+    log_test "guide dashboard text"
+    OUTPUT=$(run_hab_text guide dashboard 2>&1)
+    if echo "$OUTPUT" | grep -q "Dashboard Creation Guide"; then
+        pass "guide dashboard text"
+    else
+        fail "guide dashboard text: $OUTPUT"
+    fi
+
+    # Test: top-level dashboard guide in json mode (no auth required)
+    log_test "guide dashboard json"
+    OUTPUT=$(run_hab guide dashboard)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.topic == "dashboard" and (.data.content | test("Dashboard Creation Guide"))' > /dev/null 2>&1; then
+        pass "guide dashboard json"
+    else
+        fail "guide dashboard json: $OUTPUT"
+    fi
+
+    # Test: legacy dashboard guide alias in json mode (no auth required)
+    log_test "dashboard guide alias"
+    OUTPUT=$(run_hab dashboard guide)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.topic == "dashboard"' > /dev/null 2>&1; then
+        pass "dashboard guide alias"
+    else
+        fail "dashboard guide alias: $OUTPUT"
     fi
 
     # Ensure we're authenticated

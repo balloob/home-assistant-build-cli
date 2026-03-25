@@ -9,6 +9,7 @@ var helperTypesCmd = &cobra.Command{
 	Use:     "types",
 	Short:   "List available helper types",
 	Long:    `List all available helper types that can be created.`,
+	Example: "  hab helper types\n  hab helper types --json",
 	GroupID: helperGroupCommands,
 	RunE:    runHelperTypes,
 }
