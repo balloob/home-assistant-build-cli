@@ -185,7 +185,7 @@ func boolCompletions(cmd *cobra.Command, args []string, toComplete string) ([]st
 func checkUpdateOnStartup(cmd *cobra.Command) {
 	// Skip for certain commands
 	cmdName := cmd.Name()
-	if cmdName == "update" || cmdName == "version" || cmdName == "help" {
+	if cmdName == "update" || cmdName == "version" || cmdName == "help" || cmdName == "guide" {
 		return
 	}
 

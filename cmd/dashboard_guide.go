@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/home-assistant/hab/guide"
 	"github.com/spf13/cobra"
 )
 
@@ -20,10 +17,5 @@ func init() {
 }
 
 func runDashboardGuide(cmd *cobra.Command, args []string) error {
-	content, err := guide.Get("dashboard")
-	if err != nil {
-		return fmt.Errorf("failed to load guide: %w", err)
-	}
-	fmt.Print(content)
-	return nil
+	return runGuideTopic("dashboard")
 }

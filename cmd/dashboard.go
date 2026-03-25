@@ -14,7 +14,8 @@ var dashboardCmd = &cobra.Command{
 	Short: "Manage dashboards",
 	Long: `Create, update, and delete dashboards.
 
-If you are new to creating Home Assistant dashboards, you MUST run 'hab dashboard guide' first.`,
+If you are new to creating Home Assistant dashboards, run 'hab guide dashboard' first.
+The legacy alias 'hab dashboard guide' is also available.`,
 	GroupID: "dashboard",
 }
 
@@ -29,11 +30,11 @@ func init() {
 	// ── Dashboard sub-resource CRUD (view, badge, section, card) ──
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "view",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage dashboard views",
-		LongDesc:     "Create, update, list, and delete views in a dashboard.",
+		ResourceName:   "view",
+		ParentCmd:      dashboardCmd,
+		GroupID:        dashboardGroupSubcommands,
+		ShortDesc:      "Manage dashboard views",
+		LongDesc:       "Create, update, list, and delete views in a dashboard.",
 		PathFromConfig: []string{"views"},
 		GetUsesFlags:   true,
 		CreateFlags: []DashboardResourceFlag{
@@ -50,11 +51,11 @@ func init() {
 	})
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "badge",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage view badges",
-		LongDesc:     "Create, update, list, and delete badges in a dashboard view.",
+		ResourceName:    "badge",
+		ParentCmd:       dashboardCmd,
+		GroupID:         dashboardGroupSubcommands,
+		ShortDesc:       "Manage view badges",
+		LongDesc:        "Create, update, list, and delete badges in a dashboard view.",
 		PathFromConfig:  []string{"views", "badges"},
 		ItemCanBeString: true,
 		CreateFlags: []DashboardResourceFlag{
@@ -67,11 +68,11 @@ func init() {
 	})
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "section",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage view sections",
-		LongDesc:     "Create, update, list, and delete sections in a dashboard view.",
+		ResourceName:   "section",
+		ParentCmd:      dashboardCmd,
+		GroupID:        dashboardGroupSubcommands,
+		ShortDesc:      "Manage view sections",
+		LongDesc:       "Create, update, list, and delete sections in a dashboard view.",
 		PathFromConfig: []string{"views", "sections"},
 		GetUsesFlags:   true,
 		CreateFlags: []DashboardResourceFlag{
@@ -88,11 +89,11 @@ func init() {
 	})
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "card",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage dashboard cards",
-		LongDesc:     "Create, update, list, and delete cards in a dashboard view or section.",
+		ResourceName:          "card",
+		ParentCmd:             dashboardCmd,
+		GroupID:               dashboardGroupSubcommands,
+		ShortDesc:             "Manage dashboard cards",
+		LongDesc:              "Create, update, list, and delete cards in a dashboard view or section.",
 		PathFromConfig:        []string{"views", "sections", "cards"},
 		HasSectionFlag:        true,
 		GetUsesFlags:          true,

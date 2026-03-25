@@ -1,6 +1,8 @@
 # Dashboard Creation Guide
 
-This guide provides best practices for building effective Home Assistant dashboards.
+Use this guide when building or refactoring Home Assistant dashboards.
+
+For machine-readable output while inspecting dashboard resources, add `--json` to list/get commands.
 
 ## Look Beyond Entities - Explore Devices
 
