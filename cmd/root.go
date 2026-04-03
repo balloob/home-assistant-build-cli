@@ -36,7 +36,9 @@ var rootCmd = &cobra.Command{
 	Long: `Home Assistant Builder (hab) is a CLI utility designed for LLMs
 to build and manage Home Assistant configurations.
 
-Output is human-readable text by default. Use --json for machine-parseable JSON output.`,
+Output is human-readable text by default. Use --json for machine-parseable JSON output.
+
+Start with 'hab guide' for workflow-level guidance optimized for LLM and agent usage.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Handle --json flag: if set, override text mode to false
 		if viper.GetBool("json") {
@@ -109,10 +111,12 @@ func classifyError(err error) (code string, msg string, details map[string]any) 
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	cobra.AddTemplateFunc("formatExamples", formatExamples)
 
 	// Silence usage and errors - we handle error display ourselves
 	rootCmd.SilenceUsage = true
 	rootCmd.SilenceErrors = true
+	rootCmd.SetUsageTemplate(usageTemplate)
 
 	// Disable shell completion command (not useful for LLM usage)
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
@@ -185,7 +189,7 @@ func boolCompletions(cmd *cobra.Command, args []string, toComplete string) ([]st
 func checkUpdateOnStartup(cmd *cobra.Command) {
 	// Skip for certain commands
 	cmdName := cmd.Name()
-	if cmdName == "update" || cmdName == "version" || cmdName == "help" {
+	if cmdName == "update" || cmdName == "version" || cmdName == "help" || cmdName == "guide" {
 		return
 	}
 

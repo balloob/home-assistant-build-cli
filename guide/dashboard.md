@@ -1,6 +1,30 @@
 # Dashboard Creation Guide
 
-This guide provides best practices for building effective Home Assistant dashboards.
+Use this guide when building or refactoring Home Assistant dashboards.
+
+For machine-readable output while inspecting dashboard resources, add `--json` to list/get commands.
+
+## When to Use
+
+- When creating a new dashboard from scratch.
+- When iterating on view, section, and card composition.
+
+## Prerequisites
+
+- Discover devices and entities before composing views.
+- Inspect existing dashboard structure before updates.
+
+## Discovery Sequence
+
+1. `hab dashboard list --json`
+2. `hab dashboard get <dashboard_id> --json`
+3. `hab dashboard view list <dashboard_id> --json`
+4. `hab dashboard card list <dashboard_id> <view_index> --json`
+
+## Mutation Pattern
+
+- Use targeted `view`, `section`, and `card` subcommands for incremental edits.
+- Use YAML input (`-f` or heredoc) when creating complete views.
 
 ## Look Beyond Entities - Explore Devices
 
@@ -157,3 +181,16 @@ You can also save the view configuration to a file and use `-f`:
 ```bash
 hab dashboard view create my-dashboard -f living-room-view.yaml
 ```
+
+## Verification Commands
+
+```bash
+hab dashboard get <dashboard_id> --json
+hab dashboard view list <dashboard_id> --json
+hab dashboard card list <dashboard_id> <view_index> --json
+```
+
+## Pitfalls
+
+- Editing cards before confirming view and section indexes.
+- Building dashboards from entity name guesses without device context.

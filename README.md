@@ -22,6 +22,13 @@ go build -o hab .
 
 ## Quick Start
 
+If you are driving `hab` from an LLM or automation, start with:
+
+```bash
+hab guide
+hab guide list --json
+```
+
 ### Authentication
 
 ```bash
@@ -95,16 +102,16 @@ hab person delete <person_id>
 
 ```bash
 # List categories for a scope
-hab category list automation
+hab category list --scope automation
 
 # Create a category
-hab category create automation "Security"
+hab category create "Security" --scope automation
 
 # Assign a category to an entity
-hab category assign automation <entity_id> <category_id>
+hab category assign <category_id> <entity_id> --scope automation
 
 # Remove a category assignment
-hab category remove automation <entity_id>
+hab category remove <entity_id> --scope automation
 ```
 
 ### Templates
@@ -328,11 +335,50 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 | `thread` | Manage Thread credentials |
 | `esphome` | Manage ESPHome devices |
 | `overview` | Show an overview of the HA instance |
+| `guide` | Display built-in usage guides |
 | `search` | Search for items and relationships |
 | `update` | Update hab to the latest version |
 | `version` | Show version information |
 
 Run `hab <command> --help` for more information on each command.
+
+## Built-in Guides
+
+Use built-in guides for workflow-level usage patterns:
+
+```bash
+hab guide
+hab guide list
+hab guide auth
+hab guide input-output
+hab guide discovery
+hab guide dashboard
+hab guide operations
+
+# Legacy alias remains supported
+hab dashboard guide
+```
+
+Available workflow topics:
+
+- `index` - top-level model for using hab from an agent.
+- `auth` - login, status checks, and credential recovery.
+- `input-output` - payload strategy (`-d`, `-f`, heredoc) and JSON output usage.
+- `discovery` - inspect first, then mutate.
+- `registry` - IDs and relationships across areas/devices/entities.
+- `automation` - actions, automations, scripts, scenes, templates, categories.
+- `dashboard` - dashboard design and resource-level editing patterns.
+- `helpers` - helper type selection and lifecycle workflows.
+- `calendar-todo` - calendar events and to-do items.
+- `esphome` - config validation/build/upload workflows.
+- `operations` - backups, repairs, diagnostics, system/network/integration maintenance.
+
+Use `--json` if you need machine-readable guide output:
+
+```bash
+hab guide discovery --json
+hab guide operations --json
+```
 
 ## Output Format
 

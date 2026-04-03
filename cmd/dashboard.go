@@ -14,7 +14,8 @@ var dashboardCmd = &cobra.Command{
 	Short: "Manage dashboards",
 	Long: `Create, update, and delete dashboards.
 
-If you are new to creating Home Assistant dashboards, you MUST run 'hab dashboard guide' first.`,
+If you are new to creating Home Assistant dashboards, run 'hab guide dashboard' first.
+The legacy alias 'hab dashboard guide' is also available.`,
 	GroupID: "dashboard",
 }
 
@@ -29,11 +30,11 @@ func init() {
 	// ── Dashboard sub-resource CRUD (view, badge, section, card) ──
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "view",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage dashboard views",
-		LongDesc:     "Create, update, list, and delete views in a dashboard.",
+		ResourceName:   "view",
+		ParentCmd:      dashboardCmd,
+		GroupID:        dashboardGroupSubcommands,
+		ShortDesc:      "Manage dashboard views",
+		LongDesc:       "Create, update, list, and delete views in a dashboard.",
 		PathFromConfig: []string{"views"},
 		GetUsesFlags:   true,
 		CreateFlags: []DashboardResourceFlag{
@@ -50,11 +51,11 @@ func init() {
 	})
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "badge",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage view badges",
-		LongDesc:     "Create, update, list, and delete badges in a dashboard view.",
+		ResourceName:    "badge",
+		ParentCmd:       dashboardCmd,
+		GroupID:         dashboardGroupSubcommands,
+		ShortDesc:       "Manage view badges",
+		LongDesc:        "Create, update, list, and delete badges in a dashboard view.",
 		PathFromConfig:  []string{"views", "badges"},
 		ItemCanBeString: true,
 		CreateFlags: []DashboardResourceFlag{
@@ -67,11 +68,11 @@ func init() {
 	})
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "section",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage view sections",
-		LongDesc:     "Create, update, list, and delete sections in a dashboard view.",
+		ResourceName:   "section",
+		ParentCmd:      dashboardCmd,
+		GroupID:        dashboardGroupSubcommands,
+		ShortDesc:      "Manage view sections",
+		LongDesc:       "Create, update, list, and delete sections in a dashboard view.",
 		PathFromConfig: []string{"views", "sections"},
 		GetUsesFlags:   true,
 		CreateFlags: []DashboardResourceFlag{
@@ -88,11 +89,11 @@ func init() {
 	})
 
 	RegisterDashboardResourceCRUD(DashboardResourceConfig{
-		ResourceName: "card",
-		ParentCmd:    dashboardCmd,
-		GroupID:      dashboardGroupSubcommands,
-		ShortDesc:    "Manage dashboard cards",
-		LongDesc:     "Create, update, list, and delete cards in a dashboard view or section.",
+		ResourceName:          "card",
+		ParentCmd:             dashboardCmd,
+		GroupID:               dashboardGroupSubcommands,
+		ShortDesc:             "Manage dashboard cards",
+		LongDesc:              "Create, update, list, and delete cards in a dashboard view or section.",
 		PathFromConfig:        []string{"views", "sections", "cards"},
 		HasSectionFlag:        true,
 		GetUsesFlags:          true,
@@ -103,9 +104,9 @@ func init() {
 If view_index is not specified, uses the last view. If no views exist, creates one.
 If section is not specified, uses the last section. If no sections exist, creates one.
 If type is not specified, defaults to "tile".`,
-		CreateExample: `  hab dashboard card create my-dashboard --entity light.kitchen
-  hab dashboard card create my-dashboard 0 -s 1 --entity sensor.temperature
-  hab dashboard card create my-dashboard 0 -d '{"type":"entities","entities":["light.bedroom","light.hallway"]}'`,
+		CreateExample: `hab dashboard card create my-dashboard --entity light.kitchen
+hab dashboard card create my-dashboard 0 -s 1 --entity sensor.temperature
+hab dashboard card create my-dashboard 0 -d '{"type":"entities","entities":["light.bedroom","light.hallway"]}'`,
 		CreateFlags: []DashboardResourceFlag{
 			{Name: "type", Usage: "Card type (e.g., entities, button, markdown)", ConfigKey: "type"},
 			{Name: "entity", Usage: "Entity ID (for simple entity cards)", ConfigKey: "entity"},

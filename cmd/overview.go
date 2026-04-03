@@ -13,6 +13,7 @@ var overviewCmd = &cobra.Command{
 	Use:     "overview",
 	Short:   "Show an overview of the Home Assistant instance",
 	Long:    `Show aggregated counts of floors, areas, devices, entities, automations, scripts, and helpers.`,
+	Example: "hab overview\nhab overview --json",
 	RunE:    runOverview,
 	GroupID: "start",
 }
