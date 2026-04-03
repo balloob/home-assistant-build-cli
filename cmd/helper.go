@@ -10,9 +10,11 @@ const (
 )
 
 var helperCmd = &cobra.Command{
-	Use:     "helper",
-	Short:   "Manage groups, templates, and other helpers",
-	Long:    `Create, update, and delete helper entities like input booleans, counters, timers, groups, templates, and more.`,
+	Use:   "helper",
+	Short: "Manage groups, templates, and other helpers",
+	Long: `Create, update, and delete helper entities like input booleans, counters, timers, groups, templates, and more.
+
+For workflow guidance, run 'hab guide helpers'.`,
 	GroupID: "automation",
 }
 

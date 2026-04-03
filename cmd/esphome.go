@@ -15,9 +15,11 @@ import (
 var esphomeDevice string
 
 var esphomeCmd = &cobra.Command{
-	Use:     "esphome",
-	Short:   "Manage ESPHome devices",
-	Long:    `Create, validate, build, patch, and manage ESPHome devices via the ESPHome Dashboard.`,
+	Use:   "esphome",
+	Short: "Manage ESPHome devices",
+	Long: `Create, validate, build, patch, and manage ESPHome devices via the ESPHome Dashboard.
+
+For workflow guidance, run 'hab guide esphome'.`,
 	GroupID: "other",
 }
 

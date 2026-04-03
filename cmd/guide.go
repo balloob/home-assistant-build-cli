@@ -56,8 +56,24 @@ func runGuideList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	output.PrintOutput(topics, false, "")
+	output.PrintOutput(buildGuideListOutput(topics), false, "")
 	return nil
+}
+
+func buildGuideListOutput(topics []guide.Topic) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(topics))
+	for i, topic := range topics {
+		result[i] = map[string]interface{}{
+			"id":                 topic.ID,
+			"title":              topic.Title,
+			"summary":            topic.Summary,
+			"aliases":            topic.Aliases,
+			"related_topics":     topic.RelatedTopics,
+			"suggested_commands": topic.SuggestedCommands,
+		}
+	}
+
+	return result
 }
 
 func runGuideTopic(topicName string) error {
@@ -80,12 +96,17 @@ func runGuideTopic(topicName string) error {
 
 func buildGuideTopicOutput(topic guide.TopicContent) map[string]interface{} {
 	return map[string]interface{}{
-		"topic":              topic.Topic.ID,
-		"title":              topic.Topic.Title,
-		"summary":            topic.Topic.Summary,
-		"aliases":            topic.Topic.Aliases,
-		"related_topics":     topic.Topic.RelatedTopics,
-		"suggested_commands": topic.Topic.SuggestedCommands,
-		"content":            topic.Content,
+		"topic":                 topic.Topic.ID,
+		"title":                 topic.Topic.Title,
+		"summary":               topic.Topic.Summary,
+		"aliases":               topic.Topic.Aliases,
+		"related_topics":        topic.Topic.RelatedTopics,
+		"suggested_commands":    topic.Topic.SuggestedCommands,
+		"prerequisites":         topic.Topic.Prerequisites,
+		"discovery_steps":       topic.Topic.DiscoverySteps,
+		"mutation_patterns":     topic.Topic.MutationPatterns,
+		"verification_commands": topic.Topic.VerificationCommands,
+		"pitfalls":              topic.Topic.Pitfalls,
+		"content":               topic.Content,
 	}
 }

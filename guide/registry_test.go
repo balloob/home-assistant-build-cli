@@ -7,7 +7,7 @@ import (
 
 func TestTopicIDsDeterministicOrder(t *testing.T) {
 	got := TopicIDs()
-	want := []string{"index", "discovery", "registry", "automation", "dashboard", "helpers"}
+	want := []string{"index", "discovery", "auth", "input-output", "registry", "automation", "dashboard", "helpers", "calendar-todo", "esphome", "operations"}
 
 	if len(got) != len(want) {
 		t.Fatalf("TopicIDs length = %d, want %d", len(got), len(want))
@@ -29,6 +29,7 @@ func TestResolveAlias(t *testing.T) {
 		{name: "canonical", alias: "dashboard", want: "dashboard"},
 		{name: "alias", alias: "dashboards", want: "dashboard"},
 		{name: "underscore normalized", alias: "getting_started", want: "index"},
+		{name: "new topic alias", alias: "data entry", want: "input-output"},
 	}
 
 	for _, tt := range tests {

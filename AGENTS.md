@@ -152,3 +152,7 @@ When adding new commands:
    - Other commands: `test/test_misc.sh`
    - ESPHome commands: `test/test_esphome.sh`
 3. Use `client.PrintOutput()` or `client.PrintSuccess()` for consistent output
+4. Keep built-in guides in sync:
+   - Update the relevant guide topic under `guide/*.md` when command behavior or workflows change.
+   - Update `guide/registry.go` metadata (`suggested_commands`, prerequisites, discovery/mutation/verification notes, pitfalls) when adding or significantly changing workflows.
+   - Ensure guide semantic tests continue to pass (`go test ./...`) so guide examples and suggested commands stay valid.

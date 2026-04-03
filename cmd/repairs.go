@@ -5,9 +5,11 @@ import (
 )
 
 var repairsCmd = &cobra.Command{
-	Use:     "repairs",
-	Short:   "Manage Home Assistant repairs",
-	Long:    `List and manage repair issues reported by Home Assistant.`,
+	Use:   "repairs",
+	Short: "Manage Home Assistant repairs",
+	Long: `List and manage repair issues reported by Home Assistant.
+
+For workflow guidance, run 'hab guide operations'.`,
 	GroupID: "other",
 }
 

@@ -22,6 +22,13 @@ go build -o hab .
 
 ## Quick Start
 
+If you are driving `hab` from an LLM or automation, start with:
+
+```bash
+hab guide
+hab guide list --json
+```
+
 ### Authentication
 
 ```bash
@@ -342,17 +349,35 @@ Use built-in guides for workflow-level usage patterns:
 ```bash
 hab guide
 hab guide list
+hab guide auth
+hab guide input-output
 hab guide discovery
 hab guide dashboard
+hab guide operations
 
 # Legacy alias remains supported
 hab dashboard guide
 ```
 
+Available workflow topics:
+
+- `index` - top-level model for using hab from an agent.
+- `auth` - login, status checks, and credential recovery.
+- `input-output` - payload strategy (`-d`, `-f`, heredoc) and JSON output usage.
+- `discovery` - inspect first, then mutate.
+- `registry` - IDs and relationships across areas/devices/entities.
+- `automation` - actions, automations, scripts, scenes, templates, categories.
+- `dashboard` - dashboard design and resource-level editing patterns.
+- `helpers` - helper type selection and lifecycle workflows.
+- `calendar-todo` - calendar events and to-do items.
+- `esphome` - config validation/build/upload workflows.
+- `operations` - backups, repairs, diagnostics, system/network/integration maintenance.
+
 Use `--json` if you need machine-readable guide output:
 
 ```bash
 hab guide discovery --json
+hab guide operations --json
 ```
 
 ## Output Format
