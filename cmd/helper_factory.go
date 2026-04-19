@@ -67,6 +67,12 @@ func registerHelperType(def HelperDef) {
 		Long:    def.Long,
 		GroupID: helperGroupSubcommands,
 	}
+	mergeSchemaAnnotation(parentCmd, SchemaAnnotation{
+		SideEffect:   "meta",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws", "rest"},
+		ResourceType: def.TypeName,
+	})
 	helperCmd.AddCommand(parentCmd)
 
 	// List subcommand
@@ -85,6 +91,13 @@ func registerHelperType(def HelperDef) {
 			Args:    cobra.ExactArgs(1),
 			RunE:    def.RunCreate,
 		}
+		mergeSchemaAnnotation(createCmd, SchemaAnnotation{
+			SideEffect:   "write",
+			OutputMode:   "json_envelope",
+			Capabilities: helperCreateCapabilities(def),
+			ResourceType: def.TypeName,
+			InputSources: []string{"args", "flags"},
+		})
 		if def.SetupFlags != nil {
 			def.SetupFlags(createCmd)
 		}
@@ -118,6 +131,13 @@ func registerHelperList(parentCmd *cobra.Command, def HelperDef) {
 			return runConfigFlowList(ws, def, textMode, lf)
 		},
 	}
+	mergeSchemaAnnotation(listCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: helperListCapabilities(def),
+		ResourceType: def.TypeName,
+		InputSources: []string{"flags"},
+	})
 
 	lf = RegisterListFlags(listCmd, "id")
 	parentCmd.AddCommand(listCmd)
@@ -204,7 +224,35 @@ func registerHelperDelete(parentCmd *cobra.Command, def HelperDef) {
 			return runConfigFlowDelete(id, def, textMode)
 		},
 	}
+	mergeSchemaAnnotation(deleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: helperDeleteCapabilities(def),
+		ResourceType: def.TypeName,
+		InputSources: []string{"args"},
+	})
 	parentCmd.AddCommand(deleteCmd)
+}
+
+func helperListCapabilities(def HelperDef) []string {
+	if def.Category == HelperCategoryConfigFlow {
+		return []string{"auth", "ws"}
+	}
+	return []string{"auth", "ws"}
+}
+
+func helperDeleteCapabilities(def HelperDef) []string {
+	if def.Category == HelperCategoryConfigFlow {
+		return []string{"auth", "rest", "ws"}
+	}
+	return []string{"auth", "ws"}
+}
+
+func helperCreateCapabilities(def HelperDef) []string {
+	if def.Category == HelperCategoryConfigFlow {
+		return []string{"auth", "rest"}
+	}
+	return []string{"auth", "ws"}
 }
 
 // runWSDelete handles the delete command for WS-based helpers.

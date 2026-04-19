@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"testing"
 
 	"github.com/home-assistant/hab/client"
@@ -29,9 +30,12 @@ func TestExecutableName(t *testing.T) {
 
 func TestClassifyErrorIncludesDetails(t *testing.T) {
 	err := &client.APIError{
-		Code:    client.ErrCodeValidationError,
-		Message: "validation failed",
-		Details: map[string]any{"line": 12},
+		Code:              client.ErrCodeValidationError,
+		Message:           "validation failed",
+		Details:           map[string]any{"line": 12},
+		Category:          "validation",
+		SuggestedFix:      "Fix payload",
+		SuggestedCommands: []string{"hab action docs light.turn_on --json"},
 	}
 
 	code, msg, details := classifyError(err)
@@ -43,5 +47,38 @@ func TestClassifyErrorIncludesDetails(t *testing.T) {
 	}
 	if details["line"] != 12 {
 		t.Fatalf("details = %#v, want line 12", details)
+	}
+	if details["category"] != "validation" {
+		t.Fatalf("details = %#v, want category validation", details)
+	}
+	if details["suggested_fix"] != "Fix payload" {
+		t.Fatalf("details = %#v, want suggested_fix", details)
+	}
+}
+
+func TestClassifyErrorTimeout(t *testing.T) {
+	code, msg, details := classifyError(context.DeadlineExceeded)
+	if code != client.ErrCodeTimeout {
+		t.Fatalf("code = %q, want %q", code, client.ErrCodeTimeout)
+	}
+	if msg == "" {
+		t.Fatal("expected non-empty timeout message")
+	}
+	if details["retryable"] != true {
+		t.Fatalf("details = %#v, want retryable true", details)
+	}
+}
+
+func TestClassifyCancelledAPIError(t *testing.T) {
+	err := client.NewCancelledError("delete area")
+	code, msg, details := classifyError(err)
+	if code != client.ErrCodeCancelled {
+		t.Fatalf("code = %q, want %q", code, client.ErrCodeCancelled)
+	}
+	if msg == "" {
+		t.Fatal("expected non-empty cancelled message")
+	}
+	if details["category"] != "cancellation" {
+		t.Fatalf("details = %#v, want cancellation category", details)
 	}
 }

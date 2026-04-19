@@ -154,6 +154,12 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(listCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: cfg.ResourceName,
+	})
 
 	// Register standard list flags
 	lf = RegisterListFlags(listCmd, cfg.IDField)
@@ -231,6 +237,12 @@ func registerRegistryGet(cfg RegistryCRUDConfig) {
 			return fmt.Errorf("%s '%s' not found", cfg.ResourceName, id)
 		},
 	}
+	mergeSchemaAnnotation(getCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: cfg.ResourceName,
+	})
 
 	getCmd.Flags().StringVar(&idFlag, cfg.IDFlagName, "", fmt.Sprintf("%s ID to get", capitalize(cfg.ResourceName)))
 	if cfg.SearchType != "" {
@@ -278,6 +290,13 @@ func registerRegistryCreate(cfg RegistryCRUDConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(createCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: cfg.ResourceName,
+		InputSources: []string{"args", "flags"},
+	})
 
 	registerRegistryFlags(createCmd, cfg.CreateFlags, stringFlags, intFlags)
 	cfg.ParentCmd.AddCommand(createCmd)
@@ -330,6 +349,13 @@ func registerRegistryUpdate(cfg RegistryCRUDConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(updateCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: cfg.ResourceName,
+		InputSources: []string{"args", "flags"},
+	})
 
 	// Always add --name for update
 	nameVal := new(string)
@@ -357,8 +383,7 @@ func registerRegistryDelete(cfg RegistryCRUDConfig) {
 			textMode := getTextMode()
 
 			if !confirmAction(force, textMode, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id)) {
-				fmt.Println("Cancelled.")
-				return nil
+				return cancelledError(fmt.Sprintf("delete %s", cfg.ResourceName))
 			}
 
 			ws, err := getWSClient()
@@ -378,6 +403,13 @@ func registerRegistryDelete(cfg RegistryCRUDConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(deleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: cfg.ResourceName,
+		InputSources: []string{"args", "flags"},
+	})
 
 	deleteCmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation")
 	cfg.ParentCmd.AddCommand(deleteCmd)

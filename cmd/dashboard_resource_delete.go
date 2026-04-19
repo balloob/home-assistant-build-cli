@@ -132,6 +132,13 @@ func registerDashResourceDelete(parentCmd *cobra.Command, cfg DashboardResourceC
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(deleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: name,
+		InputSources: []string{"args", "flags"},
+	})
 
 	deleteCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Skip confirmation prompt")
 	if cfg.HasSectionFlag {

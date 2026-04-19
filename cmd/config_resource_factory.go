@@ -81,6 +81,13 @@ func registerConfigGet(cfg ConfigResourceConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ResourceName,
+		InputSources: []string{"args", "flags"},
+	})
 	cmd.Flags().StringVar(&flagID, cfg.IDFlagName, "", fmt.Sprintf("%s ID to get", capitalize(cfg.ResourceName)))
 	cfg.ParentCmd.AddCommand(cmd)
 }
@@ -128,6 +135,13 @@ func registerConfigCreate(cfg ConfigResourceConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ResourceName,
+		InputSources: []string{"args", "flags", "data", "file"},
+	})
 	inputFlags.Register(cmd)
 	cfg.ParentCmd.AddCommand(cmd)
 }
@@ -171,6 +185,13 @@ func registerConfigUpdate(cfg ConfigResourceConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ResourceName,
+		InputSources: []string{"args", "flags", "data", "file"},
+	})
 	inputFlags.Register(cmd)
 	cfg.ParentCmd.AddCommand(cmd)
 }
@@ -198,8 +219,7 @@ func registerConfigDelete(cfg ConfigResourceConfig) {
 			}
 
 			if !confirmAction(force, textMode, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id)) {
-				fmt.Println("Cancelled.")
-				return nil
+				return cancelledError(fmt.Sprintf("delete %s", cfg.ResourceName))
 			}
 
 			_, err = restClient.Delete(cfg.APIPrefix + configID)
@@ -214,6 +234,13 @@ func registerConfigDelete(cfg ConfigResourceConfig) {
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ResourceName,
+		InputSources: []string{"args", "flags"},
+	})
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation")
 	cfg.ParentCmd.AddCommand(cmd)
 }

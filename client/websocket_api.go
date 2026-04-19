@@ -216,20 +216,20 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send command: %s", writeErr)}
+		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send command: %s", writeErr), Category: "connection", Retryable: true, Transport: "websocket"}
 	}
 
 	// Wait for initial result (subscription confirmation)
 	select {
 	case resp := <-respCh:
 		if resp == nil {
-			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed"}
+			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed", Category: "connection", Retryable: true, Transport: "websocket"}
 		}
 		if !resp.Success {
 			return nil, wsResponseError(resp)
 		}
 	case <-time.After(c.Timeout):
-		return nil, &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for subscription confirmation"}
+		return nil, &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for subscription confirmation", Category: "timeout", Retryable: true, Transport: "websocket", SuggestedFix: "Retry the command after Home Assistant becomes responsive."}
 	}
 
 	// Process events in a goroutine
@@ -240,7 +240,7 @@ func (c *WebSocketClient) SystemHealthInfo() (map[string]interface{}, error) {
 	case <-doneCh:
 		// Normal completion
 	case <-time.After(c.Timeout):
-		dataErr = &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for system health data"}
+		dataErr = &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for system health data", Category: "timeout", Retryable: true, Transport: "websocket", SuggestedFix: "Retry system health collection after Home Assistant is fully started."}
 	}
 
 	close(eventCh)

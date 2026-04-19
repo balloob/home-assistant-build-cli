@@ -175,17 +175,75 @@ func (c *RestClient) handleError(resp *resty.Response) error {
 		body = string(resp.Body())
 	}
 
+	baseDetails := map[string]any{
+		"status_code": statusCode,
+		"transport":   "rest",
+	}
+
 	switch statusCode {
 	case http.StatusUnauthorized:
-		return NewError(ErrCodeAuthenticationError, "Authentication failed: "+body)
+		return &APIError{
+			Code:              ErrCodeAuthenticationError,
+			Message:           "Authentication failed: " + body,
+			Details:           baseDetails,
+			Category:          "authentication",
+			Retryable:         false,
+			LikelyCause:       "Access token is missing, expired, or invalid for this Home Assistant instance.",
+			SuggestedFix:      "Run auth status and refresh or login again before retrying.",
+			SuggestedCommands: []string{"hab auth status --json", "hab auth refresh --json", "hab auth login"},
+			Transport:         "rest",
+			StatusCode:        statusCode,
+		}
 	case http.StatusForbidden:
-		return NewError(ErrCodePermissionDenied, "Permission denied: "+body)
+		return &APIError{
+			Code:                ErrCodePermissionDenied,
+			Message:             "Permission denied: " + body,
+			Details:             baseDetails,
+			Category:            "authorization",
+			Retryable:           false,
+			LikelyCause:         "Token is valid but does not have permission for this operation.",
+			SuggestedFix:        "Use a token with the required privileges or run this command with an admin account.",
+			PrerequisiteMissing: "required_permissions",
+			Transport:           "rest",
+			StatusCode:          statusCode,
+		}
 	case http.StatusNotFound:
-		return NewError(ErrCodeNotFound, "Resource not found: "+body)
+		return &APIError{
+			Code:         ErrCodeNotFound,
+			Message:      "Resource not found: " + body,
+			Details:      baseDetails,
+			Category:     "not_found",
+			Retryable:    false,
+			LikelyCause:  "The target resource ID does not exist or is from a different Home Assistant instance.",
+			SuggestedFix: "List resources first and retry with an ID from current discovery output.",
+			Transport:    "rest",
+			StatusCode:   statusCode,
+		}
 	case http.StatusBadRequest:
-		return NewError(ErrCodeValidationError, "Bad request: "+body)
+		return &APIError{
+			Code:         ErrCodeValidationError,
+			Message:      "Bad request: " + body,
+			Details:      baseDetails,
+			Category:     "validation",
+			Retryable:    false,
+			LikelyCause:  "Input payload or flags do not match the expected schema.",
+			SuggestedFix: "Inspect command docs and action schema, then resend with valid fields.",
+			Transport:    "rest",
+			StatusCode:   statusCode,
+		}
 	default:
-		return NewError(ErrCodeAPIError, fmt.Sprintf("API error (%d): %s", statusCode, body))
+		retryable := statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
+		return &APIError{
+			Code:         ErrCodeAPIError,
+			Message:      fmt.Sprintf("API error (%d): %s", statusCode, body),
+			Details:      baseDetails,
+			Category:     "api",
+			Retryable:    retryable,
+			LikelyCause:  "Home Assistant API returned an unexpected error response.",
+			SuggestedFix: "Retry if this was a transient backend error; otherwise inspect system health and logs.",
+			Transport:    "rest",
+			StatusCode:   statusCode,
+		}
 	}
 }
 

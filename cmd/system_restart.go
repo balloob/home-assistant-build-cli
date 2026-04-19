@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -25,8 +23,7 @@ func runSystemRestart(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
 	if !confirmAction(restartForce, textMode, "This will restart Home Assistant. Continue?") {
-		fmt.Println("Cancelled.")
-		return nil
+		return cancelledError("restart system")
 	}
 
 	restClient, err := getRESTClient()

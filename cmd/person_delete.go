@@ -27,8 +27,7 @@ func runPersonDelete(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
 	if !confirmAction(personDeleteForce, textMode, fmt.Sprintf("Delete person %s?", personID)) {
-		fmt.Println("Cancelled.")
-		return nil
+		return cancelledError("delete person")
 	}
 
 	ws, err := getWSClient()
