@@ -125,7 +125,10 @@ func registerDashResourceDelete(parentCmd *cobra.Command, cfg DashboardResourceC
 				return err
 			}
 
-			output.PrintSuccess(nil, textMode, fmt.Sprintf("%s at index %d deleted.", capitalize(name), itemIndex))
+			output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("%s at index %d deleted.", capitalize(name), itemIndex), output.EnvelopeContext{
+				Operation:    "delete",
+				ResourceType: name,
+			})
 			return nil
 		},
 	}

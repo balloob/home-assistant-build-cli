@@ -163,13 +163,19 @@ func makeSubComponentList(cfg SubComponentConfig) func(*cobra.Command, []string)
 			return err
 		}
 		if config == nil {
-			output.PrintOutput([]interface{}{}, textMode, "")
+			output.PrintOutputWithContext([]interface{}{}, textMode, "", output.EnvelopeContext{
+				Operation:    "list",
+				ResourceType: cfg.ComponentPlural,
+			})
 			return nil
 		}
 
 		items, _ := resolveItems(config, cfg)
 		if items == nil {
-			output.PrintOutput([]interface{}{}, textMode, "")
+			output.PrintOutputWithContext([]interface{}{}, textMode, "", output.EnvelopeContext{
+				Operation:    "list",
+				ResourceType: cfg.ComponentPlural,
+			})
 			return nil
 		}
 
@@ -180,7 +186,10 @@ func makeSubComponentList(cfg SubComponentConfig) func(*cobra.Command, []string)
 			itemList[i] = data
 		}
 
-		output.PrintOutput(itemList, textMode, "")
+		output.PrintOutputWithContext(itemList, textMode, "", output.EnvelopeContext{
+			Operation:    "list",
+			ResourceType: cfg.ComponentPlural,
+		})
 		return nil
 	}
 }
@@ -247,7 +256,10 @@ func makeSubComponentGet(cfg SubComponentConfig, parentID *string, itemIndex *in
 		data := copyItemMap(items[idx])
 		data["index"] = idx
 
-		output.PrintOutput(data, textMode, "")
+		output.PrintOutputWithContext(data, textMode, "", output.EnvelopeContext{
+			Operation:    "get",
+			ResourceType: cfg.ComponentName,
+		})
 		return nil
 	}
 }
@@ -304,7 +316,10 @@ func makeSubComponentCreate(cfg SubComponentConfig, flags *InputFlags) func(*cob
 			"index":  len(items) - 1,
 			"config": itemConfig,
 		}
-		output.PrintSuccess(resultData, textMode, fmt.Sprintf("%s created at index %d.", capitalize(cfg.ComponentName), len(items)-1))
+		output.PrintSuccessWithContext(resultData, textMode, fmt.Sprintf("%s created at index %d.", capitalize(cfg.ComponentName), len(items)-1), output.EnvelopeContext{
+			Operation:    "create",
+			ResourceType: cfg.ComponentName,
+		})
 		return nil
 	}
 }
@@ -368,7 +383,10 @@ func makeSubComponentUpdate(cfg SubComponentConfig, flags *InputFlags) func(*cob
 			"index":  idx,
 			"config": newItem,
 		}
-		output.PrintSuccess(resultData, textMode, fmt.Sprintf("%s at index %d updated.", capitalize(cfg.ComponentName), idx))
+		output.PrintSuccessWithContext(resultData, textMode, fmt.Sprintf("%s at index %d updated.", capitalize(cfg.ComponentName), idx), output.EnvelopeContext{
+			Operation:    "update",
+			ResourceType: cfg.ComponentName,
+		})
 		return nil
 	}
 }
@@ -427,7 +445,10 @@ func makeSubComponentDelete(cfg SubComponentConfig, force *bool) func(*cobra.Com
 			return err
 		}
 
-		output.PrintSuccess(nil, textMode, fmt.Sprintf("%s at index %d deleted.", capitalize(cfg.ComponentName), idx))
+		output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("%s at index %d deleted.", capitalize(cfg.ComponentName), idx), output.EnvelopeContext{
+			Operation:    "delete",
+			ResourceType: cfg.ComponentName,
+		})
 		return nil
 	}
 }

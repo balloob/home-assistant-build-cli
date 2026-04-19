@@ -106,7 +106,10 @@ func registerDashResourceGet(parentCmd *cobra.Command, cfg DashboardResourceConf
 			item := nav.Items[itemIndex]
 			data := mapItemWithIndex(item, itemIndex, cfg.ItemCanBeString)
 
-			output.PrintOutput(data, textMode, "")
+			output.PrintOutputWithContext(data, textMode, "", output.EnvelopeContext{
+				Operation:    "get",
+				ResourceType: name,
+			})
 			return nil
 		},
 	}
@@ -232,10 +235,16 @@ func registerDashResourceGetWithFlags(parentCmd *cobra.Command, cfg DashboardRes
 				if m, ok := item.(map[string]interface{}); ok {
 					m["index"] = itemIndex
 				}
-				output.PrintOutput(item, textMode, "")
+				output.PrintOutputWithContext(item, textMode, "", output.EnvelopeContext{
+					Operation:    "get",
+					ResourceType: name,
+				})
 			} else {
 				data := mapItemWithIndex(item, itemIndex, true)
-				output.PrintOutput(data, textMode, "")
+				output.PrintOutputWithContext(data, textMode, "", output.EnvelopeContext{
+					Operation:    "get",
+					ResourceType: name,
+				})
 			}
 			return nil
 		},

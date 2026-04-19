@@ -146,7 +146,10 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 					}
 				}
 			} else {
-				output.PrintOutput(items, false, "")
+				output.PrintOutputWithContext(items, false, "", output.EnvelopeContext{
+					Operation:    "list",
+					ResourceType: cfg.ResourceName,
+				})
 			}
 			return nil
 		},
@@ -217,7 +220,10 @@ func registerRegistryGet(cfg RegistryCRUDConfig) {
 						}
 					}
 
-					output.PrintOutput(result, textMode, "")
+					output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{
+						Operation:    "get",
+						ResourceType: cfg.ResourceName,
+					})
 					return nil
 				}
 			}
@@ -265,7 +271,10 @@ func registerRegistryCreate(cfg RegistryCRUDConfig) {
 				return err
 			}
 
-			output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created.", capitalize(cfg.ResourceName), name))
+			output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s '%s' created.", capitalize(cfg.ResourceName), name), output.EnvelopeContext{
+				Operation:    "create",
+				ResourceType: cfg.ResourceName,
+			})
 			return nil
 		},
 	}
@@ -314,7 +323,10 @@ func registerRegistryUpdate(cfg RegistryCRUDConfig) {
 				return err
 			}
 
-			output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' updated.", capitalize(cfg.ResourceName), id))
+			output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s '%s' updated.", capitalize(cfg.ResourceName), id), output.EnvelopeContext{
+				Operation:    "update",
+				ResourceType: cfg.ResourceName,
+			})
 			return nil
 		},
 	}
@@ -359,7 +371,10 @@ func registerRegistryDelete(cfg RegistryCRUDConfig) {
 				return err
 			}
 
-			output.PrintSuccess(nil, textMode, fmt.Sprintf("%s '%s' deleted.", capitalize(cfg.ResourceName), id))
+			output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("%s '%s' deleted.", capitalize(cfg.ResourceName), id), output.EnvelopeContext{
+				Operation:    "delete",
+				ResourceType: cfg.ResourceName,
+			})
 			return nil
 		},
 	}

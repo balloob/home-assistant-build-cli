@@ -155,7 +155,10 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 				}
 
 				resourceConfig["index"] = len(views) - 1
-				output.PrintSuccess(resourceConfig, textMode, fmt.Sprintf("%s '%v' created at index %d.", capitalize(name), resourceConfig["title"], len(views)-1))
+				output.PrintSuccessWithContext(resourceConfig, textMode, fmt.Sprintf("%s '%v' created at index %d.", capitalize(name), resourceConfig["title"], len(views)-1), output.EnvelopeContext{
+					Operation:    "create",
+					ResourceType: name,
+				})
 				return nil
 			}
 
@@ -181,7 +184,10 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 			}
 
 			resourceConfig["index"] = len(items) - 1
-			output.PrintSuccess(resourceConfig, textMode, fmt.Sprintf("%s created at index %d.", capitalize(name), len(items)-1))
+			output.PrintSuccessWithContext(resourceConfig, textMode, fmt.Sprintf("%s created at index %d.", capitalize(name), len(items)-1), output.EnvelopeContext{
+				Operation:    "create",
+				ResourceType: name,
+			})
 			return nil
 		},
 	}
@@ -271,12 +277,17 @@ func runBadgeStyleCreate(cmd *cobra.Command, cfg DashboardResourceConfig, urlPat
 		"index":  len(items) - 1,
 		"config": badgeConfig,
 	}
-	output.PrintSuccess(resultData, textMode, fmt.Sprintf("%s created at index %d.", capitalize(name), len(items)-1))
+	output.PrintSuccessWithContext(resultData, textMode, fmt.Sprintf("%s created at index %d.", capitalize(name), len(items)-1), output.EnvelopeContext{
+		Operation:    "create",
+		ResourceType: name,
+	})
 	return nil
 }
 
 // runCardStyleCreate handles card create with auto-scaffolding of views/sections.
-func runCardStyleCreate(ws interface{ SendCommand(string, map[string]interface{}) (interface{}, error) }, urlPath string, config map[string]interface{}, cardConfig map[string]interface{}, viewIndex, sectionFlagVal int, textMode bool, cmd *cobra.Command, cfg DashboardResourceConfig) error {
+func runCardStyleCreate(ws interface {
+	SendCommand(string, map[string]interface{}) (interface{}, error)
+}, urlPath string, config map[string]interface{}, cardConfig map[string]interface{}, viewIndex, sectionFlagVal int, textMode bool, cmd *cobra.Command, cfg DashboardResourceConfig) error {
 	if config == nil {
 		config = map[string]interface{}{
 			"views": []interface{}{},
@@ -394,6 +405,9 @@ func runCardStyleCreate(ws interface{ SendCommand(string, map[string]interface{}
 		msg = "Card created at index " + strconv.Itoa(newCardIndex) + " in view " + strconv.Itoa(viewIndex) + " section " + strconv.Itoa(sectionIndex) + "."
 	}
 
-	output.PrintSuccess(cardConfig, textMode, msg)
+	output.PrintSuccessWithContext(cardConfig, textMode, msg, output.EnvelopeContext{
+		Operation:    "create",
+		ResourceType: "card",
+	})
 	return nil
 }

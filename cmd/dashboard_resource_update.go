@@ -154,7 +154,10 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 			}
 
 			existing["index"] = itemIndex
-			output.PrintSuccess(existing, textMode, fmt.Sprintf("%s at index %d updated.", capitalize(name), itemIndex))
+			output.PrintSuccessWithContext(existing, textMode, fmt.Sprintf("%s at index %d updated.", capitalize(name), itemIndex), output.EnvelopeContext{
+				Operation:    "update",
+				ResourceType: name,
+			})
 			return nil
 		},
 	}
@@ -178,7 +181,9 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 }
 
 // runBadgeStyleUpdate handles badge update which supports entity_id strings.
-func runBadgeStyleUpdate(cmd *cobra.Command, cfg DashboardResourceConfig, ws interface{ SendCommand(string, map[string]interface{}) (interface{}, error) }, urlPath string, config map[string]interface{}, viewIndex, itemIndex int, textMode bool, flags *InputFlags, customFlagValues map[string]*string) error {
+func runBadgeStyleUpdate(cmd *cobra.Command, cfg DashboardResourceConfig, ws interface {
+	SendCommand(string, map[string]interface{}) (interface{}, error)
+}, urlPath string, config map[string]interface{}, viewIndex, itemIndex int, textMode bool, flags *InputFlags, customFlagValues map[string]*string) error {
 	name := cfg.ResourceName
 
 	nav, err := navigateToResourceArray(config, cfg.PathFromConfig, viewIndex, -1)
@@ -222,6 +227,9 @@ func runBadgeStyleUpdate(cmd *cobra.Command, cfg DashboardResourceConfig, ws int
 		"index":  itemIndex,
 		"config": newItem,
 	}
-	output.PrintSuccess(resultData, textMode, fmt.Sprintf("%s at index %d updated.", capitalize(name), itemIndex))
+	output.PrintSuccessWithContext(resultData, textMode, fmt.Sprintf("%s at index %d updated.", capitalize(name), itemIndex), output.EnvelopeContext{
+		Operation:    "update",
+		ResourceType: name,
+	})
 	return nil
 }

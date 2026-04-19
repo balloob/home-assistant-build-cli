@@ -140,7 +140,10 @@ func runWSList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf *ListFla
 		return nil
 	}
 
-	output.PrintOutput(helpers, textMode, "")
+	output.PrintOutputWithContext(helpers, textMode, "", output.EnvelopeContext{
+		Operation:    "list",
+		ResourceType: def.TypeName,
+	})
 	return nil
 }
 
@@ -177,7 +180,10 @@ func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf 
 		return nil
 	}
 
-	output.PrintOutput(result, textMode, "")
+	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{
+		Operation:    "list",
+		ResourceType: def.TypeName,
+	})
 	return nil
 }
 
@@ -217,7 +223,10 @@ func runWSDelete(id string, def HelperDef, textMode bool) error {
 		"id":      id,
 		"deleted": true,
 	}
-	output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id), output.EnvelopeContext{
+		Operation:    "delete",
+		ResourceType: def.TypeName,
+	})
 	return nil
 }
 
@@ -255,7 +264,10 @@ func runConfigFlowDelete(id string, def HelperDef, textMode bool) error {
 		"id":      id,
 		"deleted": true,
 	}
-	output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s '%s' deleted successfully.", capitalize(def.DisplayName), id), output.EnvelopeContext{
+		Operation:    "delete",
+		ResourceType: def.TypeName,
+	})
 	return nil
 }
 
@@ -282,7 +294,10 @@ func helperWSCreate(typeName, displayName string, buildParams func(cmd *cobra.Co
 			return err
 		}
 
-		output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name))
+		output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name), output.EnvelopeContext{
+			Operation:    "create",
+			ResourceType: typeName,
+		})
 		return nil
 	}
 }
@@ -374,7 +389,10 @@ func helperConfigFlowCreate(typeName, displayName string, buildFormData func(cmd
 			return err
 		}
 
-		output.PrintSuccess(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name))
+		output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s '%s' created successfully.", capitalize(displayName), name), output.EnvelopeContext{
+			Operation:    "create",
+			ResourceType: typeName,
+		})
 		return nil
 	}
 }

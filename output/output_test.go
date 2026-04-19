@@ -466,3 +466,65 @@ func TestFormatOutput_TextWithNilNoMessage(t *testing.T) {
 		t.Errorf("FormatOutput text nil = %q, want %q", got, "Done.")
 	}
 }
+
+func TestFormatOutputWithContext_JSONMode(t *testing.T) {
+	ctx := EnvelopeContext{
+		Operation:             "list",
+		ResourceType:          "area",
+		Warnings:              []string{"partial data"},
+		VerificationCommands:  []string{"hab area list --json"},
+		NextSuggestedCommands: []string{"hab area get kitchen --json"},
+		Metadata: map[string]interface{}{
+			"source": "unit-test",
+		},
+	}
+
+	got := FormatOutputWithContext(map[string]interface{}{"count": 1}, false, "ok", ctx)
+
+	var resp Response
+	if err := json.Unmarshal([]byte(got), &resp); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if resp.Operation != "list" {
+		t.Fatalf("operation = %q, want list", resp.Operation)
+	}
+	if resp.ResourceType != "area" {
+		t.Fatalf("resource_type = %q, want area", resp.ResourceType)
+	}
+	if len(resp.Warnings) != 1 || resp.Warnings[0] != "partial data" {
+		t.Fatalf("warnings = %#v, want [partial data]", resp.Warnings)
+	}
+	if len(resp.VerificationCommands) != 1 || resp.VerificationCommands[0] != "hab area list --json" {
+		t.Fatalf("verification_commands = %#v, unexpected", resp.VerificationCommands)
+	}
+	if len(resp.NextSuggestedCommands) != 1 || resp.NextSuggestedCommands[0] != "hab area get kitchen --json" {
+		t.Fatalf("next_suggested_commands = %#v, unexpected", resp.NextSuggestedCommands)
+	}
+	if resp.Metadata["source"] != "unit-test" {
+		t.Fatalf("metadata.source = %#v, want unit-test", resp.Metadata["source"])
+	}
+	if _, ok := resp.Metadata["timestamp"]; !ok {
+		t.Fatal("expected metadata.timestamp")
+	}
+}
+
+func TestFormatErrorWithContext_JSONMode(t *testing.T) {
+	got := FormatErrorWithContext("NOT_FOUND", "missing", nil, EnvelopeContext{
+		Operation:    "get",
+		ResourceType: "device",
+	})
+
+	var resp Response
+	if err := json.Unmarshal([]byte(got), &resp); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if resp.Operation != "get" {
+		t.Fatalf("operation = %q, want get", resp.Operation)
+	}
+	if resp.ResourceType != "device" {
+		t.Fatalf("resource_type = %q, want device", resp.ResourceType)
+	}
+	if resp.Error == nil || resp.Error.Code != "NOT_FOUND" {
+		t.Fatalf("error = %#v, expected NOT_FOUND", resp.Error)
+	}
+}

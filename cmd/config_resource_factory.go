@@ -74,7 +74,10 @@ func registerConfigGet(cfg ConfigResourceConfig) {
 				return err
 			}
 
-			output.PrintOutput(result, textMode, "")
+			output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{
+				Operation:    "get",
+				ResourceType: cfg.ResourceName,
+			})
 			return nil
 		},
 	}
@@ -118,7 +121,10 @@ func registerConfigCreate(cfg ConfigResourceConfig) {
 				return err
 			}
 
-			output.PrintSuccess(result, textMode, fmt.Sprintf("%s %s created successfully.", capitalize(cfg.ResourceName), id))
+			output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s %s created successfully.", capitalize(cfg.ResourceName), id), output.EnvelopeContext{
+				Operation:    "create",
+				ResourceType: cfg.ResourceName,
+			})
 			return nil
 		},
 	}
@@ -158,7 +164,10 @@ func registerConfigUpdate(cfg ConfigResourceConfig) {
 				return err
 			}
 
-			output.PrintSuccess(result, textMode, fmt.Sprintf("%s updated successfully.", capitalize(cfg.ResourceName)))
+			output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s updated successfully.", capitalize(cfg.ResourceName)), output.EnvelopeContext{
+				Operation:    "update",
+				ResourceType: cfg.ResourceName,
+			})
 			return nil
 		},
 	}
@@ -198,7 +207,10 @@ func registerConfigDelete(cfg ConfigResourceConfig) {
 				return err
 			}
 
-			output.PrintSuccess(nil, textMode, fmt.Sprintf("%s %s deleted.", capitalize(cfg.ResourceName), id))
+			output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("%s %s deleted.", capitalize(cfg.ResourceName), id), output.EnvelopeContext{
+				Operation:    "delete",
+				ResourceType: cfg.ResourceName,
+			})
 			return nil
 		},
 	}
