@@ -83,13 +83,45 @@ func registerHelperType(def HelperDef) {
 
 	// Create subcommand (optional)
 	if def.RunCreate != nil {
+		var plan bool
+		var dryRun bool
 		createCmd := &cobra.Command{
 			Use:     "create <name>",
 			Short:   def.CreateShort,
 			Long:    def.CreateLong,
 			Example: def.CreateExample,
 			Args:    cobra.ExactArgs(1),
-			RunE:    def.RunCreate,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				if planRequested(plan, dryRun) {
+					steps := []string{"Validate create flags and payload."}
+					if def.Category == HelperCategoryWS {
+						steps = append(steps,
+							"Connect to Home Assistant WebSocket API.",
+							fmt.Sprintf("Send %s/create command with helper configuration.", def.TypeName),
+						)
+					} else {
+						steps = append(steps,
+							fmt.Sprintf("Start %s config flow.", def.TypeName),
+							"Submit form data and finalize config entry creation.",
+						)
+					}
+
+					printMutationPlan(MutationPlan{
+						WouldChange: true,
+						Target: map[string]any{
+							"resource": def.TypeName,
+							"name":     args[0],
+						},
+						Steps: steps,
+						VerificationCommands: []string{
+							fmt.Sprintf("hab helper %s list --json", def.CommandName),
+						},
+						RequiresConfirmation: false,
+					}, getTextMode(), def.TypeName)
+					return nil
+				}
+				return def.RunCreate(cmd, args)
+			},
 		}
 		mergeSchemaAnnotation(createCmd, SchemaAnnotation{
 			SideEffect:   "write",
@@ -104,6 +136,7 @@ func registerHelperType(def HelperDef) {
 		for _, flag := range def.RequiredFlags {
 			createCmd.MarkFlagRequired(flag)
 		}
+		registerMutationPlanFlags(createCmd, &plan, &dryRun)
 		parentCmd.AddCommand(createCmd)
 	}
 }
@@ -209,6 +242,8 @@ func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf 
 
 // registerHelperDelete creates the "delete" subcommand for a helper type.
 func registerHelperDelete(parentCmd *cobra.Command, def HelperDef) {
+	var plan bool
+	var dryRun bool
 	deleteCmd := &cobra.Command{
 		Use:   "delete <id>",
 		Short: fmt.Sprintf("Delete a %s helper", def.DisplayName),
@@ -217,6 +252,38 @@ func registerHelperDelete(parentCmd *cobra.Command, def HelperDef) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := args[0]
 			textMode := getTextMode()
+
+			if planRequested(plan, dryRun) {
+				steps := []string{}
+				if def.Category == HelperCategoryWS {
+					steps = []string{
+						"Connect to Home Assistant WebSocket API.",
+						fmt.Sprintf("Delete %s helper by entity/helper ID.", def.TypeName),
+					}
+				} else {
+					steps = []string{
+						"Resolve entity ID to config entry ID when needed.",
+						"Delete config entry for the helper.",
+					}
+				}
+
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource": def.TypeName,
+						"id":       id,
+					},
+					Steps: steps,
+					Risks: []string{
+						"This operation permanently removes the helper.",
+					},
+					RequiresConfirmation: false,
+					VerificationCommands: []string{
+						fmt.Sprintf("hab helper %s list --json", def.CommandName),
+					},
+				}, textMode, def.TypeName)
+				return nil
+			}
 
 			if def.Category == HelperCategoryWS {
 				return runWSDelete(id, def, textMode)
@@ -231,6 +298,7 @@ func registerHelperDelete(parentCmd *cobra.Command, def HelperDef) {
 		ResourceType: def.TypeName,
 		InputSources: []string{"args"},
 	})
+	registerMutationPlanFlags(deleteCmd, &plan, &dryRun)
 	parentCmd.AddCommand(deleteCmd)
 }
 

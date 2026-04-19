@@ -302,7 +302,7 @@ func inferOutputMode(path string, cmd *cobra.Command) string {
 }
 
 func inferCapabilities(path string) []string {
-	if path == "hab" || path == "hab guide" || path == "hab schema" || path == "hab version" || path == "hab update" {
+	if path == "hab" || path == "hab guide" || path == "hab schema" || path == "hab version" || path == "hab update" || strings.HasPrefix(path, "hab capability") {
 		return []string{"local"}
 	}
 	if strings.HasPrefix(path, "hab auth") {

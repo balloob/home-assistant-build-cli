@@ -16,6 +16,8 @@ import (
 func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceConfig, depth int) {
 	name := cfg.ResourceName
 	sectionFlag := -1
+	var plan bool
+	var dryRun bool
 
 	// Closure-local input flags
 	var inputFlags InputFlags
@@ -76,6 +78,34 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 			}
 
 			textMode := getTextMode()
+
+			if planRequested(plan, dryRun) {
+				steps := []string{
+					"Fetch dashboard configuration via WebSocket.",
+					"Mutate target resource collection in memory.",
+					"Save updated dashboard using lovelace/config/save.",
+				}
+				risks := []string{}
+				if cfg.CreateAutoScaffold {
+					steps = append(steps, "Auto-scaffold missing views/sections for card placement when needed.")
+					risks = append(risks, "Card creation may create missing view/section scaffolding.")
+				}
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource":   name,
+						"dashboard":  urlPath,
+						"view_index": viewIndex,
+					},
+					Steps: steps,
+					Risks: risks,
+					VerificationCommands: []string{
+						fmt.Sprintf("hab dashboard %s list %s --json", name, urlPath),
+					},
+					RequiresConfirmation: false,
+				}, textMode, name)
+				return nil
+			}
 
 			// ── Handle badge-specific entity/type shorthand ──
 			if cfg.ItemCanBeString {
@@ -213,6 +243,7 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 	if cfg.HasSectionFlag {
 		createCmd.Flags().IntVarP(&sectionFlag, "section", "s", -1, "Section index (if "+name+" should be in a section)")
 	}
+	registerMutationPlanFlags(createCmd, &plan, &dryRun)
 
 	parentCmd.AddCommand(createCmd)
 }

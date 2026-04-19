@@ -116,6 +116,47 @@ func cancelledError(action string) error {
 	return client.NewCancelledError(action)
 }
 
+// MutationPlan describes a planned mutation without applying it.
+type MutationPlan struct {
+	Mode                 string         `json:"mode"`
+	WouldChange          bool           `json:"would_change"`
+	Target               map[string]any `json:"target"`
+	Inputs               map[string]any `json:"inputs,omitempty"`
+	DerivedIDs           map[string]any `json:"derived_ids,omitempty"`
+	Steps                []string       `json:"steps"`
+	Risks                []string       `json:"risks,omitempty"`
+	RequiresConfirmation bool           `json:"requires_confirmation"`
+	VerificationCommands []string       `json:"verification_commands,omitempty"`
+}
+
+func registerMutationPlanFlags(cmd *cobra.Command, planFlag, dryRunFlag *bool) {
+	cmd.Flags().BoolVar(planFlag, "plan", false, "Show execution plan without applying changes")
+	cmd.Flags().BoolVar(dryRunFlag, "dry-run", false, "Alias for --plan")
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		InputSources:   []string{"flags"},
+		OutputVariants: []string{"plan", "full"},
+		FlagConstraints: []SchemaFlagConstraint{{
+			Type:        "equivalent",
+			Flags:       []string{"plan", "dry-run"},
+			Description: "--dry-run is an alias of --plan.",
+		}},
+	})
+}
+
+func planRequested(planFlag, dryRunFlag bool) bool {
+	return planFlag || dryRunFlag
+}
+
+func printMutationPlan(plan MutationPlan, textMode bool, resourceType string) {
+	if plan.Mode == "" {
+		plan.Mode = "plan"
+	}
+	output.PrintOutputWithContext(plan, textMode, "Plan only. No changes were applied.", output.EnvelopeContext{
+		Operation:    "plan",
+		ResourceType: resourceType,
+	})
+}
+
 // ensureDomainPrefix ensures an entity ID has the given domain prefix.
 // If id already starts with "domain.", it is returned unchanged.
 func ensureDomainPrefix(id, domain string) string {

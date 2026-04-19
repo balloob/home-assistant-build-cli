@@ -94,6 +94,8 @@ func registerConfigGet(cfg ConfigResourceConfig) {
 
 func registerConfigCreate(cfg ConfigResourceConfig) {
 	var inputFlags InputFlags
+	var plan bool
+	var dryRun bool
 	cmd := &cobra.Command{
 		Use:     "create <id>",
 		Short:   fmt.Sprintf("Create a new %s", cfg.ResourceName),
@@ -116,6 +118,28 @@ func registerConfigCreate(cfg ConfigResourceConfig) {
 			}
 			if _, ok := config[requiredField]; !ok {
 				return fmt.Errorf("%s must have a '%s' field", cfg.ResourceName, requiredField)
+			}
+
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource": cfg.ResourceName,
+						"id":       id,
+						"endpoint": cfg.APIPrefix + id,
+					},
+					Inputs: map[string]any{"config": config},
+					Steps: []string{
+						fmt.Sprintf("Validate input payload includes '%s'.", requiredField),
+						fmt.Sprintf("POST %s with provided configuration.", cfg.APIPrefix+id),
+						"Return created configuration object.",
+					},
+					VerificationCommands: []string{
+						fmt.Sprintf("hab %s get %s --json", cfg.ResourceName, id),
+					},
+					RequiresConfirmation: false,
+				}, textMode, cfg.ResourceName)
+				return nil
 			}
 
 			restClient, err := getRESTClient()
@@ -143,11 +167,14 @@ func registerConfigCreate(cfg ConfigResourceConfig) {
 		InputSources: []string{"args", "flags", "data", "file"},
 	})
 	inputFlags.Register(cmd)
+	registerMutationPlanFlags(cmd, &plan, &dryRun)
 	cfg.ParentCmd.AddCommand(cmd)
 }
 
 func registerConfigUpdate(cfg ConfigResourceConfig) {
 	var inputFlags InputFlags
+	var plan bool
+	var dryRun bool
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("update <%s_id>", cfg.ResourceName),
 		Short:   fmt.Sprintf("Update an existing %s", cfg.ResourceName),
@@ -173,6 +200,31 @@ func registerConfigUpdate(cfg ConfigResourceConfig) {
 				return err
 			}
 
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource": cfg.ResourceName,
+						"id":       id,
+						"endpoint": cfg.APIPrefix + configID,
+					},
+					Inputs: map[string]any{"config": config},
+					DerivedIDs: map[string]any{
+						"resolved_id": configID,
+					},
+					Steps: []string{
+						"Resolve user-provided identifier to internal config ID.",
+						fmt.Sprintf("POST %s with replacement configuration.", cfg.APIPrefix+configID),
+						"Return updated configuration object.",
+					},
+					VerificationCommands: []string{
+						fmt.Sprintf("hab %s get %s --json", cfg.ResourceName, id),
+					},
+					RequiresConfirmation: false,
+				}, textMode, cfg.ResourceName)
+				return nil
+			}
+
 			result, err := restClient.Post(cfg.APIPrefix+configID, config)
 			if err != nil {
 				return err
@@ -193,11 +245,14 @@ func registerConfigUpdate(cfg ConfigResourceConfig) {
 		InputSources: []string{"args", "flags", "data", "file"},
 	})
 	inputFlags.Register(cmd)
+	registerMutationPlanFlags(cmd, &plan, &dryRun)
 	cfg.ParentCmd.AddCommand(cmd)
 }
 
 func registerConfigDelete(cfg ConfigResourceConfig) {
 	var force bool
+	var plan bool
+	var dryRun bool
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("delete <%s_id>", cfg.ResourceName),
 		Short:   fmt.Sprintf("Delete a %s", cfg.ResourceName),
@@ -216,6 +271,33 @@ func registerConfigDelete(cfg ConfigResourceConfig) {
 			configID, err := cfg.ResolveID(restClient, id)
 			if err != nil {
 				return err
+			}
+
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource": cfg.ResourceName,
+						"id":       id,
+						"endpoint": cfg.APIPrefix + configID,
+					},
+					DerivedIDs: map[string]any{
+						"resolved_id": configID,
+					},
+					Steps: []string{
+						"Resolve user-provided identifier to internal config ID.",
+						fmt.Sprintf("DELETE %s.", cfg.APIPrefix+configID),
+						"Return deletion success message.",
+					},
+					Risks: []string{
+						"This operation permanently removes the configuration object.",
+					},
+					RequiresConfirmation: !force,
+					VerificationCommands: []string{
+						fmt.Sprintf("hab %s get %s --json", cfg.ResourceName, id),
+					},
+				}, textMode, cfg.ResourceName)
+				return nil
 			}
 
 			if !confirmAction(force, textMode, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id)) {
@@ -242,5 +324,6 @@ func registerConfigDelete(cfg ConfigResourceConfig) {
 		InputSources: []string{"args", "flags"},
 	})
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(cmd, &plan, &dryRun)
 	cfg.ParentCmd.AddCommand(cmd)
 }

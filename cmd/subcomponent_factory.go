@@ -288,6 +288,8 @@ func makeSubComponentGet(cfg SubComponentConfig, parentID *string, itemIndex *in
 
 func registerSubComponentCreate(parentCmd *cobra.Command, cfg SubComponentConfig) {
 	var inputFlags InputFlags
+	var plan bool
+	var dryRun bool
 
 	createCmd := &cobra.Command{
 		Use:   fmt.Sprintf("create <%s_id>", cfg.ParentName),
@@ -304,16 +306,52 @@ func registerSubComponentCreate(parentCmd *cobra.Command, cfg SubComponentConfig
 		InputSources: []string{"args", "flags", "data", "file"},
 	})
 	inputFlags.Register(createCmd)
+	registerMutationPlanFlags(createCmd, &plan, &dryRun)
 	parentCmd.AddCommand(createCmd)
 }
 
 func makeSubComponentCreate(cfg SubComponentConfig, flags *InputFlags) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		textMode := getTextMode()
+		plan, _ := cmd.Flags().GetBool("plan")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 		itemConfig, err := flags.Parse()
 		if err != nil {
 			return err
+		}
+
+		if planRequested(plan, dryRun) {
+			resolvedID := args[0]
+			if restClient, getErr := getRESTClient(); getErr == nil {
+				if configID, resolveErr := cfg.ResolveID(restClient, args[0]); resolveErr == nil {
+					resolvedID = configID
+				}
+			}
+
+			printMutationPlan(MutationPlan{
+				WouldChange: true,
+				Target: map[string]any{
+					"resource":  cfg.ComponentName,
+					"parent":    cfg.ParentName,
+					"parent_id": args[0],
+					"endpoint":  cfg.APIBasePath + resolvedID,
+				},
+				Inputs: map[string]any{"config": itemConfig},
+				DerivedIDs: map[string]any{
+					"resolved_parent_config_id": resolvedID,
+				},
+				Steps: []string{
+					"Resolve parent ID to parent config ID.",
+					"Fetch parent config and append new subcomponent entry.",
+					fmt.Sprintf("POST %s with updated config payload.", cfg.APIBasePath+resolvedID),
+				},
+				VerificationCommands: []string{
+					fmt.Sprintf("hab %s %s list %s --json", cfg.ParentName, cfg.ComponentName, args[0]),
+				},
+				RequiresConfirmation: false,
+			}, textMode, cfg.ComponentName)
+			return nil
 		}
 
 		restClient, configID, config, err := fetchParentConfig(cfg, args[0])
@@ -355,6 +393,8 @@ func makeSubComponentCreate(cfg SubComponentConfig, flags *InputFlags) func(*cob
 
 func registerSubComponentUpdate(parentCmd *cobra.Command, cfg SubComponentConfig) {
 	var inputFlags InputFlags
+	var plan bool
+	var dryRun bool
 
 	updateCmd := &cobra.Command{
 		Use:   fmt.Sprintf("update <%s_id> <%s_index>", cfg.ParentName, cfg.ComponentName),
@@ -371,6 +411,7 @@ func registerSubComponentUpdate(parentCmd *cobra.Command, cfg SubComponentConfig
 		InputSources: []string{"args", "flags", "data", "file"},
 	})
 	inputFlags.Register(updateCmd)
+	registerMutationPlanFlags(updateCmd, &plan, &dryRun)
 	parentCmd.AddCommand(updateCmd)
 }
 
@@ -382,10 +423,46 @@ func makeSubComponentUpdate(cfg SubComponentConfig, flags *InputFlags) func(*cob
 		}
 
 		textMode := getTextMode()
+		plan, _ := cmd.Flags().GetBool("plan")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 		newItem, err := flags.Parse()
 		if err != nil {
 			return err
+		}
+
+		if planRequested(plan, dryRun) {
+			resolvedID := args[0]
+			if restClient, getErr := getRESTClient(); getErr == nil {
+				if configID, resolveErr := cfg.ResolveID(restClient, args[0]); resolveErr == nil {
+					resolvedID = configID
+				}
+			}
+
+			printMutationPlan(MutationPlan{
+				WouldChange: true,
+				Target: map[string]any{
+					"resource":  cfg.ComponentName,
+					"parent":    cfg.ParentName,
+					"parent_id": args[0],
+					"index":     idx,
+					"endpoint":  cfg.APIBasePath + resolvedID,
+				},
+				Inputs: map[string]any{"config": newItem},
+				DerivedIDs: map[string]any{
+					"resolved_parent_config_id": resolvedID,
+				},
+				Steps: []string{
+					"Resolve parent ID to parent config ID.",
+					"Fetch parent config and replace subcomponent at target index.",
+					fmt.Sprintf("POST %s with updated config payload.", cfg.APIBasePath+resolvedID),
+				},
+				VerificationCommands: []string{
+					fmt.Sprintf("hab %s %s get %s %d --json", cfg.ParentName, cfg.ComponentName, args[0], idx),
+				},
+				RequiresConfirmation: false,
+			}, textMode, cfg.ComponentName)
+			return nil
 		}
 
 		restClient, configID, config, err := fetchParentConfig(cfg, args[0])
@@ -429,6 +506,8 @@ func makeSubComponentUpdate(cfg SubComponentConfig, flags *InputFlags) func(*cob
 
 func registerSubComponentDelete(parentCmd *cobra.Command, cfg SubComponentConfig) {
 	var force bool
+	var plan bool
+	var dryRun bool
 
 	deleteCmd := &cobra.Command{
 		Use:   fmt.Sprintf("delete <%s_id> <%s_index>", cfg.ParentName, cfg.ComponentName),
@@ -445,6 +524,7 @@ func registerSubComponentDelete(parentCmd *cobra.Command, cfg SubComponentConfig
 		InputSources: []string{"args", "flags"},
 	})
 	deleteCmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation prompt")
+	registerMutationPlanFlags(deleteCmd, &plan, &dryRun)
 	parentCmd.AddCommand(deleteCmd)
 }
 
@@ -456,6 +536,44 @@ func makeSubComponentDelete(cfg SubComponentConfig, force *bool) func(*cobra.Com
 		}
 
 		textMode := getTextMode()
+		plan, _ := cmd.Flags().GetBool("plan")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+
+		if planRequested(plan, dryRun) {
+			resolvedID := args[0]
+			if restClient, getErr := getRESTClient(); getErr == nil {
+				if configID, resolveErr := cfg.ResolveID(restClient, args[0]); resolveErr == nil {
+					resolvedID = configID
+				}
+			}
+
+			printMutationPlan(MutationPlan{
+				WouldChange: true,
+				Target: map[string]any{
+					"resource":  cfg.ComponentName,
+					"parent":    cfg.ParentName,
+					"parent_id": args[0],
+					"index":     idx,
+					"endpoint":  cfg.APIBasePath + resolvedID,
+				},
+				DerivedIDs: map[string]any{
+					"resolved_parent_config_id": resolvedID,
+				},
+				Steps: []string{
+					"Resolve parent ID to parent config ID.",
+					"Fetch parent config and remove subcomponent at target index.",
+					fmt.Sprintf("POST %s with updated config payload.", cfg.APIBasePath+resolvedID),
+				},
+				Risks: []string{
+					"This operation permanently removes the selected subcomponent entry.",
+				},
+				RequiresConfirmation: !*force,
+				VerificationCommands: []string{
+					fmt.Sprintf("hab %s %s list %s --json", cfg.ParentName, cfg.ComponentName, args[0]),
+				},
+			}, textMode, cfg.ComponentName)
+			return nil
+		}
 
 		restClient, configID, config, err := fetchParentConfig(cfg, args[0])
 		if err != nil {
