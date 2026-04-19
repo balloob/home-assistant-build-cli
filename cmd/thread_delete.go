@@ -34,8 +34,7 @@ func runThreadDelete(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
 	if !confirmAction(threadDeleteForce, textMode, fmt.Sprintf("Delete Thread dataset %s?", datasetID)) {
-		fmt.Println("Cancelled.")
-		return nil
+		return cancelledError("delete thread dataset")
 	}
 
 	ws, err := getWSClient()

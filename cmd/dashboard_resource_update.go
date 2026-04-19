@@ -161,6 +161,13 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(updateCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: name,
+		InputSources: []string{"args", "flags", "data", "file"},
+	})
 
 	inputFlags.Register(updateCmd)
 

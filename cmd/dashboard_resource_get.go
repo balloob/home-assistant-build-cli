@@ -113,6 +113,13 @@ func registerDashResourceGet(parentCmd *cobra.Command, cfg DashboardResourceConf
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(getCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: name,
+		InputSources: []string{"args", "flags"},
+	})
 
 	if cfg.HasSectionFlag {
 		getCmd.Flags().IntVarP(&sectionFlag, "section", "s", -1, "Section index (if "+name+" is in a section)")
@@ -249,6 +256,13 @@ func registerDashResourceGetWithFlags(parentCmd *cobra.Command, cfg DashboardRes
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(getCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: name,
+		InputSources: []string{"args", "flags"},
+	})
 
 	getCmd.Flags().StringVar(&dashboardFlag, "dashboard", "", "Dashboard URL path")
 	if depth >= 2 {

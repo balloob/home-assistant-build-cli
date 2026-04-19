@@ -4,8 +4,11 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net"
+	neturl "net/url"
 	"os"
 	"strings"
 
@@ -96,17 +99,124 @@ func Execute() {
 func classifyError(err error) (code string, msg string, details map[string]any) {
 	// Check for auth sentinel first (it's a plain error, not an APIError)
 	if errors.Is(err, auth.ErrNotAuthenticated) {
-		return client.ErrCodeAuthRequired, "Not authenticated. Run 'hab auth login' to authenticate.", nil
+		return client.ErrCodeAuthRequired, "Not authenticated. Run 'hab auth login' to authenticate.", map[string]any{
+			"category":           "authentication",
+			"retryable":          false,
+			"likely_cause":       "No stored credentials were found for this Home Assistant instance.",
+			"suggested_fix":      "Authenticate before running commands that require API access.",
+			"suggested_commands": []string{"hab auth status --json", "hab auth login"},
+		}
 	}
 
 	// Check for structured API errors (from REST or WebSocket)
 	var apiErr *client.APIError
 	if errors.As(err, &apiErr) {
-		return apiErr.Code, apiErr.Message, apiErr.Details
+		details := apiErr.DetailsMap()
+		if details == nil {
+			details = map[string]any{}
+		}
+		if _, exists := details["category"]; !exists {
+			details["category"] = "api"
+		}
+		if _, exists := details["suggested_fix"]; !exists {
+			details["suggested_fix"] = defaultSuggestedFixForCode(apiErr.Code)
+		}
+		if _, exists := details["suggested_commands"]; !exists {
+			if commands := defaultSuggestedCommandsForCode(apiErr.Code); len(commands) > 0 {
+				details["suggested_commands"] = commands
+			}
+		}
+		if len(details) == 0 {
+			details = nil
+		}
+		return apiErr.Code, apiErr.Message, details
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) || strings.Contains(strings.ToLower(err.Error()), "timeout") {
+		return client.ErrCodeTimeout, "Operation timed out.", map[string]any{
+			"category":           "timeout",
+			"retryable":          true,
+			"likely_cause":       "The Home Assistant API did not respond within the configured timeout.",
+			"suggested_fix":      "Retry the command after Home Assistant is responsive.",
+			"suggested_commands": []string{"hab system health --json"},
+		}
+	}
+
+	if errors.Is(err, context.Canceled) {
+		return client.ErrCodeCancelled, "Operation cancelled.", map[string]any{
+			"category":      "cancellation",
+			"retryable":     true,
+			"suggested_fix": "Retry the command and confirm the prompt or provide required flags.",
+		}
+	}
+
+	var netOpErr *net.OpError
+	if errors.As(err, &netOpErr) {
+		return client.ErrCodeConnectionError, "Connection failed.", map[string]any{
+			"category":      "connection",
+			"retryable":     true,
+			"suggested_fix": "Verify Home Assistant URL/network connectivity and retry.",
+		}
+	}
+
+	var urlErr *neturl.Error
+	if errors.As(err, &urlErr) {
+		return client.ErrCodeConnectionError, "Connection failed.", map[string]any{
+			"category":      "connection",
+			"retryable":     true,
+			"suggested_fix": "Verify Home Assistant URL/network connectivity and retry.",
+		}
+	}
+
+	lower := strings.ToLower(err.Error())
+	if strings.Contains(lower, "invalid") || strings.Contains(lower, "parse") || strings.Contains(lower, "yaml") || strings.Contains(lower, "json") {
+		return client.ErrCodeInputError, err.Error(), map[string]any{
+			"category":      "input",
+			"retryable":     false,
+			"suggested_fix": "Check command input/flags and provide valid JSON/YAML payloads.",
+		}
 	}
 
 	// Fallback
-	return client.ErrCodeUnknownError, err.Error(), nil
+	return client.ErrCodeUnknownError, err.Error(), map[string]any{
+		"category":      "unknown",
+		"retryable":     false,
+		"suggested_fix": "Inspect the error details and retry with --verbose for additional context.",
+	}
+}
+
+func defaultSuggestedFixForCode(code string) string {
+	switch code {
+	case client.ErrCodeAuthenticationError, client.ErrCodeAuthRequired:
+		return "Authenticate or refresh credentials, then retry."
+	case client.ErrCodePermissionDenied:
+		return "Use credentials with sufficient privileges for this command."
+	case client.ErrCodeNotFound:
+		return "List resources first and retry with a valid identifier from current output."
+	case client.ErrCodeValidationError, client.ErrCodeInputError:
+		return "Correct the command input and retry."
+	case client.ErrCodeConnectionError:
+		return "Verify URL/network availability and retry."
+	case client.ErrCodeTimeout:
+		return "Retry after Home Assistant is responsive."
+	case client.ErrCodeCancelled:
+		return "Retry the command and confirm the prompt or use --force when appropriate."
+	default:
+		return "Retry with --verbose and inspect command output for additional context."
+	}
+}
+
+func defaultSuggestedCommandsForCode(code string) []string {
+	switch code {
+	case client.ErrCodeAuthenticationError, client.ErrCodeAuthRequired:
+		return []string{"hab auth status --json", "hab auth login"}
+	case client.ErrCodePermissionDenied:
+		return []string{"hab auth status --json"}
+	case client.ErrCodeConnectionError, client.ErrCodeTimeout:
+		return []string{"hab system health --json"}
+	default:
+		return nil
+	}
 }
 
 func init() {
@@ -189,7 +299,7 @@ func boolCompletions(cmd *cobra.Command, args []string, toComplete string) ([]st
 func checkUpdateOnStartup(cmd *cobra.Command) {
 	// Skip for certain commands
 	cmdName := cmd.Name()
-	if cmdName == "update" || cmdName == "version" || cmdName == "help" || cmdName == "guide" {
+	if cmdName == "update" || cmdName == "version" || cmdName == "help" || cmdName == "guide" || cmdName == "schema" {
 		return
 	}
 

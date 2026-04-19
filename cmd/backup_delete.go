@@ -27,8 +27,7 @@ func runBackupDelete(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
 	if !confirmAction(backupDeleteForce, textMode, fmt.Sprintf("Delete backup %s?", backupID)) {
-		fmt.Println("Cancelled.")
-		return nil
+		return cancelledError("delete backup")
 	}
 
 	ws, err := getWSClient()

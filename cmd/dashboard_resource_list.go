@@ -129,6 +129,13 @@ func registerDashResourceList(parentCmd *cobra.Command, cfg DashboardResourceCon
 			return nil
 		},
 	}
+	mergeSchemaAnnotation(listCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: name,
+		InputSources: []string{"args", "flags"},
+	})
 
 	if cfg.HasSectionFlag {
 		listCmd.Flags().IntVarP(&sectionFlag, "section", "s", -1, "Section index (if "+name+"s are in a section)")

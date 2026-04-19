@@ -112,6 +112,10 @@ func confirmAction(force, textMode bool, prompt string) bool {
 	return response == "y" || response == "yes"
 }
 
+func cancelledError(action string) error {
+	return client.NewCancelledError(action)
+}
+
 // ensureDomainPrefix ensures an entity ID has the given domain prefix.
 // If id already starts with "domain.", it is returned unchanged.
 func ensureDomainPrefix(id, domain string) string {
@@ -183,6 +187,10 @@ func RegisterListFlags(cmd *cobra.Command, idField string) *ListFlags {
 	cmd.Flags().BoolVarP(&f.Brief, "brief", "b", false,
 		fmt.Sprintf("Return minimal fields (%s and name only)", idField))
 	cmd.Flags().IntVarP(&f.Limit, "limit", "n", 0, "Limit results to N items")
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		OutputVariants: []string{"count", "brief", "full"},
+		InputSources:   []string{"flags"},
+	})
 	return f
 }
 
@@ -355,6 +363,14 @@ func (f *InputFlags) Register(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.Data, "data", "d", "", "Configuration data as JSON or YAML string")
 	cmd.Flags().StringVarP(&f.File, "file", "f", "", "Path to configuration file")
 	cmd.Flags().StringVar(&f.Format, "format", "", "Input format: json or yaml (auto-detected if not specified)")
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		InputSources: []string{"flags", "data", "file"},
+		FlagConstraints: []SchemaFlagConstraint{{
+			Type:        "one_of",
+			Flags:       []string{"data", "file"},
+			Description: "Use inline data or a file path as the payload source.",
+		}},
+	})
 }
 
 // Parse parses the input data from the flag values, returning a map.

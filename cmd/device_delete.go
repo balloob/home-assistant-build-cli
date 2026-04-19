@@ -27,8 +27,7 @@ func runDeviceDelete(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
 	if !confirmAction(deviceDeleteForce, textMode, fmt.Sprintf("Delete device %s? This will also remove all its entities.", deviceID)) {
-		fmt.Println("Cancelled.")
-		return nil
+		return cancelledError("delete device")
 	}
 
 	ws, err := getWSClient()

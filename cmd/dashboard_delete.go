@@ -28,8 +28,7 @@ func runDashboardDelete(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
 	if !confirmAction(dashboardDeleteForce, textMode, fmt.Sprintf("Delete dashboard %s?", dashboardID)) {
-		fmt.Println("Cancelled.")
-		return nil
+		return cancelledError("delete dashboard")
 	}
 
 	ws, err := getWSClient()

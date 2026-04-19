@@ -34,8 +34,7 @@ func runZoneDelete(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
 	if !confirmAction(zoneDeleteForce, textMode, fmt.Sprintf("Delete zone %s?", zoneID)) {
-		fmt.Println("Cancelled.")
-		return nil
+		return cancelledError("delete zone")
 	}
 
 	ws, err := getWSClient()

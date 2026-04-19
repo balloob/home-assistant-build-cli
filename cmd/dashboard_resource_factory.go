@@ -124,6 +124,12 @@ func RegisterDashboardResourceCRUD(cfg DashboardResourceConfig) {
 		Long:    cfg.LongDesc,
 		GroupID: cfg.GroupID,
 	}
+	mergeSchemaAnnotation(parentCmd, SchemaAnnotation{
+		SideEffect:   "meta",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: name,
+	})
 	cfg.ParentCmd.AddCommand(parentCmd)
 
 	// Register subcommands
@@ -139,7 +145,9 @@ func RegisterDashboardResourceCRUD(cfg DashboardResourceConfig) {
 // ──────────────────────────────────────────────────────────
 
 // fetchDashboardConfig fetches the lovelace config for the given dashboard URL path.
-func fetchDashboardConfig(ws interface{ SendCommand(string, map[string]interface{}) (interface{}, error) }, urlPath string) (map[string]interface{}, error) {
+func fetchDashboardConfig(ws interface {
+	SendCommand(string, map[string]interface{}) (interface{}, error)
+}, urlPath string) (map[string]interface{}, error) {
 	params := map[string]interface{}{}
 	if urlPath != "lovelace" {
 		params["url_path"] = urlPath
@@ -156,7 +164,9 @@ func fetchDashboardConfig(ws interface{ SendCommand(string, map[string]interface
 }
 
 // saveDashboardConfig saves the lovelace config for the given dashboard URL path.
-func saveDashboardConfig(ws interface{ SendCommand(string, map[string]interface{}) (interface{}, error) }, urlPath string, config map[string]interface{}) error {
+func saveDashboardConfig(ws interface {
+	SendCommand(string, map[string]interface{}) (interface{}, error)
+}, urlPath string, config map[string]interface{}) error {
 	saveParams := map[string]interface{}{
 		"config": config,
 	}
@@ -170,7 +180,7 @@ func saveDashboardConfig(ws interface{ SendCommand(string, map[string]interface{
 // confirmDelete prompts for deletion confirmation unless force or textMode is set.
 func confirmDelete(force, textMode bool, description string) error {
 	if !confirmAction(force, textMode, fmt.Sprintf("Are you sure you want to delete %s?", description)) {
-		return fmt.Errorf("deletion cancelled")
+		return cancelledError("delete dashboard resource")
 	}
 	return nil
 }
@@ -263,16 +273,16 @@ func mapItemWithIndex(item interface{}, index int, canBeString bool) map[string]
 
 // dashNavResult holds the navigation state after drilling into the config.
 type dashNavResult struct {
-	Config       map[string]interface{}   // root config
-	Views        []interface{}            // config["views"]
-	ViewIndex    int                      // resolved view index
-	View         map[string]interface{}   // views[viewIndex]
-	Sections     []interface{}            // view["sections"] (if depth >= 3)
-	SectionIndex int                      // resolved section index (if depth >= 3)
-	Section      map[string]interface{}   // sections[sectionIndex] (if depth >= 3)
-	Items        []interface{}            // the target resource array
-	ItemKey      string                   // the key in the parent map (e.g. "views", "badges", "sections", "cards")
-	ParentMap    map[string]interface{}   // the map containing ItemKey
+	Config       map[string]interface{} // root config
+	Views        []interface{}          // config["views"]
+	ViewIndex    int                    // resolved view index
+	View         map[string]interface{} // views[viewIndex]
+	Sections     []interface{}          // view["sections"] (if depth >= 3)
+	SectionIndex int                    // resolved section index (if depth >= 3)
+	Section      map[string]interface{} // sections[sectionIndex] (if depth >= 3)
+	Items        []interface{}          // the target resource array
+	ItemKey      string                 // the key in the parent map (e.g. "views", "badges", "sections", "cards")
+	ParentMap    map[string]interface{} // the map containing ItemKey
 }
 
 // navigateToResourceArray navigates from the root config to the resource array.
@@ -344,7 +354,9 @@ func navigateToResourceArray(config map[string]interface{}, path []string, viewI
 }
 
 // saveBackToConfig writes the items array back through the navigation path and saves.
-func saveBackToConfig(ws interface{ SendCommand(string, map[string]interface{}) (interface{}, error) }, urlPath string, nav *dashNavResult) error {
+func saveBackToConfig(ws interface {
+	SendCommand(string, map[string]interface{}) (interface{}, error)
+}, urlPath string, nav *dashNavResult) error {
 	nav.ParentMap[nav.ItemKey] = nav.Items
 
 	// If depth 1 (views): Items IS the views array, so ParentMap[ItemKey]

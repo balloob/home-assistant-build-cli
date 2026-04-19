@@ -17,10 +17,10 @@ type WebSocketClient struct {
 	Token         string
 	Timeout       time.Duration
 	VerifySSL     bool
-	conn      *websocket.Conn
-	writeMu   sync.Mutex // serialises conn.WriteJSON; gorilla/websocket does not allow concurrent writes
-	messageID atomic.Int64
-	pending   map[int]chan *WSMessage
+	conn          *websocket.Conn
+	writeMu       sync.Mutex // serialises conn.WriteJSON; gorilla/websocket does not allow concurrent writes
+	messageID     atomic.Int64
+	pending       map[int]chan *WSMessage
 	pendingMu     sync.RWMutex
 	subscriptions map[int]func(map[string]interface{})
 	subsMu        sync.RWMutex
@@ -73,9 +73,9 @@ func (c *WebSocketClient) Connect() error {
 	conn, resp, err := dialer.Dial(c.URL, nil)
 	if err != nil {
 		if resp != nil {
-			return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("websocket connection failed (%d): %s", resp.StatusCode, err)}
+			return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("websocket connection failed (%d): %s", resp.StatusCode, err), Category: "connection", Retryable: true, Transport: "websocket", StatusCode: resp.StatusCode, SuggestedFix: "Verify URL reachability and Home Assistant network settings, then retry."}
 		}
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("websocket connection failed: %s", err)}
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("websocket connection failed: %s", err), Category: "connection", Retryable: true, Transport: "websocket", SuggestedFix: "Verify URL reachability and Home Assistant network settings, then retry."}
 	}
 	c.conn = conn
 
@@ -83,11 +83,11 @@ func (c *WebSocketClient) Connect() error {
 	msg, err := c.readMessage()
 	if err != nil {
 		c.conn.Close()
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read auth_required: %s", err)}
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read auth_required: %s", err), Category: "connection", Retryable: true, Transport: "websocket"}
 	}
 	if msg.Type != "auth_required" {
 		c.conn.Close()
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("unexpected message type: %s", msg.Type)}
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("unexpected message type: %s", msg.Type), Category: "protocol", Transport: "websocket"}
 	}
 
 	log.Debug("Received auth_required, sending auth")
@@ -99,14 +99,14 @@ func (c *WebSocketClient) Connect() error {
 	}
 	if err := c.conn.WriteJSON(authMsg); err != nil {
 		c.conn.Close()
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send auth: %s", err)}
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send auth: %s", err), Category: "connection", Retryable: true, Transport: "websocket"}
 	}
 
 	// Read auth result
 	msg, err = c.readMessage()
 	if err != nil {
 		c.conn.Close()
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read auth result: %s", err)}
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read auth result: %s", err), Category: "connection", Retryable: true, Transport: "websocket"}
 	}
 
 	if msg.Type == "auth_invalid" {
@@ -115,11 +115,11 @@ func (c *WebSocketClient) Connect() error {
 		if msg.Error != nil {
 			errMsg = msg.Error.Message
 		}
-		return &APIError{Code: ErrCodeAuthenticationError, Message: errMsg}
+		return &APIError{Code: ErrCodeAuthenticationError, Message: errMsg, Category: "authentication", Retryable: false, Transport: "websocket", SuggestedFix: "Run auth status and login again before retrying WebSocket commands."}
 	}
 	if msg.Type != "auth_ok" {
 		c.conn.Close()
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("unexpected auth response: %s", msg.Type)}
+		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("unexpected auth response: %s", msg.Type), Category: "protocol", Transport: "websocket"}
 	}
 
 	log.Debug("WebSocket authenticated successfully")
@@ -190,8 +190,8 @@ func (c *WebSocketClient) receiveLoop() {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 				return
 			}
-		log.WithError(err).Debug("WebSocket read error")
-		return
+			log.WithError(err).Debug("WebSocket read error")
+			return
 		}
 
 		c.handleMessage(msg)
@@ -282,7 +282,7 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send command: %s", writeErr)}
+		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send command: %s", writeErr), Category: "connection", Retryable: true, Transport: "websocket"}
 	}
 
 	// Wait for response
@@ -292,7 +292,7 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 	select {
 	case resp := <-respCh:
 		if resp == nil {
-			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed"}
+			return nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed", Category: "connection", Retryable: true, Transport: "websocket", SuggestedFix: "Reconnect and retry the command."}
 		}
 		if !resp.Success {
 			return nil, wsResponseError(resp)
@@ -303,7 +303,7 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 		c.pendingMu.Lock()
 		delete(c.pending, msgID)
 		c.pendingMu.Unlock()
-		return nil, &APIError{Code: ErrCodeTimeout, Message: "command timed out"}
+		return nil, &APIError{Code: ErrCodeTimeout, Message: "command timed out", Category: "timeout", Retryable: true, Transport: "websocket", SuggestedFix: "Retry after a short delay or increase timeout for long-running operations."}
 	}
 }
 
@@ -319,7 +319,7 @@ func wsResponseError(resp *WSMessage) *APIError {
 		}
 		errMsg = resp.Error.Message
 	}
-	return &APIError{Code: code, Message: errMsg}
+	return &APIError{Code: code, Message: errMsg, Category: "api", Retryable: false, Transport: "websocket"}
 }
 
 // sendListCommand sends a command and asserts the result is a []interface{}.
@@ -363,5 +363,3 @@ func (c *WebSocketClient) sendDelete(cmdType, idField string, idVal interface{})
 	_, err := c.SendCommand(cmdType, map[string]interface{}{idField: idVal})
 	return err
 }
-
-

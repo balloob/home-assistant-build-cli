@@ -69,6 +69,12 @@ func RegisterSubComponentCRUD(cfg SubComponentConfig) {
 		Long:    fmt.Sprintf("Create, update, list, and delete %s in %s.", cfg.ComponentPlural, addArticle(cfg.ParentName)),
 		GroupID: cfg.GroupID,
 	}
+	mergeSchemaAnnotation(parentCmd, SchemaAnnotation{
+		SideEffect:   "meta",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ComponentPlural,
+	})
 	cfg.ParentCmd.AddCommand(parentCmd)
 
 	registerSubComponentList(parentCmd, cfg)
@@ -151,6 +157,13 @@ func registerSubComponentList(parentCmd *cobra.Command, cfg SubComponentConfig) 
 		Args:  cobra.ExactArgs(1),
 		RunE:  makeSubComponentList(cfg),
 	}
+	mergeSchemaAnnotation(listCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ComponentPlural,
+		InputSources: []string{"args"},
+	})
 	parentCmd.AddCommand(listCmd)
 }
 
@@ -207,6 +220,13 @@ func registerSubComponentGet(parentCmd *cobra.Command, cfg SubComponentConfig) {
 		Args:  cobra.MaximumNArgs(2),
 		RunE:  makeSubComponentGet(cfg, &parentID, &itemIndex),
 	}
+	mergeSchemaAnnotation(getCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ComponentName,
+		InputSources: []string{"args", "flags"},
+	})
 	getCmd.Flags().StringVar(&parentID, cfg.ParentFlagName, "", fmt.Sprintf("%s ID", capitalize(cfg.ParentName)))
 	getCmd.Flags().IntVar(&itemIndex, "index", -1, fmt.Sprintf("%s index", capitalize(cfg.ComponentName)))
 	parentCmd.AddCommand(getCmd)
@@ -276,6 +296,13 @@ func registerSubComponentCreate(parentCmd *cobra.Command, cfg SubComponentConfig
 		Args:  cobra.ExactArgs(1),
 		RunE:  makeSubComponentCreate(cfg, &inputFlags),
 	}
+	mergeSchemaAnnotation(createCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ComponentName,
+		InputSources: []string{"args", "flags", "data", "file"},
+	})
 	inputFlags.Register(createCmd)
 	parentCmd.AddCommand(createCmd)
 }
@@ -336,6 +363,13 @@ func registerSubComponentUpdate(parentCmd *cobra.Command, cfg SubComponentConfig
 		Args:  cobra.ExactArgs(2),
 		RunE:  makeSubComponentUpdate(cfg, &inputFlags),
 	}
+	mergeSchemaAnnotation(updateCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ComponentName,
+		InputSources: []string{"args", "flags", "data", "file"},
+	})
 	inputFlags.Register(updateCmd)
 	parentCmd.AddCommand(updateCmd)
 }
@@ -403,6 +437,13 @@ func registerSubComponentDelete(parentCmd *cobra.Command, cfg SubComponentConfig
 		Args:  cobra.ExactArgs(2),
 		RunE:  makeSubComponentDelete(cfg, &force),
 	}
+	mergeSchemaAnnotation(deleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: cfg.ComponentName,
+		InputSources: []string{"args", "flags"},
+	})
 	deleteCmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation prompt")
 	parentCmd.AddCommand(deleteCmd)
 }
@@ -434,7 +475,7 @@ func makeSubComponentDelete(cfg SubComponentConfig, force *bool) func(*cobra.Com
 		}
 
 		if !confirmAction(*force, textMode, fmt.Sprintf("Are you sure you want to delete %s at index %d?", cfg.ComponentName, idx)) {
-			return fmt.Errorf("deletion cancelled")
+			return cancelledError(fmt.Sprintf("delete %s", cfg.ComponentName))
 		}
 
 		items = append(items[:idx], items[idx+1:]...)
