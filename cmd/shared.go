@@ -331,7 +331,10 @@ func callServiceAction(domain, service, successMsg string, data map[string]inter
 	if _, err := restClient.CallService(domain, service, data); err != nil {
 		return err
 	}
-	output.PrintSuccess(nil, textMode, successMsg)
+	output.PrintSuccessWithContext(nil, textMode, successMsg, output.EnvelopeContext{
+		Operation:    "call_service",
+		ResourceType: domain + "." + service,
+	})
 	return nil
 }
 

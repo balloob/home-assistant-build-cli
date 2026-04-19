@@ -5,6 +5,7 @@ package output
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -27,11 +28,27 @@ const (
 
 // Response represents the standard JSON output format
 type Response struct {
-	Success  bool                   `json:"success"`
-	Data     interface{}            `json:"data,omitempty"`
-	Message  string                 `json:"message,omitempty"`
-	Error    *ErrorDetail           `json:"error,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Success               bool                   `json:"success"`
+	Operation             string                 `json:"operation,omitempty"`
+	ResourceType          string                 `json:"resource_type,omitempty"`
+	Data                  interface{}            `json:"data,omitempty"`
+	Message               string                 `json:"message,omitempty"`
+	Warnings              []string               `json:"warnings,omitempty"`
+	VerificationCommands  []string               `json:"verification_commands,omitempty"`
+	NextSuggestedCommands []string               `json:"next_suggested_commands,omitempty"`
+	Error                 *ErrorDetail           `json:"error,omitempty"`
+	Metadata              map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// EnvelopeContext contains optional machine-readable metadata for JSON responses.
+// These fields are ignored in text mode output.
+type EnvelopeContext struct {
+	Operation             string
+	ResourceType          string
+	Warnings              []string
+	VerificationCommands  []string
+	NextSuggestedCommands []string
+	Metadata              map[string]interface{}
 }
 
 // ErrorDetail contains error information
@@ -43,24 +60,39 @@ type ErrorDetail struct {
 
 // FormatOutput formats data for output
 func FormatOutput(data interface{}, textMode bool, message string) string {
+	return FormatOutputWithContext(data, textMode, message, EnvelopeContext{})
+}
+
+// FormatOutputWithContext formats data for output with optional JSON metadata.
+func FormatOutputWithContext(data interface{}, textMode bool, message string, ctx EnvelopeContext) string {
 	if textMode {
 		return formatText(data, message)
 	}
-	return formatJSON(data, true, message, nil)
+	return formatJSON(data, true, message, nil, ctx)
 }
 
 // FormatSuccess formats a successful response
 func FormatSuccess(data interface{}, message string) string {
-	return formatJSON(data, true, message, nil)
+	return FormatSuccessWithContext(data, message, EnvelopeContext{})
+}
+
+// FormatSuccessWithContext formats a successful JSON response with optional metadata.
+func FormatSuccessWithContext(data interface{}, message string, ctx EnvelopeContext) string {
+	return formatJSON(data, true, message, nil, ctx)
 }
 
 // FormatError formats an error response
 func FormatError(code string, msg string, details map[string]interface{}) string {
+	return FormatErrorWithContext(code, msg, details, EnvelopeContext{})
+}
+
+// FormatErrorWithContext formats an error JSON response with optional metadata.
+func FormatErrorWithContext(code string, msg string, details map[string]interface{}, ctx EnvelopeContext) string {
 	return formatJSON(nil, false, "", &ErrorDetail{
 		Code:    code,
 		Message: msg,
 		Details: details,
-	})
+	}, ctx)
 }
 
 // FormatErrorText formats an error for text output
@@ -72,15 +104,27 @@ func FormatErrorText(msg string, suggestion string) string {
 	return output
 }
 
-func formatJSON(data interface{}, success bool, message string, errDetail *ErrorDetail) string {
+func formatJSON(data interface{}, success bool, message string, errDetail *ErrorDetail, ctx EnvelopeContext) string {
+	metadata := map[string]interface{}{
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}
+	if len(ctx.Metadata) > 0 {
+		for key, value := range maps.Clone(ctx.Metadata) {
+			metadata[key] = value
+		}
+	}
+
 	resp := Response{
-		Success: success,
-		Data:    data,
-		Message: message,
-		Error:   errDetail,
-		Metadata: map[string]interface{}{
-			"timestamp": time.Now().UTC().Format(time.RFC3339),
-		},
+		Success:               success,
+		Operation:             ctx.Operation,
+		ResourceType:          ctx.ResourceType,
+		Data:                  data,
+		Message:               message,
+		Warnings:              ctx.Warnings,
+		VerificationCommands:  ctx.VerificationCommands,
+		NextSuggestedCommands: ctx.NextSuggestedCommands,
+		Error:                 errDetail,
+		Metadata:              metadata,
 	}
 
 	b, err := json.MarshalIndent(resp, "", "  ")
@@ -306,16 +350,26 @@ func getDisplayName(m map[string]interface{}) string {
 // In text mode, it formats data as human-readable text.
 // In JSON mode, it wraps data in a success response envelope.
 func PrintOutput(data interface{}, textMode bool, message string) {
-	output := FormatOutput(data, textMode, message)
+	PrintOutputWithContext(data, textMode, message, EnvelopeContext{})
+}
+
+// PrintOutputWithContext prints formatted output to stdout with optional JSON metadata.
+func PrintOutputWithContext(data interface{}, textMode bool, message string, ctx EnvelopeContext) {
+	output := FormatOutputWithContext(data, textMode, message, ctx)
 	fmt.Println(output)
 }
 
 // PrintSuccess prints a successful response with a message.
 // Behaves identically to PrintOutput — kept for semantic clarity at call sites.
 func PrintSuccess(data interface{}, textMode bool, message string) {
+	PrintSuccessWithContext(data, textMode, message, EnvelopeContext{})
+}
+
+// PrintSuccessWithContext prints a successful response with optional JSON metadata.
+func PrintSuccessWithContext(data interface{}, textMode bool, message string, ctx EnvelopeContext) {
 	if textMode {
 		fmt.Println(formatText(data, message))
 	} else {
-		fmt.Println(FormatSuccess(data, message))
+		fmt.Println(FormatSuccessWithContext(data, message, ctx))
 	}
 }

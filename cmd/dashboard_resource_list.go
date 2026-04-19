@@ -68,7 +68,10 @@ func registerDashResourceList(parentCmd *cobra.Command, cfg DashboardResourceCon
 
 			// For view list, handle nil config specially
 			if depth == 1 && config == nil {
-				output.PrintOutput([]interface{}{}, textMode, "")
+				output.PrintOutputWithContext([]interface{}{}, textMode, "", output.EnvelopeContext{
+					Operation:    "list",
+					ResourceType: name,
+				})
 				return nil
 			}
 			if config == nil {
@@ -79,14 +82,20 @@ func registerDashResourceList(parentCmd *cobra.Command, cfg DashboardResourceCon
 			if depth == 1 {
 				views, ok := config["views"].([]interface{})
 				if !ok {
-					output.PrintOutput([]interface{}{}, textMode, "")
+					output.PrintOutputWithContext([]interface{}{}, textMode, "", output.EnvelopeContext{
+						Operation:    "list",
+						ResourceType: name,
+					})
 					return nil
 				}
 				itemList := make([]map[string]interface{}, len(views))
 				for i, v := range views {
 					itemList[i] = mapItemWithIndex(v, i, false)
 				}
-				output.PrintOutput(itemList, textMode, "")
+				output.PrintOutputWithContext(itemList, textMode, "", output.EnvelopeContext{
+					Operation:    "list",
+					ResourceType: name,
+				})
 				return nil
 			}
 
@@ -101,7 +110,10 @@ func registerDashResourceList(parentCmd *cobra.Command, cfg DashboardResourceCon
 
 			items := nav.Items
 			if items == nil {
-				output.PrintOutput([]interface{}{}, textMode, "")
+				output.PrintOutputWithContext([]interface{}{}, textMode, "", output.EnvelopeContext{
+					Operation:    "list",
+					ResourceType: name,
+				})
 				return nil
 			}
 
@@ -110,7 +122,10 @@ func registerDashResourceList(parentCmd *cobra.Command, cfg DashboardResourceCon
 				itemList[i] = mapItemWithIndex(item, i, cfg.ItemCanBeString)
 			}
 
-			output.PrintOutput(itemList, textMode, "")
+			output.PrintOutputWithContext(itemList, textMode, "", output.EnvelopeContext{
+				Operation:    "list",
+				ResourceType: name,
+			})
 			return nil
 		},
 	}
