@@ -16,6 +16,8 @@ import (
 func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceConfig, depth int) {
 	name := cfg.ResourceName
 	sectionFlag := -1
+	var plan bool
+	var dryRun bool
 
 	var inputFlags InputFlags
 
@@ -81,6 +83,29 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 			}
 
 			textMode := getTextMode()
+
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource":   name,
+						"dashboard":  urlPath,
+						"view_index": viewIndex,
+						"index":      itemIndex,
+					},
+					Steps: []string{
+						"Fetch dashboard configuration via WebSocket.",
+						"Update target resource entry in memory.",
+						"Save updated dashboard using lovelace/config/save.",
+					},
+					VerificationCommands: []string{
+						fmt.Sprintf("hab dashboard %s get %s %d %d --json", name, urlPath, viewIndex, itemIndex),
+					},
+					RequiresConfirmation: false,
+				}, textMode, name)
+				return nil
+			}
+
 			ws, err := getWSClient()
 			if err != nil {
 				return err
@@ -183,6 +208,7 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 	if cfg.HasSectionFlag {
 		updateCmd.Flags().IntVarP(&sectionFlag, "section", "s", -1, "Section index (if "+name+" is in a section)")
 	}
+	registerMutationPlanFlags(updateCmd, &plan, &dryRun)
 
 	parentCmd.AddCommand(updateCmd)
 }

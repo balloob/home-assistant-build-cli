@@ -260,6 +260,8 @@ func registerRegistryCreate(cfg RegistryCRUDConfig) {
 	// Allocate flag storage
 	stringFlags := make(map[string]*string)
 	intFlags := make(map[string]*int)
+	var plan bool
+	var dryRun bool
 
 	createCmd := &cobra.Command{
 		Use:   "create <name>",
@@ -269,14 +271,34 @@ func registerRegistryCreate(cfg RegistryCRUDConfig) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			textMode := getTextMode()
+			params := buildRegistryParams(cmd, cfg.CreateFlags, stringFlags, intFlags)
+
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource": cfg.ResourceName,
+						"name":     name,
+					},
+					Inputs: map[string]any{"params": params},
+					Steps: []string{
+						"Connect to Home Assistant WebSocket API.",
+						fmt.Sprintf("Send %s command with merged name/flag payload.", registryCommandName(cfg.ResourceName, "create")),
+						"Return created resource metadata.",
+					},
+					VerificationCommands: []string{
+						fmt.Sprintf("hab %s list --json", cfg.ResourceName),
+					},
+					RequiresConfirmation: false,
+				}, textMode, cfg.ResourceName)
+				return nil
+			}
 
 			ws, err := getWSClient()
 			if err != nil {
 				return err
 			}
 			defer ws.Close()
-
-			params := buildRegistryParams(cmd, cfg.CreateFlags, stringFlags, intFlags)
 
 			result, err := cfg.CreateFunc(ws, name, params)
 			if err != nil {
@@ -299,6 +321,7 @@ func registerRegistryCreate(cfg RegistryCRUDConfig) {
 	})
 
 	registerRegistryFlags(createCmd, cfg.CreateFlags, stringFlags, intFlags)
+	registerMutationPlanFlags(createCmd, &plan, &dryRun)
 	cfg.ParentCmd.AddCommand(createCmd)
 }
 
@@ -310,6 +333,8 @@ func registerRegistryUpdate(cfg RegistryCRUDConfig) {
 	// Allocate flag storage — includes --name plus custom flags
 	stringFlags := make(map[string]*string)
 	intFlags := make(map[string]*int)
+	var plan bool
+	var dryRun bool
 
 	updateCmd := &cobra.Command{
 		Use:   fmt.Sprintf("update <%s>", cfg.IDField),
@@ -329,6 +354,27 @@ func registerRegistryUpdate(cfg RegistryCRUDConfig) {
 
 			if len(params) == 0 {
 				return fmt.Errorf("no update parameters provided")
+			}
+
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource": cfg.ResourceName,
+						"id":       id,
+					},
+					Inputs: map[string]any{"params": params},
+					Steps: []string{
+						"Connect to Home Assistant WebSocket API.",
+						fmt.Sprintf("Send %s command with provided update payload.", registryCommandName(cfg.ResourceName, "update")),
+						"Return updated resource metadata.",
+					},
+					VerificationCommands: []string{
+						fmt.Sprintf("hab %s get %s --json", cfg.ResourceName, id),
+					},
+					RequiresConfirmation: false,
+				}, textMode, cfg.ResourceName)
+				return nil
 			}
 
 			ws, err := getWSClient()
@@ -363,6 +409,7 @@ func registerRegistryUpdate(cfg RegistryCRUDConfig) {
 	updateCmd.Flags().StringVar(nameVal, "name", "", fmt.Sprintf("New name for the %s", cfg.ResourceName))
 
 	registerRegistryFlags(updateCmd, cfg.UpdateFlags, stringFlags, intFlags)
+	registerMutationPlanFlags(updateCmd, &plan, &dryRun)
 	cfg.ParentCmd.AddCommand(updateCmd)
 }
 
@@ -372,6 +419,8 @@ func registerRegistryUpdate(cfg RegistryCRUDConfig) {
 
 func registerRegistryDelete(cfg RegistryCRUDConfig) {
 	var force bool
+	var plan bool
+	var dryRun bool
 
 	deleteCmd := &cobra.Command{
 		Use:   fmt.Sprintf("delete <%s>", cfg.IDField),
@@ -381,6 +430,29 @@ func registerRegistryDelete(cfg RegistryCRUDConfig) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := args[0]
 			textMode := getTextMode()
+
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource": cfg.ResourceName,
+						"id":       id,
+					},
+					Steps: []string{
+						"Connect to Home Assistant WebSocket API.",
+						fmt.Sprintf("Send %s delete command for the target ID.", registryCommandName(cfg.ResourceName, "delete")),
+						"Return deletion success message.",
+					},
+					Risks: []string{
+						"This operation permanently removes the registry resource.",
+					},
+					RequiresConfirmation: !force,
+					VerificationCommands: []string{
+						fmt.Sprintf("hab %s list --json", cfg.ResourceName),
+					},
+				}, textMode, cfg.ResourceName)
+				return nil
+			}
 
 			if !confirmAction(force, textMode, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id)) {
 				return cancelledError(fmt.Sprintf("delete %s", cfg.ResourceName))
@@ -412,6 +484,7 @@ func registerRegistryDelete(cfg RegistryCRUDConfig) {
 	})
 
 	deleteCmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(deleteCmd, &plan, &dryRun)
 	cfg.ParentCmd.AddCommand(deleteCmd)
 }
 
@@ -451,4 +524,17 @@ func buildRegistryParams(cmd *cobra.Command, defs []RegistryFlagDef, stringFlags
 		}
 	}
 	return params
+}
+
+func registryCommandName(resource, action string) string {
+	switch resource {
+	case "area":
+		return "config/area_registry/" + action
+	case "floor":
+		return "config/floor_registry/" + action
+	case "label":
+		return "config/label_registry/" + action
+	default:
+		return resource + "/" + action
+	}
 }

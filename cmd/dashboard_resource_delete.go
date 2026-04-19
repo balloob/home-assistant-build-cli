@@ -17,6 +17,8 @@ func registerDashResourceDelete(parentCmd *cobra.Command, cfg DashboardResourceC
 	name := cfg.ResourceName
 	sectionFlag := -1
 	var forceFlag bool
+	var plan bool
+	var dryRun bool
 
 	// Same arg count logic as update
 	argCount := depth + 1
@@ -71,6 +73,32 @@ func registerDashResourceDelete(parentCmd *cobra.Command, cfg DashboardResourceC
 			}
 
 			textMode := getTextMode()
+
+			if planRequested(plan, dryRun) {
+				printMutationPlan(MutationPlan{
+					WouldChange: true,
+					Target: map[string]any{
+						"resource":   name,
+						"dashboard":  urlPath,
+						"view_index": viewIndex,
+						"index":      itemIndex,
+					},
+					Steps: []string{
+						"Fetch dashboard configuration via WebSocket.",
+						"Remove target resource entry in memory.",
+						"Save updated dashboard using lovelace/config/save.",
+					},
+					Risks: []string{
+						"This operation permanently removes the selected dashboard resource.",
+					},
+					RequiresConfirmation: !forceFlag,
+					VerificationCommands: []string{
+						fmt.Sprintf("hab dashboard %s list %s --json", name, urlPath),
+					},
+				}, textMode, name)
+				return nil
+			}
+
 			ws, err := getWSClient()
 			if err != nil {
 				return err
@@ -144,6 +172,7 @@ func registerDashResourceDelete(parentCmd *cobra.Command, cfg DashboardResourceC
 	if cfg.HasSectionFlag {
 		deleteCmd.Flags().IntVarP(&sectionFlag, "section", "s", -1, "Section index (if "+name+" is in a section)")
 	}
+	registerMutationPlanFlags(deleteCmd, &plan, &dryRun)
 
 	parentCmd.AddCommand(deleteCmd)
 }
