@@ -26,8 +26,8 @@ func runDeviceDelete(cmd *cobra.Command, args []string) error {
 	deviceID := args[0]
 	textMode := getTextMode()
 
-	if !confirmAction(deviceDeleteForce, textMode, fmt.Sprintf("Delete device %s? This will also remove all its entities.", deviceID)) {
-		return cancelledError("delete device")
+	if err := confirmAction(deviceDeleteForce, fmt.Sprintf("Delete device %s? This will also remove all its entities.", deviceID), "delete device"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -43,6 +43,6 @@ func runDeviceDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Device '%s' deleted.", deviceID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Device '%s' deleted.", deviceID), output.EnvelopeContext{Operation: "delete", ResourceType: "device"})
 	return nil
 }

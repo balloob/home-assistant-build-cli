@@ -18,6 +18,7 @@ var deviceEntitiesCmd = &cobra.Command{
 func init() {
 	deviceCmd.AddCommand(deviceEntitiesCmd)
 	deviceEntitiesCmd.Flags().StringVar(&deviceEntitiesID, "device", "", "Device ID to list entities for")
+	deviceEntitiesCmd.Flags().StringVar(&deviceEntitiesID, "device-id", "", "Alias for --device")
 }
 
 func runDeviceEntities(cmd *cobra.Command, args []string) error {
@@ -53,6 +54,6 @@ func runDeviceEntities(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	output.PrintOutput(result, textMode, "")
+	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "list", ResourceType: "entity"})
 	return nil
 }

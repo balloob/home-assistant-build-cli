@@ -18,12 +18,13 @@ var entityHistoryCmd = &cobra.Command{
 	Example: `  hab entity history sensor.temperature
   hab entity history sensor.temperature -s "2025-01-01T00:00:00Z" -e "2025-01-02T00:00:00Z"`,
 	Args: cobra.MaximumNArgs(1),
-	RunE:  runEntityHistory,
+	RunE: runEntityHistory,
 }
 
 func init() {
 	entityCmd.AddCommand(entityHistoryCmd)
 	entityHistoryCmd.Flags().StringVar(&entityHistoryID, "entity", "", "Entity ID to get history for")
+	entityHistoryCmd.Flags().StringVar(&entityHistoryID, "entity-id", "", "Alias for --entity")
 	entityHistoryCmd.Flags().StringVarP(&entityHistoryStart, "start", "s", "", "Start time (ISO format)")
 	entityHistoryCmd.Flags().StringVarP(&entityHistoryEnd, "end", "e", "", "End time (ISO format)")
 }
@@ -47,9 +48,9 @@ func runEntityHistory(cmd *cobra.Command, args []string) error {
 
 	// Flatten the nested list
 	if len(history) > 0 {
-		output.PrintOutput(history[0], textMode, "")
+		output.PrintOutputWithContext(history[0], textMode, "", output.EnvelopeContext{Operation: "history", ResourceType: "entity"})
 	} else {
-		output.PrintOutput([]interface{}{}, textMode, "")
+		output.PrintOutputWithContext([]interface{}{}, textMode, "", output.EnvelopeContext{Operation: "history", ResourceType: "entity"})
 	}
 	return nil
 }

@@ -18,6 +18,7 @@ var threadGetCmd = &cobra.Command{
 func init() {
 	threadCmd.AddCommand(threadGetCmd)
 	threadGetCmd.Flags().StringVar(&threadGetDatasetID, "dataset", "", "Thread dataset ID to get")
+	threadGetCmd.Flags().StringVar(&threadGetDatasetID, "dataset-id", "", "Alias for --dataset")
 }
 
 func runThreadGet(cmd *cobra.Command, args []string) error {
@@ -40,6 +41,6 @@ func runThreadGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintOutput(result, textMode, "")
+	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "thread_dataset"})
 	return nil
 }

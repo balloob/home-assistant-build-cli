@@ -82,3 +82,14 @@ func TestClassifyCancelledAPIError(t *testing.T) {
 		t.Fatalf("details = %#v, want cancellation category", details)
 	}
 }
+
+func TestClassifyConfirmationRequiredAPIError(t *testing.T) {
+	err := client.NewConfirmationRequiredError("delete area", "Delete area kitchen?")
+	code, _, details := classifyError(err)
+	if code != client.ErrCodeConfirmationRequired {
+		t.Fatalf("code = %q, want %q", code, client.ErrCodeConfirmationRequired)
+	}
+	if details["category"] != "confirmation" {
+		t.Fatalf("details = %#v, want confirmation category", details)
+	}
+}

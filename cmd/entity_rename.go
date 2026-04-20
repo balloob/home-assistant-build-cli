@@ -23,6 +23,7 @@ var entityRenameCmd = &cobra.Command{
 func init() {
 	entityCmd.AddCommand(entityRenameCmd)
 	entityRenameCmd.Flags().StringVar(&entityRenameID, "entity", "", "Entity ID to rename")
+	entityRenameCmd.Flags().StringVar(&entityRenameID, "entity-id", "", "Alias for --entity")
 	entityRenameCmd.Flags().StringVar(&entityRenameName, "name", "", "New friendly name")
 }
 
@@ -50,6 +51,6 @@ func runEntityRename(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Entity renamed to %s.", newName))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Entity renamed to %s.", newName), output.EnvelopeContext{Operation: "rename", ResourceType: "entity"})
 	return nil
 }

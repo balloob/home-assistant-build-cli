@@ -23,6 +23,7 @@ var threadDeleteCmd = &cobra.Command{
 func init() {
 	threadCmd.AddCommand(threadDeleteCmd)
 	threadDeleteCmd.Flags().StringVar(&threadDeleteDatasetID, "dataset", "", "Thread dataset ID to delete")
+	threadDeleteCmd.Flags().StringVar(&threadDeleteDatasetID, "dataset-id", "", "Alias for --dataset")
 	threadDeleteCmd.Flags().BoolVarP(&threadDeleteForce, "force", "f", false, "Skip confirmation")
 }
 
@@ -33,8 +34,8 @@ func runThreadDelete(cmd *cobra.Command, args []string) error {
 	}
 	textMode := getTextMode()
 
-	if !confirmAction(threadDeleteForce, textMode, fmt.Sprintf("Delete Thread dataset %s?", datasetID)) {
-		return cancelledError("delete thread dataset")
+	if err := confirmAction(threadDeleteForce, fmt.Sprintf("Delete Thread dataset %s?", datasetID), "delete thread dataset"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -50,6 +51,6 @@ func runThreadDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Thread dataset %s deleted.", datasetID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Thread dataset %s deleted.", datasetID), output.EnvelopeContext{Operation: "delete", ResourceType: "thread_dataset"})
 	return nil
 }

@@ -41,6 +41,8 @@ func init() {
 	searchCmd.AddCommand(searchRelatedCmd)
 	searchRelatedCmd.Flags().StringVar(&searchRelatedType, "type", "", "Item type (entity, device, area, floor, label, automation, scene, script, config_entry, group)")
 	searchRelatedCmd.Flags().StringVar(&searchRelatedID, "id", "", "Item ID to search for related items")
+	searchRelatedCmd.Flags().StringVar(&searchRelatedType, "item-type", "", "Alias for --type")
+	searchRelatedCmd.Flags().StringVar(&searchRelatedID, "item-id", "", "Alias for --id")
 }
 
 func runSearchRelated(cmd *cobra.Command, args []string) error {
@@ -92,6 +94,6 @@ func runSearchRelated(cmd *cobra.Command, args []string) error {
 		"related":   related,
 	}
 
-	output.PrintOutput(result, textMode, "")
+	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "search_related", ResourceType: itemType})
 	return nil
 }

@@ -8,7 +8,13 @@ import (
 	"maps"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+)
+
+var (
+	defaultMetadataMu       sync.RWMutex
+	defaultMetadataProvider func() map[string]interface{}
 )
 
 // Text-mode table formatting limits. These keep terminal output readable
@@ -108,6 +114,14 @@ func formatJSON(data interface{}, success bool, message string, errDetail *Error
 	metadata := map[string]interface{}{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
+	defaultMetadataMu.RLock()
+	provider := defaultMetadataProvider
+	defaultMetadataMu.RUnlock()
+	if provider != nil {
+		for key, value := range provider() {
+			metadata[key] = value
+		}
+	}
 	if len(ctx.Metadata) > 0 {
 		for key, value := range maps.Clone(ctx.Metadata) {
 			metadata[key] = value
@@ -132,6 +146,14 @@ func formatJSON(data interface{}, success bool, message string, errDetail *Error
 		return fmt.Sprintf(`{"success": false, "error": {"code": "MARSHAL_ERROR", "message": %q}}`, err.Error())
 	}
 	return string(b)
+}
+
+// SetDefaultMetadataProvider configures process-wide JSON metadata that will be
+// merged into every response envelope before command-specific metadata.
+func SetDefaultMetadataProvider(provider func() map[string]interface{}) {
+	defaultMetadataMu.Lock()
+	defer defaultMetadataMu.Unlock()
+	defaultMetadataProvider = provider
 }
 
 func formatText(data interface{}, message string) string {

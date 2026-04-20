@@ -24,6 +24,7 @@ var automationTraceCmd = &cobra.Command{
 func init() {
 	automationCmd.AddCommand(automationTraceCmd)
 	automationTraceCmd.Flags().StringVar(&automationTraceID, "automation", "", "Automation ID to get traces for")
+	automationTraceCmd.Flags().StringVar(&automationTraceID, "automation-id", "", "Alias for --automation")
 	automationTraceCmd.Flags().StringVar(&automationTraceRunID, "run-id", "", "Specific run ID to get trace for")
 }
 
@@ -61,6 +62,6 @@ func runAutomationTrace(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintOutput(result, textMode, "")
+	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "trace", ResourceType: "automation"})
 	return nil
 }

@@ -23,6 +23,7 @@ var threadAddCmd = &cobra.Command{
 func init() {
 	threadCmd.AddCommand(threadAddCmd)
 	threadAddCmd.Flags().StringVar(&threadAddTLV, "tlv", "", "Thread operational dataset TLV")
+	threadAddCmd.Flags().StringVar(&threadAddTLV, "dataset-tlv", "", "Alias for --tlv")
 	threadAddCmd.Flags().StringVar(&threadAddSource, "source", "CLI", "Source identifier for the dataset")
 }
 
@@ -47,6 +48,6 @@ func runThreadAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Thread dataset added."))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Thread dataset added."), output.EnvelopeContext{Operation: "create", ResourceType: "thread_dataset"})
 	return nil
 }

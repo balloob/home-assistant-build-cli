@@ -20,6 +20,7 @@ var threadSetPreferredCmd = &cobra.Command{
 func init() {
 	threadCmd.AddCommand(threadSetPreferredCmd)
 	threadSetPreferredCmd.Flags().StringVar(&threadSetPreferredDatasetID, "dataset", "", "Thread dataset ID to set as preferred")
+	threadSetPreferredCmd.Flags().StringVar(&threadSetPreferredDatasetID, "dataset-id", "", "Alias for --dataset")
 }
 
 func runThreadSetPreferred(cmd *cobra.Command, args []string) error {
@@ -42,6 +43,6 @@ func runThreadSetPreferred(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Thread dataset %s set as preferred.", datasetID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Thread dataset %s set as preferred.", datasetID), output.EnvelopeContext{Operation: "set_preferred", ResourceType: "thread_dataset"})
 	return nil
 }

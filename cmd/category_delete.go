@@ -37,8 +37,8 @@ func runCategoryDelete(cmd *cobra.Command, args []string) error {
 	}
 	textMode := getTextMode()
 
-	if !confirmAction(categoryDeleteForce, textMode, fmt.Sprintf("Delete category %s from scope %s?", categoryID, categoryDeleteScope)) {
-		return cancelledError("delete category")
+	if err := confirmAction(categoryDeleteForce, fmt.Sprintf("Delete category %s from scope %s?", categoryID, categoryDeleteScope), "delete category"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -51,6 +51,6 @@ func runCategoryDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Category '%s' deleted.", categoryID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Category '%s' deleted.", categoryID), output.EnvelopeContext{Operation: "delete", ResourceType: "category"})
 	return nil
 }

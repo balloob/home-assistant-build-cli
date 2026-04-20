@@ -26,6 +26,7 @@ type Credentials struct {
 	AccessToken  string  `json:"access_token,omitempty"`
 	RefreshToken string  `json:"refresh_token,omitempty"`
 	TokenExpiry  float64 `json:"token_expiry,omitempty"`
+	Source       string  `json:"-"`
 }
 
 // IsOAuth returns true if using OAuth authentication
@@ -71,6 +72,7 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 		return &Credentials{
 			URL:         envURL,
 			AccessToken: envToken,
+			Source:      "env_token",
 		}, nil
 	}
 
@@ -80,6 +82,7 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 		return &Credentials{
 			URL:          envURL,
 			RefreshToken: envRefresh,
+			Source:       "env_refresh_token",
 		}, nil
 	}
 
@@ -106,6 +109,7 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 			return nil, err
 		}
 
+		creds.Source = "credentials_file"
 		return &creds, nil
 	}
 
@@ -114,6 +118,7 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 		return &Credentials{
 			URL:         SupervisorURL,
 			AccessToken: token,
+			Source:      "supervisor",
 		}, nil
 	}
 

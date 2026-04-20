@@ -27,8 +27,8 @@ func runBlueprintDelete(cmd *cobra.Command, args []string) error {
 	domain, _ := cmd.Flags().GetString("domain")
 	force, _ := cmd.Flags().GetBool("force")
 
-	if !confirmAction(force, textMode, fmt.Sprintf("Delete blueprint %s?", path)) {
-		return cancelledError("delete blueprint")
+	if err := confirmAction(force, fmt.Sprintf("Delete blueprint %s?", path), "delete blueprint"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -45,6 +45,6 @@ func runBlueprintDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Blueprint %s deleted successfully.", path))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Blueprint %s deleted successfully.", path), output.EnvelopeContext{Operation: "delete", ResourceType: "blueprint"})
 	return nil
 }

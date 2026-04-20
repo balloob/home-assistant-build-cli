@@ -56,6 +56,7 @@ func (m *Manager) GetCredentials() (*Credentials, error) {
 		if err != nil {
 			return nil, fmt.Errorf("token refresh failed: %w", err)
 		}
+		newCreds.Source = creds.Source
 		m.credentials = newCreds
 		if err := SaveCredentials(newCreds, m.ConfigDir); err != nil {
 			// Log warning but continue with refreshed credentials in memory
@@ -92,6 +93,7 @@ func (m *Manager) RefreshToken() error {
 	if err != nil {
 		return err
 	}
+	newCreds.Source = creds.Source
 
 	m.credentials = newCreds
 	return SaveCredentials(newCreds, m.ConfigDir)
@@ -127,10 +129,11 @@ func (m *Manager) GetAuthStatus() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"authenticated": true,
-		"url":           creds.URL,
-		"auth_type":     authType,
-		"token_expiry":  creds.TokenExpiry,
+		"authenticated":     true,
+		"url":               creds.URL,
+		"auth_type":         authType,
+		"credential_source": creds.Source,
+		"token_expiry":      creds.TokenExpiry,
 	}
 }
 

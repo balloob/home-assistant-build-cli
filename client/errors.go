@@ -21,12 +21,13 @@ const (
 	ErrCodeAPIError            = "API_ERROR"
 
 	// Centralized handler codes
-	ErrCodeAuthRequired    = "AUTH_REQUIRED"    // auth.ErrNotAuthenticated sentinel
-	ErrCodeConnectionError = "CONNECTION_ERROR" // websocket/network failures
-	ErrCodeTimeout         = "TIMEOUT"          // command timed out
-	ErrCodeCancelled       = "CANCELLED"        // user cancelled (e.g. deletion prompt)
-	ErrCodeInputError      = "INPUT_ERROR"      // invalid JSON/YAML input, parse failures
-	ErrCodeUnknownError    = "UNKNOWN_ERROR"    // fallback for unclassified errors
+	ErrCodeAuthRequired         = "AUTH_REQUIRED"         // auth.ErrNotAuthenticated sentinel
+	ErrCodeConnectionError      = "CONNECTION_ERROR"      // websocket/network failures
+	ErrCodeTimeout              = "TIMEOUT"               // command timed out
+	ErrCodeCancelled            = "CANCELLED"             // user cancelled (e.g. deletion prompt)
+	ErrCodeConfirmationRequired = "CONFIRMATION_REQUIRED" // non-interactive destructive command without --force
+	ErrCodeInputError           = "INPUT_ERROR"           // invalid JSON/YAML input, parse failures
+	ErrCodeUnknownError         = "UNKNOWN_ERROR"         // fallback for unclassified errors
 )
 
 // APIError represents a structured API error with a machine-readable code
@@ -117,5 +118,25 @@ func NewCancelledError(action string) *APIError {
 		Category:     "cancellation",
 		Retryable:    true,
 		SuggestedFix: "Re-run the command and confirm the prompt, or use --force when you explicitly want to skip confirmation.",
+	}
+}
+
+// NewConfirmationRequiredError returns a standardized error for destructive
+// commands that cannot prompt in non-interactive mode.
+func NewConfirmationRequiredError(action, prompt string) *APIError {
+	details := map[string]any{}
+	if action != "" {
+		details["action"] = action
+	}
+	if prompt != "" {
+		details["prompt"] = prompt
+	}
+	return &APIError{
+		Code:         ErrCodeConfirmationRequired,
+		Message:      "Confirmation required in non-interactive mode.",
+		Details:      details,
+		Category:     "confirmation",
+		Retryable:    true,
+		SuggestedFix: "Re-run the command with --force if you have already validated the target, or run it interactively to confirm the prompt.",
 	}
 }

@@ -78,7 +78,9 @@ Use --scope to override for ambiguous cases.`,
 func init() {
 	categoryCmd.AddCommand(categoryAssignCmd)
 	categoryAssignCmd.Flags().StringVar(&categoryAssignCategoryID, "category", "", "Category ID to assign")
+	categoryAssignCmd.Flags().StringVar(&categoryAssignCategoryID, "category-id", "", "Alias for --category")
 	categoryAssignCmd.Flags().StringVar(&categoryAssignEntityID, "entity", "", "Entity ID to assign the category to")
+	categoryAssignCmd.Flags().StringVar(&categoryAssignEntityID, "entity-id", "", "Alias for --entity")
 	categoryAssignCmd.Flags().StringVar(&categoryAssignScope, "scope", "", "Override scope: automation, script, scene, helpers")
 }
 
@@ -96,6 +98,9 @@ func runCategoryAssign(cmd *cobra.Command, args []string) error {
 	scope := categoryAssignScope
 	if scope == "" {
 		scope = inferCategoryScope(entityID)
+		noteResolution("category_scope", "inferred")
+	} else {
+		noteResolution("category_scope", "flag")
 	}
 	if scope == "" {
 		return fmt.Errorf("cannot infer scope from entity_id '%s'. Use --scope to specify: automation, script, scene, helpers", entityID)
@@ -120,6 +125,6 @@ func runCategoryAssign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Category '%s' assigned to '%s' (scope: %s).", categoryID, entityID, scope))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Category '%s' assigned to '%s' (scope: %s).", categoryID, entityID, scope), output.EnvelopeContext{Operation: "assign", ResourceType: "category"})
 	return nil
 }

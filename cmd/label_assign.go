@@ -22,7 +22,9 @@ var labelAssignCmd = &cobra.Command{
 func init() {
 	labelCmd.AddCommand(labelAssignCmd)
 	labelAssignCmd.Flags().StringVar(&labelAssignLabelID, "label", "", "Label ID to assign")
+	labelAssignCmd.Flags().StringVar(&labelAssignLabelID, "label-id", "", "Alias for --label")
 	labelAssignCmd.Flags().StringVar(&labelAssignEntityID, "entity", "", "Entity ID to assign the label to")
+	labelAssignCmd.Flags().StringVar(&labelAssignEntityID, "entity-id", "", "Alias for --entity")
 }
 
 func runLabelAssign(cmd *cobra.Command, args []string) error {

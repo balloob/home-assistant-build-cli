@@ -47,9 +47,19 @@ func getESPHomeClient() (client.ESPHomeAPI, error) {
 	token := creds.AccessToken
 	if t := os.Getenv("HAB_ESPHOME_TOKEN"); t != "" {
 		token = t
+		noteResolution("esphome_token_source", "HAB_ESPHOME_TOKEN")
 	} else if t := os.Getenv("HA_ACCESS_TOKEN"); t != "" {
 		token = t
+		noteResolution("esphome_token_source", "HA_ACCESS_TOKEN")
+	} else {
+		noteResolution("esphome_token_source", "home_assistant_credentials")
 	}
+	if esphomeURL != "" {
+		noteResolution("esphome_url_source", "HAB_ESPHOME_URL")
+	} else {
+		noteResolution("esphome_url_source", "auto_discovery")
+	}
+	noteTransport("esphome")
 
 	return client.GetESPHomeClient(esphomeURL, esphomeSession, creds.URL, token)
 }
@@ -98,10 +108,15 @@ func streamToOutput(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[stri
 }
 
 func resolveESPHomeConfiguration(args []string, index int) (string, error) {
+	if esphomeDevice != "" && len(args) > index && esphomeDevice != args[index] {
+		return "", fmt.Errorf("conflicting configuration values: positional %q does not match --device value %q", args[index], esphomeDevice)
+	}
 	if esphomeDevice != "" {
+		noteResolution("esphome_configuration", "flag")
 		return esphomeDevice, nil
 	}
 	if len(args) > index {
+		noteResolution("esphome_configuration", "positional")
 		return args[index], nil
 	}
 
@@ -110,6 +125,7 @@ func resolveESPHomeConfiguration(args []string, index int) (string, error) {
 		return "", fmt.Errorf("load ESPHome context: %w", err)
 	}
 	if ctx != nil && ctx.Configuration != "" {
+		noteResolution("esphome_configuration", "saved_context")
 		return ctx.Configuration, nil
 	}
 
