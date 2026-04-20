@@ -27,6 +27,15 @@ If you are driving `hab` from an LLM or automation, start with:
 ```bash
 hab guide
 hab guide list --json
+hab schema overview --json
+hab capability probe --json
+```
+
+For write workflows, prefer inspecting the command contract and previewing the mutation first:
+
+```bash
+hab schema area create --json
+hab area create "Kitchen" --plan --json
 ```
 
 ### Authentication
@@ -293,11 +302,15 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 ## Features
 
 - **Hierarchical Help**: Top-level `--help` shows command groups, not all sub-commands
-- **Text Output**: Human-readable text output by default
-- **JSON Mode**: Machine-parseable JSON with `--json` flag
+- **Adaptive Output Mode**: Interactive sessions default to text; non-interactive sessions default to JSON
+- **Structured JSON Envelopes**: Machine-parseable JSON with consistent response metadata, warnings, and partial-result signaling
+- **Schema Introspection**: `hab schema` exposes command arguments, flags, side effects, capabilities, and output contracts
+- **Capability Probing**: `hab capability probe --json` reports available runtime features before you choose a workflow
+- **Mutation Planning**: `--plan` / `--dry-run` previews supported mutations without applying changes
 - **OAuth Support**: Full OAuth2 flow for authentication
 - **WebSocket & REST**: Uses both APIs for optimal functionality
 - **Auto-Update**: Checks for updates automatically and supports self-updating via `hab update`
+- **Guide Recipes**: `hab guide --json` exposes workflow metadata and machine-readable recipe steps for LLM-driven execution
 - **ESPHome Workflows**: Create, scaffold, validate, build, upload, and manage ESPHome devices via the dashboard API; includes catalog browsing, config patching with rollback, saved device context, structured validation, serial recovery helpers, and Tasmota template migration
 
 ## Commands
@@ -329,7 +342,9 @@ Some ESPHome commands (`build`, `validate`, `run`, `upload`, `logs`) stream outp
 | `diagnostics` | Inspect diagnostics handlers |
 | `network` | Manage network settings |
 | `calendar` | Manage calendar events (includes `create` and `delete` subcommands) |
+| `capability` | Probe runtime capabilities and supported workflow surfaces |
 | `blueprint` | Manage blueprints |
+| `schema` | Show machine-readable command and output contracts |
 | `system` | System operations |
 | `device` | Device management |
 | `thread` | Manage Thread credentials |
@@ -380,12 +395,39 @@ hab guide discovery --json
 hab guide operations --json
 ```
 
+Guide JSON now includes workflow recipes with capability requirements, executable command templates, verification steps, and recovery paths.
+
+## Schema, Capabilities, and Planning
+
+Use `hab schema` to inspect how a command should be called and what it returns:
+
+```bash
+hab schema entity get --json
+hab schema dashboard card create --json
+hab schema esphome logs --json
+```
+
+Use `hab capability probe` to check whether the current Home Assistant environment supports a workflow before running it:
+
+```bash
+hab capability probe --json
+```
+
+For supported mutations, use `--plan` (or `--dry-run`) to preview what will happen before changing anything:
+
+```bash
+hab area create "Kitchen" --plan --json
+hab dashboard card create my-dashboard 0 --plan --json
+hab helper input-boolean create "Presence" --plan --json
+```
+
 ## Output Format
 
-By default, all commands output human-readable text. Use `--json` for machine-parseable JSON:
+Interactive sessions default to human-readable text. Non-interactive sessions default to JSON. Use `--json` or `--text` to override the default explicitly:
 
 ```bash
 hab entity get light.living_room --json
+hab entity get light.living_room --text
 ```
 
 JSON output uses a standard envelope:
@@ -393,12 +435,22 @@ JSON output uses a standard envelope:
 ```json
 {
   "success": true,
+  "operation": "get",
+  "resource_type": "entity",
   "data": { ... },
+  "partial_result": false,
+  "warnings": [],
+  "fallbacks_applied": [],
+  "missing_sections": [],
   "metadata": {
     "timestamp": "2024-01-15T10:30:00Z"
   }
 }
 ```
+
+When a command degrades gracefully or omits requested data, it will set `partial_result` and populate `warnings`, `fallbacks_applied`, and `missing_sections` so agents can react safely.
+
+See `LLM_CONTRACTS.md` for the canonical machine-facing contract definitions used by `hab schema`, guide recipes, and JSON envelopes.
 
 ## Input Formats
 
