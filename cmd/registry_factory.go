@@ -159,6 +159,11 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 		OutputMode:   "json_envelope",
 		Capabilities: []string{"auth", "ws"},
 		ResourceType: cfg.ResourceName,
+		GuideTopic:   "registry",
+		OutputContract: func() *SchemaOutputContract {
+			contract := registryListOutputContract(cfg.ResourceName, cfg.IDField)
+			return &contract
+		}(),
 	})
 
 	// Register standard list flags
@@ -245,6 +250,11 @@ func registerRegistryGet(cfg RegistryCRUDConfig) {
 		OutputMode:   "json_envelope",
 		Capabilities: []string{"auth", "ws"},
 		ResourceType: cfg.ResourceName,
+		GuideTopic:   "registry",
+		OutputContract: func() *SchemaOutputContract {
+			contract := registryGetOutputContract(cfg.ResourceName, cfg.IDField)
+			return &contract
+		}(),
 	})
 
 	getCmd.Flags().StringVar(&idFlag, cfg.IDFlagName, "", fmt.Sprintf("%s ID to get", capitalize(cfg.ResourceName)))
@@ -321,6 +331,7 @@ func registerRegistryCreate(cfg RegistryCRUDConfig) {
 		Capabilities: []string{"auth", "ws"},
 		ResourceType: cfg.ResourceName,
 		InputSources: []string{"args", "flags"},
+		GuideTopic:   "registry",
 	})
 
 	registerRegistryFlags(createCmd, cfg.CreateFlags, stringFlags, intFlags)
@@ -404,6 +415,7 @@ func registerRegistryUpdate(cfg RegistryCRUDConfig) {
 		Capabilities: []string{"auth", "ws"},
 		ResourceType: cfg.ResourceName,
 		InputSources: []string{"args", "flags"},
+		GuideTopic:   "registry",
 	})
 
 	// Always add --name for update
@@ -484,6 +496,7 @@ func registerRegistryDelete(cfg RegistryCRUDConfig) {
 		Capabilities: []string{"auth", "ws"},
 		ResourceType: cfg.ResourceName,
 		InputSources: []string{"args", "flags"},
+		GuideTopic:   "registry",
 	})
 
 	deleteCmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation")
