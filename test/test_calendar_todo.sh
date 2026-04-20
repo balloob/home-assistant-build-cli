@@ -187,7 +187,7 @@ run_calendar_todo_tests() {
                     fi
 
                     log_test "todo remove"
-                    OUTPUT=$(run_hab todo remove "$TODO_ENTITY" "$ITEM_UID")
+                    OUTPUT=$(run_hab todo remove "$TODO_ENTITY" "$ITEM_UID" --force)
                     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
                         pass "todo remove"
                     else
