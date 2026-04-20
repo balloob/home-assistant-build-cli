@@ -135,9 +135,14 @@ func buildSchemaTree(cmd *cobra.Command) schemaCommand {
 		args = parseUseArgs(cmd.Use)
 	}
 
+	resourceType := ann.ResourceType
+	if resourceType == "" {
+		resourceType = inferredResourceType(cmd)
+	}
+
 	outputContract := ann.OutputContract
 	if outputContract == nil {
-		contract := inferOutputContract(path, cmd, ann, sideEffect, outputMode)
+		contract := inferOutputContract(path, cmd, ann, sideEffect, outputMode, resourceType)
 		outputContract = &contract
 	}
 
@@ -156,7 +161,7 @@ func buildSchemaTree(cmd *cobra.Command) schemaCommand {
 		OutputVariants:  slices.Clone(ann.OutputVariants),
 		Capabilities:    capabilities,
 		InputSources:    inputSources,
-		ResourceType:    ann.ResourceType,
+		ResourceType:    resourceType,
 		Args:            args,
 		FlagConstraints: slices.Clone(ann.FlagConstraints),
 		GuideTopic:      ann.GuideTopic,
@@ -322,10 +327,9 @@ func inferCapabilities(path string) []string {
 	return []string{"auth"}
 }
 
-func inferOutputContract(path string, cmd *cobra.Command, ann SchemaAnnotation, sideEffect, outputMode string) SchemaOutputContract {
-	resourceType := ann.ResourceType
+func inferOutputContract(path string, cmd *cobra.Command, ann SchemaAnnotation, sideEffect, outputMode, resourceType string) SchemaOutputContract {
 	if resourceType == "" {
-		resourceType = cmd.Name()
+		resourceType = inferredResourceType(cmd)
 	}
 	baseSuccess := baseEnvelopeContract(resourceType, outputMode, true)
 	baseError := baseEnvelopeContract(resourceType, outputMode, false)
@@ -363,6 +367,14 @@ func inferOutputContract(path string, cmd *cobra.Command, ann SchemaAnnotation, 
 		}
 	}
 	return contract
+}
+
+func inferredResourceType(cmd *cobra.Command) string {
+	resourceType := defaultResourceTypeForCommand(cmd)
+	if resourceType == "" {
+		resourceType = cmd.Name()
+	}
+	return resourceType
 }
 
 func defaultVariantNames(path string, cmd *cobra.Command, sideEffect, outputMode string) []string {

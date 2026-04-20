@@ -10,6 +10,8 @@ import (
 var (
 	threadDeleteForce     bool
 	threadDeleteDatasetID string
+	threadDeletePlan      bool
+	threadDeleteDryRun    bool
 )
 
 var threadDeleteCmd = &cobra.Command{
@@ -25,6 +27,14 @@ func init() {
 	threadDeleteCmd.Flags().StringVar(&threadDeleteDatasetID, "dataset", "", "Thread dataset ID to delete")
 	threadDeleteCmd.Flags().StringVar(&threadDeleteDatasetID, "dataset-id", "", "Alias for --dataset")
 	threadDeleteCmd.Flags().BoolVarP(&threadDeleteForce, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(threadDeleteCmd, &threadDeletePlan, &threadDeleteDryRun)
+	mergeSchemaAnnotation(threadDeleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "thread_dataset",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runThreadDelete(cmd *cobra.Command, args []string) error {
@@ -33,6 +43,29 @@ func runThreadDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	textMode := getTextMode()
+
+	if planRequested(threadDeletePlan, threadDeleteDryRun) {
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource":   "thread_dataset",
+				"dataset_id": datasetID,
+			},
+			Steps: []string{
+				"Connect to Home Assistant WebSocket API.",
+				"Send thread/delete_dataset command with the selected dataset ID.",
+				"Return deletion confirmation.",
+			},
+			Risks: []string{
+				"Deleting a Thread dataset may disrupt border router network configuration.",
+			},
+			RequiresConfirmation: !threadDeleteForce,
+			VerificationCommands: []string{
+				"hab thread list --json",
+			},
+		}, textMode, "thread_dataset")
+		return nil
+	}
 
 	if err := confirmAction(threadDeleteForce, fmt.Sprintf("Delete Thread dataset %s?", datasetID), "delete thread dataset"); err != nil {
 		return err

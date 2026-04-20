@@ -16,6 +16,8 @@ var (
 	esphomeSerialTool    string
 	esphomeSerialTimeout time.Duration
 	esphomeSerialForce   bool
+	esphomeSerialPlan    bool
+	esphomeSerialDryRun  bool
 )
 
 var esphomeSerialCmd = &cobra.Command{
@@ -39,7 +41,7 @@ var esphomeSerialPortsCmd = &cobra.Command{
 			return err
 		}
 
-		output.PrintOutput(ports, textMode, "")
+		output.PrintOutputWithContext(ports, textMode, "", output.EnvelopeContext{Operation: "list", ResourceType: "serial_port"})
 		return nil
 	},
 }
@@ -65,12 +67,12 @@ var esphomeSerialProbeCmd = &cobra.Command{
 			return err
 		}
 
-		output.PrintOutput(map[string]any{
+		output.PrintOutputWithContext(map[string]any{
 			"operation": "probe",
 			"port":      esphomeSerialPort,
 			"chip":      esphomeSerialChip,
 			"result":    result,
-		}, textMode, "")
+		}, textMode, "", output.EnvelopeContext{Operation: "probe", ResourceType: "esphome_serial"})
 		return nil
 	},
 }
@@ -83,6 +85,33 @@ var esphomeSerialEraseCmd = &cobra.Command{
 			return fmt.Errorf("--port is required")
 		}
 		textMode := getTextMode()
+		if planRequested(esphomeSerialPlan, esphomeSerialDryRun) {
+			printMutationPlan(MutationPlan{
+				WouldChange: true,
+				Target: map[string]any{
+					"resource":  "esphome_serial",
+					"operation": "erase_flash",
+					"port":      esphomeSerialPort,
+					"chip":      esphomeSerialChip,
+				},
+				Inputs: map[string]any{
+					"tool":    esphomeSerialTool,
+					"timeout": esphomeSerialTimeout.String(),
+				},
+				Steps: []string{
+					"Run esptool erase-flash against the selected serial port.",
+					"Return erase-flash command output.",
+				},
+				Risks: []string{
+					"This operation erases firmware/configuration from the ESPHome device.",
+				},
+				RequiresConfirmation: !esphomeSerialForce,
+				VerificationCommands: []string{
+					"hab esphome serial probe --port <port>",
+				},
+			}, textMode, "esphome_serial")
+			return nil
+		}
 		if err := confirmAction(esphomeSerialForce, fmt.Sprintf("Erase flash on %s?", esphomeSerialPort), "erase ESPHome device flash"); err != nil {
 			return err
 		}
@@ -99,12 +128,12 @@ var esphomeSerialEraseCmd = &cobra.Command{
 			return err
 		}
 
-		output.PrintOutput(map[string]any{
+		output.PrintOutputWithContext(map[string]any{
 			"operation": "erase_flash",
 			"port":      esphomeSerialPort,
 			"chip":      esphomeSerialChip,
 			"result":    result,
-		}, textMode, "")
+		}, textMode, "", output.EnvelopeContext{Operation: "erase_flash", ResourceType: "esphome_serial"})
 		return nil
 	},
 }
@@ -115,6 +144,27 @@ func init() {
 	esphomeSerialCmd.AddCommand(esphomeSerialProbeCmd)
 	esphomeSerialCmd.AddCommand(esphomeSerialEraseCmd)
 
+	mergeSchemaAnnotation(esphomeSerialPortsCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"local", "esphome"},
+		ResourceType: "serial_port",
+	})
+	mergeSchemaAnnotation(esphomeSerialProbeCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"local", "esphome"},
+		ResourceType: "esphome_serial",
+		InputSources: []string{"flags"},
+	})
+	mergeSchemaAnnotation(esphomeSerialEraseCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"local", "esphome"},
+		ResourceType: "esphome_serial",
+		InputSources: []string{"flags"},
+	})
+
 	for _, serialCmd := range []*cobra.Command{esphomeSerialProbeCmd, esphomeSerialEraseCmd} {
 		serialCmd.Flags().StringVar(&esphomeSerialPort, "port", "", "Serial port path (e.g. /dev/ttyUSB0 or COM3)")
 		serialCmd.Flags().StringVar(&esphomeSerialChip, "chip", "auto", "Target chip (auto, esp8266, esp32, esp32s2, esp32s3, esp32c3, esp32c6, esp32h2)")
@@ -123,4 +173,5 @@ func init() {
 	}
 
 	esphomeSerialEraseCmd.Flags().BoolVar(&esphomeSerialForce, "force", false, "Skip erase confirmation")
+	registerMutationPlanFlags(esphomeSerialEraseCmd, &esphomeSerialPlan, &esphomeSerialDryRun)
 }

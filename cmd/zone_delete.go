@@ -10,6 +10,8 @@ import (
 var (
 	zoneDeleteForce bool
 	zoneDeleteID    string
+	zoneDeletePlan  bool
+	zoneDeleteDry   bool
 )
 
 var zoneDeleteCmd = &cobra.Command{
@@ -25,6 +27,14 @@ func init() {
 	zoneDeleteCmd.Flags().StringVar(&zoneDeleteID, "zone", "", "Zone ID to delete")
 	zoneDeleteCmd.Flags().StringVar(&zoneDeleteID, "zone-id", "", "Alias for --zone")
 	zoneDeleteCmd.Flags().BoolVarP(&zoneDeleteForce, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(zoneDeleteCmd, &zoneDeletePlan, &zoneDeleteDry)
+	mergeSchemaAnnotation(zoneDeleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "zone",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runZoneDelete(cmd *cobra.Command, args []string) error {
@@ -33,6 +43,29 @@ func runZoneDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	textMode := getTextMode()
+
+	if planRequested(zoneDeletePlan, zoneDeleteDry) {
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource": "zone",
+				"zone_id":  zoneID,
+			},
+			Steps: []string{
+				"Connect to Home Assistant WebSocket API.",
+				"Send zone delete command for the selected zone ID.",
+				"Return deletion confirmation.",
+			},
+			Risks: []string{
+				"Deleting a zone may impact location-based automations.",
+			},
+			RequiresConfirmation: !zoneDeleteForce,
+			VerificationCommands: []string{
+				"hab zone list --json",
+			},
+		}, textMode, "zone")
+		return nil
+	}
 
 	if err := confirmAction(zoneDeleteForce, fmt.Sprintf("Delete zone %s?", zoneID), "delete zone"); err != nil {
 		return err
