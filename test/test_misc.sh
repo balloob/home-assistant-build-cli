@@ -423,15 +423,23 @@ run_misc_tests() {
     log_test "thread list"
     pass "thread list (skipped - not supported by empty-hass)"
 
-    # Test: overview command
-    log_test "overview"
-    OUTPUT=$(run_hab overview)
-    if echo "$OUTPUT" | jq -e '.success == true and .data.entities != null' > /dev/null 2>&1; then
-        ENTITIES=$(echo "$OUTPUT" | jq '.data.entities')
-        pass "overview (entities: $ENTITIES)"
-    else
-        fail "overview: $OUTPUT"
-    fi
+	# Test: overview command
+	log_test "overview"
+	OUTPUT=$(run_hab overview)
+	if echo "$OUTPUT" | jq -e '.success == true and .data.entities != null' > /dev/null 2>&1; then
+		ENTITIES=$(echo "$OUTPUT" | jq '.data.entities')
+		pass "overview (entities: $ENTITIES)"
+	else
+		fail "overview: $OUTPUT"
+	fi
+
+	log_test "overview (text mode)"
+	OUTPUT=$(run_hab_text overview)
+	if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+		pass "overview (text mode)"
+	else
+		fail "overview (text mode): got JSON instead of text"
+	fi
 
     # Test: list --count flag
     log_test "entity list --count"

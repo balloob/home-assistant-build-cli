@@ -92,6 +92,11 @@ run_hab() {
     "$HAB" --config "$HAB_TEST_CONFIG_DIR" --json "$@" || true
 }
 
+# Run hab with no explicit output-mode flag to test default behavior.
+run_hab_default() {
+    "$HAB" --config "$HAB_TEST_CONFIG_DIR" "$@" || true
+}
+
 # Run hab with text output (for testing text mode)
 run_hab_text() {
 	"$HAB" --config "$HAB_TEST_CONFIG_DIR" --text "$@"

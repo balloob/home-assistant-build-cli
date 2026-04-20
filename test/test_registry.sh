@@ -40,8 +40,8 @@ run_registry_tests() {
         pass "entity get (skipped - no entities)"
     fi
 
-    # Test: entity get --related
-    log_test "entity get --related"
+	# Test: entity get --related
+	log_test "entity get --related"
     if [ -n "$FIRST_ENTITY" ]; then
         OUTPUT=$(run_hab_optional entity get "$FIRST_ENTITY" --related)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
@@ -49,9 +49,21 @@ run_registry_tests() {
         else
             pass "entity get --related (search/related not supported)"
         fi
-    else
-        pass "entity get --related (skipped - no entities)"
-    fi
+	else
+		pass "entity get --related (skipped - no entities)"
+	fi
+
+	log_test "entity get (text mode)"
+	if [ -n "$FIRST_ENTITY" ]; then
+		OUTPUT=$(run_hab_text entity get "$FIRST_ENTITY")
+		if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+			pass "entity get (text mode)"
+		else
+			fail "entity get (text mode): got JSON instead of text"
+		fi
+	else
+		pass "entity get (text mode) (skipped - no entities)"
+	fi
 
     # Test: entity search (search for any entity)
     log_test "entity search"
@@ -185,8 +197,8 @@ run_registry_tests() {
         fail "area create: $OUTPUT"
     fi
 
-    # Test: area get (using the first available area)
-    log_test "area get"
+	# Test: area get (using the first available area)
+	log_test "area get"
     FIRST_AREA=$(run_hab area list | jq -r '.data[0].area_id // empty')
     if [ -n "$FIRST_AREA" ]; then
         OUTPUT=$(run_hab area get "$FIRST_AREA")
@@ -195,9 +207,21 @@ run_registry_tests() {
         else
             fail "area get: $OUTPUT"
         fi
-    else
-        pass "area get (skipped - no areas)"
-    fi
+	else
+		pass "area get (skipped - no areas)"
+	fi
+
+	log_test "area get (text mode)"
+	if [ -n "$FIRST_AREA" ]; then
+		OUTPUT=$(run_hab_text area get "$FIRST_AREA")
+		if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+			pass "area get (text mode)"
+		else
+			fail "area get (text mode): got JSON instead of text"
+		fi
+	else
+		pass "area get (text mode) (skipped - no areas)"
+	fi
 
     # Test: area get --related
     log_test "area get --related"

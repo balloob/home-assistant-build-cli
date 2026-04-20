@@ -22,15 +22,31 @@ run_helpers_tests() {
         fail "helper list: $OUTPUT"
     fi
 
-    # Test: helper types
-    log_test "helper types"
-    OUTPUT=$(run_hab helper types)
+	# Test: helper types
+	log_test "helper types"
+	OUTPUT=$(run_hab helper types)
     if echo "$OUTPUT" | jq -e '.success == true and (.data | length) > 0' > /dev/null 2>&1; then
         COUNT=$(echo "$OUTPUT" | jq '.data | length')
         pass "helper types ($COUNT types)"
-    else
-        fail "helper types: $OUTPUT"
-    fi
+	else
+		fail "helper types: $OUTPUT"
+	fi
+
+	log_test "helper list (text mode)"
+	OUTPUT=$(run_hab_text helper list)
+	if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+		pass "helper list (text mode)"
+	else
+		fail "helper list (text mode): got JSON instead of text"
+	fi
+
+	log_test "helper input-boolean list (text mode)"
+	OUTPUT=$(run_hab_text helper input-boolean list)
+	if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+		pass "helper input-boolean list (text mode)"
+	else
+		fail "helper input-boolean list (text mode): got JSON instead of text"
+	fi
 
     # ==========================================================================
     # Input Boolean Helper Tests

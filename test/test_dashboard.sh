@@ -76,14 +76,22 @@ run_dashboard_tests() {
             pass "dashboard save-config (not available)"
         fi
 
-        log_test "dashboard get"
-        OUTPUT=$(run_hab_optional dashboard get "$DASHBOARD_URL")
-        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "dashboard get"
-        else
-            # Dashboard might not have config yet
-            pass "dashboard get (no config yet)"
-        fi
+		log_test "dashboard get"
+		OUTPUT=$(run_hab_optional dashboard get "$DASHBOARD_URL")
+		if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+			pass "dashboard get"
+		else
+			# Dashboard might not have config yet
+			pass "dashboard get (no config yet)"
+		fi
+
+		log_test "dashboard get (text mode)"
+		OUTPUT=$(run_hab_text dashboard get "$DASHBOARD_URL" 2>&1)
+		if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+			pass "dashboard get (text mode)"
+		else
+			fail "dashboard get (text mode): got JSON instead of text"
+		fi
 
         # Test: dashboard view CRUD
         log_test "dashboard view list"
@@ -92,13 +100,21 @@ run_dashboard_tests() {
             VIEW_COUNT=$(echo "$OUTPUT" | jq '.data | length')
             pass "dashboard view list ($VIEW_COUNT views)"
 
-            log_test "dashboard view get"
-            OUTPUT=$(run_hab_optional dashboard view get "$DASHBOARD_URL" 0)
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-                pass "dashboard view get"
-            else
-                fail "dashboard view get: $OUTPUT"
-            fi
+			log_test "dashboard view get"
+			OUTPUT=$(run_hab_optional dashboard view get "$DASHBOARD_URL" 0)
+			if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+				pass "dashboard view get"
+			else
+				fail "dashboard view get: $OUTPUT"
+			fi
+
+			log_test "dashboard view get (text mode)"
+			OUTPUT=$(run_hab_text dashboard view get "$DASHBOARD_URL" 0)
+			if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+				pass "dashboard view get (text mode)"
+			else
+				fail "dashboard view get (text mode): got JSON instead of text"
+			fi
 
             log_test "dashboard view create"
             OUTPUT=$(run_hab_optional dashboard view create "$DASHBOARD_URL" --title "Test View" --icon "mdi:test-tube")
