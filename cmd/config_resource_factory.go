@@ -300,8 +300,8 @@ func registerConfigDelete(cfg ConfigResourceConfig) {
 				return nil
 			}
 
-			if !confirmAction(force, textMode, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id)) {
-				return cancelledError(fmt.Sprintf("delete %s", cfg.ResourceName))
+			if err := confirmAction(force, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id), fmt.Sprintf("delete %s", cfg.ResourceName)); err != nil {
+				return err
 			}
 
 			_, err = restClient.Delete(cfg.APIPrefix + configID)

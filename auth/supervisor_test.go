@@ -64,7 +64,7 @@ func TestLoadCredentials_SupervisorToken(t *testing.T) {
 
 	// Test: SUPERVISOR_TOKEN set
 	os.Setenv(SupervisorTokenEnv, "sv-token-123")
-	creds, err := LoadCredentials("")
+	creds, err := LoadCredentials(t.TempDir())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -76,6 +76,9 @@ func TestLoadCredentials_SupervisorToken(t *testing.T) {
 	}
 	if creds.AccessToken != "sv-token-123" {
 		t.Errorf("expected token 'sv-token-123', got '%s'", creds.AccessToken)
+	}
+	if creds.Source != "supervisor" {
+		t.Errorf("expected source 'supervisor', got '%s'", creds.Source)
 	}
 	if creds.IsOAuth() {
 		t.Error("supervisor credentials should not be OAuth")
@@ -104,7 +107,7 @@ func TestLoadCredentials_HABEnvTakesPriorityOverSupervisor(t *testing.T) {
 	os.Setenv("HAB_URL", "http://custom:8123")
 	os.Setenv("HAB_TOKEN", "custom-token")
 
-	creds, err := LoadCredentials("")
+	creds, err := LoadCredentials(t.TempDir())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -117,5 +120,8 @@ func TestLoadCredentials_HABEnvTakesPriorityOverSupervisor(t *testing.T) {
 	}
 	if creds.AccessToken != "custom-token" {
 		t.Errorf("expected 'custom-token', got '%s'", creds.AccessToken)
+	}
+	if creds.Source != "env_token" {
+		t.Errorf("expected source 'env_token', got '%s'", creds.Source)
 	}
 }

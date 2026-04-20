@@ -10,9 +10,9 @@ import (
 var personGetID string
 
 var personGetCmd = &cobra.Command{
-	Use:     "get [person_id]",
-	Short:   "Get person details",
-	Long:    `Get detailed information about a person entry.`,
+	Use:   "get [person_id]",
+	Short: "Get person details",
+	Long:  `Get detailed information about a person entry.`,
 	Example: `  hab person get ada
   hab person get --person ada6789`,
 	Args: cobra.MaximumNArgs(1),
@@ -22,6 +22,7 @@ var personGetCmd = &cobra.Command{
 func init() {
 	personCmd.AddCommand(personGetCmd)
 	personGetCmd.Flags().StringVar(&personGetID, "person", "", "Person ID to get")
+	personGetCmd.Flags().StringVar(&personGetID, "person-id", "", "Alias for --person")
 }
 
 func runPersonGet(cmd *cobra.Command, args []string) error {
@@ -48,7 +49,7 @@ func runPersonGet(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		if m["id"] == personID {
-			output.PrintOutput(m, textMode, "")
+			output.PrintOutputWithContext(m, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "person"})
 			return nil
 		}
 	}

@@ -22,7 +22,9 @@ var labelRemoveCmd = &cobra.Command{
 func init() {
 	labelCmd.AddCommand(labelRemoveCmd)
 	labelRemoveCmd.Flags().StringVar(&labelRemoveLabelID, "label", "", "Label ID to remove")
+	labelRemoveCmd.Flags().StringVar(&labelRemoveLabelID, "label-id", "", "Alias for --label")
 	labelRemoveCmd.Flags().StringVar(&labelRemoveEntityID, "entity", "", "Entity ID to remove the label from")
+	labelRemoveCmd.Flags().StringVar(&labelRemoveEntityID, "entity-id", "", "Alias for --entity")
 }
 
 func runLabelRemove(cmd *cobra.Command, args []string) error {

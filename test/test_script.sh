@@ -57,13 +57,21 @@ run_script_tests() {
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         pass "script create (id: $SCRIPT_ID)"
 
-        log_test "script get"
-        OUTPUT=$(run_hab script get "$SCRIPT_ID")
-        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
-            pass "script get"
-        else
-            fail "script get: $OUTPUT"
-        fi
+		log_test "script get"
+		OUTPUT=$(run_hab script get "$SCRIPT_ID")
+		if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+			pass "script get"
+		else
+			fail "script get: $OUTPUT"
+		fi
+
+		log_test "script get (text mode)"
+		OUTPUT=$(run_hab_text script get "$SCRIPT_ID")
+		if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+			pass "script get (text mode)"
+		else
+			fail "script get (text mode): got JSON instead of text"
+		fi
 
         # Test: script update
         log_test "script update"
@@ -95,13 +103,21 @@ run_script_tests() {
         fi
 
         # Test: script action CRUD
-        log_test "script action list (empty)"
-        OUTPUT=$(run_hab script action list "$SCRIPT_ID")
+		log_test "script action list (empty)"
+		OUTPUT=$(run_hab script action list "$SCRIPT_ID")
         if echo "$OUTPUT" | jq -e '.success == true and (.data | length) == 0' > /dev/null 2>&1; then
             pass "script action list (empty)"
-        else
-            fail "script action list (empty): $OUTPUT"
-        fi
+		else
+			fail "script action list (empty): $OUTPUT"
+		fi
+
+		log_test "script action list (text mode)"
+		OUTPUT=$(run_hab_text script action list "$SCRIPT_ID")
+		if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
+			pass "script action list (text mode)"
+		else
+			fail "script action list (text mode): got JSON instead of text"
+		fi
 
         log_test "script action create"
         ACTION_CONFIG='{"action":"homeassistant.turn_on","target":{"entity_id":"sun.sun"}}'

@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 )
 
 // Shared cobra group IDs for parent commands that split their subcommands
@@ -45,7 +47,21 @@ var helperDomains = map[string]bool{
 var (
 	authManagerOnce sync.Once
 	cachedAuthMgr   *auth.Manager
+
+	stdinIsTerminalFunc  = func() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
+	stdoutIsTerminalFunc = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
+	readConfirmationLine = func() (string, error) {
+		reader := bufio.NewReader(os.Stdin)
+		return reader.ReadString('\n')
+	}
+
+	executionMetadataMu sync.Mutex
+	executionMetadata   = map[string]any{}
 )
+
+func init() {
+	output.SetDefaultMetadataProvider(getExecutionMetadata)
+}
 
 // getAuthManager returns a cached auth.Manager using the configured config dir.
 func getAuthManager() *auth.Manager {
@@ -63,6 +79,8 @@ func getWSClient() (client.WebSocketAPI, error) {
 	if err != nil || creds == nil {
 		return nil, err
 	}
+	noteAuthSource(creds.Source)
+	noteTransport("websocket")
 
 	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
 	if err := ws.Connect(); err != nil {
@@ -73,12 +91,24 @@ func getWSClient() (client.WebSocketAPI, error) {
 
 // getRESTClient creates an authenticated REST client.
 func getRESTClient() (client.RestAPI, error) {
-	return getAuthManager().GetRestClient()
+	restClient, err := getAuthManager().GetRestClient()
+	if err != nil {
+		return nil, err
+	}
+	if creds, credsErr := getAuthManager().GetCredentials(); credsErr == nil && creds != nil {
+		noteAuthSource(creds.Source)
+	}
+	noteTransport("rest")
+	return restClient, nil
 }
 
 // getCredentials returns the current authentication credentials.
 func getCredentials() (*auth.Credentials, error) {
-	return getAuthManager().GetCredentials()
+	creds, err := getAuthManager().GetCredentials()
+	if err == nil && creds != nil {
+		noteAuthSource(creds.Source)
+	}
+	return creds, err
 }
 
 // getTextMode returns whether text output mode is enabled.
@@ -86,30 +116,150 @@ func getTextMode() bool {
 	return viper.GetBool("text")
 }
 
+func isInteractiveInput() bool {
+	return stdinIsTerminalFunc()
+}
+
+func isInteractiveOutput() bool {
+	return stdoutIsTerminalFunc()
+}
+
+func resetExecutionMetadata() {
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	executionMetadata = map[string]any{}
+}
+
+func setExecutionMetadata(key string, value any) {
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	executionMetadata[key] = value
+}
+
+func noteTransport(name string) {
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	transports, _ := executionMetadata["transports_used"].([]string)
+	for _, existing := range transports {
+		if existing == name {
+			return
+		}
+	}
+	executionMetadata["transports_used"] = append(transports, name)
+}
+
+func noteAuthSource(source string) {
+	if source == "" {
+		return
+	}
+	setExecutionMetadata("auth_source", source)
+}
+
+func noteResolution(key, value string) {
+	if key == "" || value == "" {
+		return
+	}
+	normalizedKey := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(key, " ", "_"), "-", "_"))
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	resolutions, _ := executionMetadata["resolved_inputs"].(map[string]any)
+	if resolutions == nil {
+		resolutions = map[string]any{}
+	}
+	resolutions[normalizedKey] = value
+	executionMetadata["resolved_inputs"] = resolutions
+}
+
+func noteFallback(message string) {
+	if message == "" {
+		return
+	}
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	fallbacks, _ := executionMetadata["fallbacks_applied"].([]string)
+	executionMetadata["fallbacks_applied"] = append(fallbacks, message)
+	executionMetadata["partial_result"] = true
+}
+
+func noteOutputMode(mode string) {
+	setExecutionMetadata("output_mode", mode)
+	setExecutionMetadata("interactive_input", isInteractiveInput())
+	setExecutionMetadata("interactive_output", isInteractiveOutput())
+}
+
+func getExecutionMetadata() map[string]interface{} {
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	if len(executionMetadata) == 0 {
+		return nil
+	}
+	return maps.Clone(executionMetadata)
+}
+
+func determineOutputMode(cmd *cobra.Command) (text bool, json bool, mode string, err error) {
+	jsonFlag := cmd.Flags().Lookup("json")
+	textFlag := cmd.Flags().Lookup("text")
+	jsonExplicit := jsonFlag != nil && jsonFlag.Changed
+	textExplicit := textFlag != nil && textFlag.Changed
+	jsonRequested := viper.GetBool("json")
+	textRequested := viper.GetBool("text")
+
+	if jsonExplicit && textExplicit && jsonRequested == textRequested {
+		return false, false, "", fmt.Errorf("conflicting output flags: use either --json or --text")
+	}
+
+	switch {
+	case jsonExplicit && jsonRequested:
+		return false, true, "json", nil
+	case textExplicit && textRequested:
+		return true, false, "text", nil
+	case !isInteractiveOutput():
+		return false, true, "json", nil
+	default:
+		return true, false, "text", nil
+	}
+}
+
 // resolveArg resolves a value from either a flag variable or a positional argument.
-// It checks the flag value first; if empty, falls back to args[index].
-// Returns an error if no value is found.
+// If both sources are present, they must match exactly.
 func resolveArg(flagVal string, args []string, index int, name string) (string, error) {
+	if flagVal != "" && len(args) > index {
+		if args[index] != flagVal {
+			return "", fmt.Errorf("conflicting %s values: positional %q does not match flag value %q", name, args[index], flagVal)
+		}
+		noteResolution(name, "positional_and_flag")
+		return flagVal, nil
+	}
 	if flagVal != "" {
+		noteResolution(name, "flag")
 		return flagVal, nil
 	}
 	if len(args) > index {
+		noteResolution(name, "positional")
 		return args[index], nil
 	}
-	return "", fmt.Errorf("%s is required", name)
+	return "", fmt.Errorf("%s is required; provide it as a positional argument or matching flag value", name)
 }
 
-// confirmAction prompts the user for confirmation unless force or textMode is set.
-// Returns true if the action should proceed, false if the user declined.
-func confirmAction(force, textMode bool, prompt string) bool {
-	if force || textMode {
-		return true
+// confirmAction prompts the user for confirmation unless force is set.
+// In non-interactive mode it returns a structured confirmation-required error.
+func confirmAction(force bool, prompt, action string) error {
+	if force {
+		return nil
+	}
+	if !isInteractiveInput() {
+		return client.NewConfirmationRequiredError(action, prompt)
 	}
 	fmt.Printf("%s [y/N]: ", prompt)
-	reader := bufio.NewReader(os.Stdin)
-	response, _ := reader.ReadString('\n')
+	response, err := readConfirmationLine()
+	if err != nil {
+		return client.NewConfirmationRequiredError(action, prompt)
+	}
 	response = strings.ToLower(strings.TrimSpace(response))
-	return response == "y" || response == "yes"
+	if response == "y" || response == "yes" {
+		return nil
+	}
+	return client.NewCancelledError(action)
 }
 
 func cancelledError(action string) error {

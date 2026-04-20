@@ -83,8 +83,8 @@ var esphomeSerialEraseCmd = &cobra.Command{
 			return fmt.Errorf("--port is required")
 		}
 		textMode := getTextMode()
-		if !confirmAction(esphomeSerialForce, textMode, fmt.Sprintf("Erase flash on %s?", esphomeSerialPort)) {
-			return nil
+		if err := confirmAction(esphomeSerialForce, fmt.Sprintf("Erase flash on %s?", esphomeSerialPort), "erase ESPHome device flash"); err != nil {
+			return err
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), esphomeSerialTimeout)

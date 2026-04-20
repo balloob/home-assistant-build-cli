@@ -41,10 +41,15 @@ func init() {
 func runDashboardCreate(cmd *cobra.Command, args []string) error {
 	// Determine url_path from flag or positional argument
 	var urlPath string
+	if dashboardCreateUrlPath != "" && len(args) > 0 && dashboardCreateUrlPath != args[0] {
+		return fmt.Errorf("conflicting dashboard URL path values: positional %q does not match flag value %q", args[0], dashboardCreateUrlPath)
+	}
 	if dashboardCreateUrlPath != "" {
 		urlPath = dashboardCreateUrlPath
+		noteResolution("dashboard_url_path", "flag")
 	} else if len(args) > 0 {
 		urlPath = args[0]
+		noteResolution("dashboard_url_path", "positional")
 	} else {
 		return fmt.Errorf("url_path is required (provide as argument or via --url-path flag)")
 	}
@@ -93,10 +98,11 @@ func runDashboardCreate(cmd *cobra.Command, args []string) error {
 	_, err = ws.SendCommand("lovelace/config/save", saveParams)
 	if err != nil {
 		// Dashboard was created but config failed - warn but don't fail
-		output.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created, but initial config failed: %v", urlPath, err))
+		noteFallback("dashboard created successfully, but initial section-based config save failed")
+		output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Dashboard %s created, but initial config failed: %v", urlPath, err), output.EnvelopeContext{Operation: "create", ResourceType: "dashboard"})
 		return nil
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Dashboard %s created with initial view.", urlPath))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Dashboard %s created with initial view.", urlPath), output.EnvelopeContext{Operation: "create", ResourceType: "dashboard"})
 	return nil
 }

@@ -26,8 +26,8 @@ func runPersonDelete(cmd *cobra.Command, args []string) error {
 	personID := args[0]
 	textMode := getTextMode()
 
-	if !confirmAction(personDeleteForce, textMode, fmt.Sprintf("Delete person %s?", personID)) {
-		return cancelledError("delete person")
+	if err := confirmAction(personDeleteForce, fmt.Sprintf("Delete person %s?", personID), "delete person"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -40,6 +40,6 @@ func runPersonDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Person '%s' deleted.", personID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Person '%s' deleted.", personID), output.EnvelopeContext{Operation: "delete", ResourceType: "person"})
 	return nil
 }

@@ -27,8 +27,8 @@ func runDashboardDelete(cmd *cobra.Command, args []string) error {
 	dashboardID := args[0]
 	textMode := getTextMode()
 
-	if !confirmAction(dashboardDeleteForce, textMode, fmt.Sprintf("Delete dashboard %s?", dashboardID)) {
-		return cancelledError("delete dashboard")
+	if err := confirmAction(dashboardDeleteForce, fmt.Sprintf("Delete dashboard %s?", dashboardID), "delete dashboard"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -46,6 +46,6 @@ func runDashboardDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Dashboard '%s' deleted.", dashboardID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Dashboard '%s' deleted.", dashboardID), output.EnvelopeContext{Operation: "delete", ResourceType: "dashboard"})
 	return nil
 }

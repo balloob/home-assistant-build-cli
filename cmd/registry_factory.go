@@ -454,8 +454,8 @@ func registerRegistryDelete(cfg RegistryCRUDConfig) {
 				return nil
 			}
 
-			if !confirmAction(force, textMode, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id)) {
-				return cancelledError(fmt.Sprintf("delete %s", cfg.ResourceName))
+			if err := confirmAction(force, fmt.Sprintf("Delete %s %s?", cfg.ResourceName, id), fmt.Sprintf("delete %s", cfg.ResourceName)); err != nil {
+				return err
 			}
 
 			ws, err := getWSClient()

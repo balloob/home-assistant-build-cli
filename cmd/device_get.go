@@ -23,6 +23,7 @@ var deviceGetCmd = &cobra.Command{
 func init() {
 	deviceCmd.AddCommand(deviceGetCmd)
 	deviceGetCmd.Flags().StringVar(&deviceGetID, "device", "", "Device ID to get")
+	deviceGetCmd.Flags().StringVar(&deviceGetID, "device-id", "", "Alias for --device")
 	deviceGetCmd.Flags().BoolVarP(&deviceGetRelated, "related", "r", false, "Include related items (automations, scripts, scenes, entities)")
 }
 
@@ -63,10 +64,12 @@ func runDeviceGet(cmd *cobra.Command, args []string) error {
 					}
 					resultMap["related"] = related
 					result = resultMap
+				} else if err != nil {
+					noteFallback("device related search failed; returned device registry data without related items")
 				}
 			}
 
-			output.PrintOutput(result, textMode, "")
+			output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "device"})
 			return nil
 		}
 	}

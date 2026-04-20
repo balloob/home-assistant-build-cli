@@ -165,6 +165,9 @@ func TestLoadCredentials_EnvVars(t *testing.T) {
 		if creds.AccessToken != "my-token" {
 			t.Errorf("AccessToken = %q, want %q", creds.AccessToken, "my-token")
 		}
+		if creds.Source != "env_token" {
+			t.Errorf("Source = %q, want %q", creds.Source, "env_token")
+		}
 		if creds.IsOAuth() {
 			t.Error("should not be OAuth")
 		}
@@ -189,6 +192,9 @@ func TestLoadCredentials_EnvVars(t *testing.T) {
 		}
 		if creds.RefreshToken != "my-refresh" {
 			t.Errorf("RefreshToken = %q, want %q", creds.RefreshToken, "my-refresh")
+		}
+		if creds.Source != "env_refresh_token" {
+			t.Errorf("Source = %q, want %q", creds.Source, "env_refresh_token")
 		}
 		if !creds.IsOAuth() {
 			t.Error("should be OAuth")

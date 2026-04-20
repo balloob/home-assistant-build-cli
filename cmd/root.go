@@ -39,14 +39,18 @@ var rootCmd = &cobra.Command{
 	Long: `Home Assistant Builder (hab) is a CLI utility designed for LLMs
 to build and manage Home Assistant configurations.
 
-Output is human-readable text by default. Use --json for machine-parseable JSON output.
+Interactive sessions default to human-readable text. Non-interactive sessions default to JSON.
 
 Start with 'hab guide' for workflow-level guidance optimized for LLM and agent usage.`,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Handle --json flag: if set, override text mode to false
-		if viper.GetBool("json") {
-			viper.Set("text", false)
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		resetExecutionMetadata()
+		text, json, mode, err := determineOutputMode(cmd)
+		if err != nil {
+			return err
 		}
+		viper.Set("text", text)
+		viper.Set("json", json)
+		noteOutputMode(mode)
 
 		// Set log level based on verbose flag
 		if viper.GetBool("verbose") {
@@ -65,6 +69,7 @@ Start with 'hab guide' for workflow-level guidance optimized for LLM and agent u
 
 		// Check for updates (skip for update and version commands)
 		checkUpdateOnStartup(cmd)
+		return nil
 	},
 }
 
@@ -199,6 +204,8 @@ func defaultSuggestedFixForCode(code string) string {
 		return "Verify URL/network availability and retry."
 	case client.ErrCodeTimeout:
 		return "Retry after Home Assistant is responsive."
+	case client.ErrCodeConfirmationRequired:
+		return "Use --force only after validating the target, or rerun interactively to confirm the prompt."
 	case client.ErrCodeCancelled:
 		return "Retry the command and confirm the prompt or use --force when appropriate."
 	default:
@@ -214,6 +221,8 @@ func defaultSuggestedCommandsForCode(code string) []string {
 		return []string{"hab auth status --json"}
 	case client.ErrCodeConnectionError, client.ErrCodeTimeout:
 		return []string{"hab system health --json"}
+	case client.ErrCodeConfirmationRequired:
+		return []string{"hab schema --json"}
 	default:
 		return nil
 	}
@@ -241,7 +250,7 @@ func init() {
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgDir, "config", "", "Path to config directory (default: ~/.config/home-assistant-builder)")
 	rootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "Use JSON output instead of human-readable text")
-	rootCmd.PersistentFlags().BoolVar(&textMode, "text", true, "Use human-readable text output (default)")
+	rootCmd.PersistentFlags().BoolVar(&textMode, "text", false, "Use human-readable text output")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show verbose output")
 	rootCmd.PersistentFlags().BoolVar(&skipUpdateCheck, "skip-update-check", false, "Skip automatic update check on startup")
 
@@ -297,6 +306,9 @@ func boolCompletions(cmd *cobra.Command, args []string, toComplete string) ([]st
 
 // checkUpdateOnStartup checks for updates once per day and prints a notice if available
 func checkUpdateOnStartup(cmd *cobra.Command) {
+	if !isInteractiveOutput() {
+		return
+	}
 	// Skip for certain commands
 	cmdName := cmd.Name()
 	if cmdName == "update" || cmdName == "version" || cmdName == "help" || cmdName == "guide" || cmdName == "schema" {

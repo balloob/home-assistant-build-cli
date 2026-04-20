@@ -592,8 +592,8 @@ func makeSubComponentDelete(cfg SubComponentConfig, force *bool) func(*cobra.Com
 			return fmt.Errorf("%s index %d out of range (0-%d)", cfg.ComponentName, idx, len(items)-1)
 		}
 
-		if !confirmAction(*force, textMode, fmt.Sprintf("Are you sure you want to delete %s at index %d?", cfg.ComponentName, idx)) {
-			return cancelledError(fmt.Sprintf("delete %s", cfg.ComponentName))
+		if err := confirmAction(*force, fmt.Sprintf("Are you sure you want to delete %s at index %d?", cfg.ComponentName, idx), fmt.Sprintf("delete %s", cfg.ComponentName)); err != nil {
+			return err
 		}
 
 		items = append(items[:idx], items[idx+1:]...)

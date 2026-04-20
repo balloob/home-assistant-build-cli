@@ -45,9 +45,9 @@ run_core_tests() {
         fail "system health: $OUTPUT"
     fi
 
-    # Test: text output mode (now the default)
-    log_test "text output mode"
-    OUTPUT=$(run_hab_text system info)
+	# Test: explicit text output mode
+	log_test "text output mode"
+	OUTPUT=$(run_hab_text system info)
     if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
         # Not valid JSON, which is what we expect for text mode
         if echo "$OUTPUT" | grep -qi "version"; then
@@ -55,9 +55,18 @@ run_core_tests() {
         else
             fail "text output mode: expected version info"
         fi
-    else
-        fail "text output mode: got JSON instead of text"
-    fi
+	else
+		fail "text output mode: got JSON instead of text"
+	fi
+
+	# Test: default non-interactive output mode
+	log_test "default output mode"
+	OUTPUT=$(run_hab_default system info)
+	if echo "$OUTPUT" | jq -e '.success == true and .data.version != null' > /dev/null 2>&1; then
+		pass "default output mode (non-interactive defaults to JSON)"
+	else
+		fail "default output mode: expected JSON envelope"
+	fi
 
     # Test: system config check (may not work with empty-hass)
     log_test "system config check"

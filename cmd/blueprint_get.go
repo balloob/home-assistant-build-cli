@@ -18,6 +18,7 @@ var blueprintGetCmd = &cobra.Command{
 func init() {
 	blueprintCmd.AddCommand(blueprintGetCmd)
 	blueprintGetCmd.Flags().StringVar(&blueprintGetPath, "path", "", "Blueprint path to get")
+	blueprintGetCmd.Flags().StringVar(&blueprintGetPath, "blueprint-path", "", "Alias for --path")
 	blueprintGetCmd.Flags().String("domain", "automation", "Domain of the blueprint (automation/script)")
 }
 
@@ -47,20 +48,20 @@ func runBlueprintGet(cmd *cobra.Command, args []string) error {
 	if blueprints, ok := listResult.(map[string]interface{}); ok {
 		if blueprint, ok := blueprints[path]; ok {
 			result := map[string]interface{}{
-				"path":   path,
-				"domain": domain,
+				"path":      path,
+				"domain":    domain,
 				"blueprint": blueprint,
 			}
-			output.PrintOutput(result, textMode, "")
+			output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "blueprint"})
 			return nil
 		}
 	}
 
 	// If not found in list format, return the path lookup result directly
-	output.PrintOutput(map[string]interface{}{
+	output.PrintOutputWithContext(map[string]interface{}{
 		"path":   path,
 		"domain": domain,
 		"error":  "Blueprint not found",
-	}, textMode, "")
+	}, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "blueprint"})
 	return nil
 }

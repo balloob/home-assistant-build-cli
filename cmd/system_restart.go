@@ -22,8 +22,8 @@ func init() {
 func runSystemRestart(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 
-	if !confirmAction(restartForce, textMode, "This will restart Home Assistant. Continue?") {
-		return cancelledError("restart system")
+	if err := confirmAction(restartForce, "This will restart Home Assistant. Continue?", "restart system"); err != nil {
+		return err
 	}
 
 	restClient, err := getRESTClient()
@@ -35,6 +35,6 @@ func runSystemRestart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, "Restart initiated.")
+	output.PrintSuccessWithContext(nil, textMode, "Restart initiated.", output.EnvelopeContext{Operation: "restart", ResourceType: "system"})
 	return nil
 }

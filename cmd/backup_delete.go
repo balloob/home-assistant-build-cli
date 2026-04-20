@@ -26,8 +26,8 @@ func runBackupDelete(cmd *cobra.Command, args []string) error {
 	backupID := args[0]
 	textMode := getTextMode()
 
-	if !confirmAction(backupDeleteForce, textMode, fmt.Sprintf("Delete backup %s?", backupID)) {
-		return cancelledError("delete backup")
+	if err := confirmAction(backupDeleteForce, fmt.Sprintf("Delete backup %s?", backupID), "delete backup"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -40,6 +40,6 @@ func runBackupDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Backup '%s' deleted.", backupID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Backup '%s' deleted.", backupID), output.EnvelopeContext{Operation: "delete", ResourceType: "backup"})
 	return nil
 }

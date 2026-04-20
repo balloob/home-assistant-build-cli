@@ -177,12 +177,9 @@ func saveDashboardConfig(ws interface {
 	return err
 }
 
-// confirmDelete prompts for deletion confirmation unless force or textMode is set.
-func confirmDelete(force, textMode bool, description string) error {
-	if !confirmAction(force, textMode, fmt.Sprintf("Are you sure you want to delete %s?", description)) {
-		return cancelledError("delete dashboard resource")
-	}
-	return nil
+// confirmDelete prompts for deletion confirmation unless force is set.
+func confirmDelete(force bool, description string) error {
+	return confirmAction(force, fmt.Sprintf("Are you sure you want to delete %s?", description), "delete dashboard resource")
 }
 
 // getViews extracts the views array from a dashboard config.

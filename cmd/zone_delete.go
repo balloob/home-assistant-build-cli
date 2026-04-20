@@ -23,6 +23,7 @@ var zoneDeleteCmd = &cobra.Command{
 func init() {
 	zoneCmd.AddCommand(zoneDeleteCmd)
 	zoneDeleteCmd.Flags().StringVar(&zoneDeleteID, "zone", "", "Zone ID to delete")
+	zoneDeleteCmd.Flags().StringVar(&zoneDeleteID, "zone-id", "", "Alias for --zone")
 	zoneDeleteCmd.Flags().BoolVarP(&zoneDeleteForce, "force", "f", false, "Skip confirmation")
 }
 
@@ -33,8 +34,8 @@ func runZoneDelete(cmd *cobra.Command, args []string) error {
 	}
 	textMode := getTextMode()
 
-	if !confirmAction(zoneDeleteForce, textMode, fmt.Sprintf("Delete zone %s?", zoneID)) {
-		return cancelledError("delete zone")
+	if err := confirmAction(zoneDeleteForce, fmt.Sprintf("Delete zone %s?", zoneID), "delete zone"); err != nil {
+		return err
 	}
 
 	ws, err := getWSClient()
@@ -47,6 +48,6 @@ func runZoneDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Zone '%s' deleted.", zoneID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Zone '%s' deleted.", zoneID), output.EnvelopeContext{Operation: "delete", ResourceType: "zone"})
 	return nil
 }

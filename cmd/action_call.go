@@ -26,15 +26,18 @@ var actionCallCmd = &cobra.Command{
   hab action call weather.get_forecasts -e weather.home -d '{"type":"daily"}' -r
   hab action call light.turn_off -a living_room`,
 	Args: cobra.MaximumNArgs(1),
-	RunE:  runActionCall,
+	RunE: runActionCall,
 }
 
 func init() {
 	actionCmd.AddCommand(actionCallCmd)
 	actionCallCmd.Flags().StringVar(&actionCallName, "action", "", "Action name in domain.action format")
+	actionCallCmd.Flags().StringVar(&actionCallName, "action-name", "", "Alias for --action")
 	actionCallCmd.Flags().StringVarP(&actionCallData, "data", "d", "", "Action data as JSON")
 	actionCallCmd.Flags().StringVarP(&actionCallEntity, "entity", "e", "", "Target entity ID")
+	actionCallCmd.Flags().StringVar(&actionCallEntity, "entity-id", "", "Alias for --entity")
 	actionCallCmd.Flags().StringVarP(&actionCallArea, "area", "a", "", "Target area ID")
+	actionCallCmd.Flags().StringVar(&actionCallArea, "area-id", "", "Alias for --area")
 	actionCallCmd.Flags().BoolVarP(&actionCallReturnResponse, "return-response", "r", false, "Return action response")
 }
 
@@ -84,9 +87,9 @@ func runActionCall(cmd *cobra.Command, args []string) error {
 	}
 
 	if actionCallReturnResponse && result != nil {
-		output.PrintOutput(result, textMode, "")
+		output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "call_service", ResourceType: actionName})
 	} else {
-		output.PrintSuccess(nil, textMode, fmt.Sprintf("Action %s called successfully.", actionName))
+		output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Action %s called successfully.", actionName), output.EnvelopeContext{Operation: "call_service", ResourceType: actionName})
 	}
 
 	return nil

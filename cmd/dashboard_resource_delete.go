@@ -142,7 +142,7 @@ func registerDashResourceDelete(parentCmd *cobra.Command, cfg DashboardResourceC
 				}
 			}
 
-			if err := confirmDelete(forceFlag, textMode, desc); err != nil {
+			if err := confirmDelete(forceFlag, desc); err != nil {
 				return err
 			}
 

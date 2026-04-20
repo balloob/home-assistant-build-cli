@@ -31,6 +31,7 @@ Use --device to include the parent device information.`,
 func init() {
 	entityCmd.AddCommand(entityGetCmd)
 	entityGetCmd.Flags().StringVar(&entityGetID, "entity", "", "Entity ID to get")
+	entityGetCmd.Flags().StringVar(&entityGetID, "entity-id", "", "Alias for --entity")
 	entityGetCmd.Flags().BoolVarP(&entityGetRelated, "related", "r", false, "Include related items (automations, scripts, scenes, devices)")
 	entityGetCmd.Flags().BoolVarP(&entityGetDevice, "device", "D", false, "Include parent device information")
 }
@@ -51,11 +52,12 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	ws, err := getWSClient()
 	if err != nil {
 		// Fall back to just REST state if WS is unavailable.
+		noteFallback("websocket unavailable; returned REST state without registry, device, or related data")
 		state, stateErr := restClient.GetState(entityID)
 		if stateErr != nil {
 			return stateErr
 		}
-		output.PrintOutput(state, textMode, "")
+		output.PrintOutputWithContext(state, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "entity"})
 		return nil
 	}
 	defer ws.Close()
@@ -85,7 +87,8 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	}
 	if registryErr != nil {
 		// Entity might not be in registry, just return state
-		output.PrintOutput(state, textMode, "")
+		noteFallback("entity registry unavailable for target; returned REST state only")
+		output.PrintOutputWithContext(state, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "entity"})
 		return nil
 	}
 
@@ -109,7 +112,11 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 		wg2.Add(1)
 		go func() {
 			defer wg2.Done()
-			relatedResult, _ = ws.SearchRelated("entity", entityID)
+			var relatedErr error
+			relatedResult, relatedErr = ws.SearchRelated("entity", entityID)
+			if relatedErr != nil {
+				noteFallback("entity related search failed; returned state and registry data without related items")
+			}
 		}()
 	}
 	wg2.Wait()
@@ -128,7 +135,7 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 		result["related"] = relatedResult
 	}
 
-	output.PrintOutput(result, textMode, "")
+	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "entity"})
 	return nil
 }
 

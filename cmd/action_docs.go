@@ -23,6 +23,7 @@ hab action docs --action climate.set_temperature --json`,
 func init() {
 	actionCmd.AddCommand(actionDocsCmd)
 	actionDocsCmd.Flags().StringVar(&actionDocsName, "action", "", "Action name in domain.action format")
+	actionDocsCmd.Flags().StringVar(&actionDocsName, "action-name", "", "Alias for --action")
 }
 
 func runActionDocs(cmd *cobra.Command, args []string) error {
@@ -85,7 +86,7 @@ func runActionDocs(cmd *cobra.Command, args []string) error {
 			"target":      serviceData["target"],
 		}
 
-		output.PrintOutput(result, textMode, "")
+		output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "docs", ResourceType: actionName})
 		return nil
 	}
 

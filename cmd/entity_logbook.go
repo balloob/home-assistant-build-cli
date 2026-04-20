@@ -27,6 +27,7 @@ as opposed to raw state history which shows individual state values.`,
 func init() {
 	entityCmd.AddCommand(entityLogbookCmd)
 	entityLogbookCmd.Flags().StringVar(&entityLogbookID, "entity", "", "Entity ID to get logbook entries for")
+	entityLogbookCmd.Flags().StringVar(&entityLogbookID, "entity-id", "", "Alias for --entity")
 	entityLogbookCmd.Flags().StringVarP(&entityLogbookStart, "start", "s", "", "Start time (ISO format, e.g. 2025-01-01T00:00:00Z)")
 	entityLogbookCmd.Flags().StringVarP(&entityLogbookEnd, "end", "e", "", "End time (ISO format)")
 }
@@ -48,6 +49,6 @@ func runEntityLogbook(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintOutput(entries, textMode, "")
+	output.PrintOutputWithContext(entries, textMode, "", output.EnvelopeContext{Operation: "logbook", ResourceType: "entity"})
 	return nil
 }

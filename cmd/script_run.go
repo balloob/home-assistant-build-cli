@@ -27,6 +27,7 @@ var scriptRunCmd = &cobra.Command{
 func init() {
 	scriptCmd.AddCommand(scriptRunCmd)
 	scriptRunCmd.Flags().StringVar(&scriptRunID, "script", "", "Script ID to execute")
+	scriptRunCmd.Flags().StringVar(&scriptRunID, "script-id", "", "Alias for --script")
 	scriptRunCmd.Flags().StringVarP(&scriptRunData, "data", "d", "", "Script variables as JSON")
 }
 
@@ -62,6 +63,6 @@ func runScriptRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(nil, textMode, fmt.Sprintf("Script %s executed.", scriptID))
+	output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Script %s executed.", scriptID), output.EnvelopeContext{Operation: "run", ResourceType: "script"})
 	return nil
 }

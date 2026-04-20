@@ -28,6 +28,7 @@ Use --scope to override.`,
 func init() {
 	categoryCmd.AddCommand(categoryRemoveCmd)
 	categoryRemoveCmd.Flags().StringVar(&categoryRemoveEntityID, "entity", "", "Entity ID to remove the category from")
+	categoryRemoveCmd.Flags().StringVar(&categoryRemoveEntityID, "entity-id", "", "Alias for --entity")
 	categoryRemoveCmd.Flags().StringVar(&categoryRemoveScope, "scope", "", "Scope to remove category from: automation, script, scene, helpers")
 }
 
@@ -41,6 +42,9 @@ func runCategoryRemove(cmd *cobra.Command, args []string) error {
 	scope := categoryRemoveScope
 	if scope == "" {
 		scope = inferCategoryScope(entityID)
+		noteResolution("category_scope", "inferred")
+	} else {
+		noteResolution("category_scope", "flag")
 	}
 	if scope == "" {
 		return fmt.Errorf("cannot infer scope from entity_id '%s'. Use --scope to specify: automation, script, scene, helpers", entityID)
@@ -65,6 +69,6 @@ func runCategoryRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Category removed from '%s' (scope: %s).", entityID, scope))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Category removed from '%s' (scope: %s).", entityID, scope), output.EnvelopeContext{Operation: "remove", ResourceType: "category"})
 	return nil
 }
