@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -116,6 +117,41 @@ func TestSearchFilters(t *testing.T) {
 	if results[0].Slug != "dev-a" {
 		t.Fatalf("slug = %q, want dev-a", results[0].Slug)
 	}
+}
+
+func TestDiscoverGitHubTokenFromEnvironment(t *testing.T) {
+	t.Setenv("GH_TOKEN", "env-token")
+	if got := discoverGitHubToken(); got != "env-token" {
+		t.Fatalf("discoverGitHubToken() = %q, want env-token", got)
+	}
+}
+
+func TestDiscoverGitHubTokenFromGHCLI(t *testing.T) {
+	origLookPath := lookPath
+	origCmd := ghTokenCommand
+	defer func() {
+		lookPath = origLookPath
+		ghTokenCommand = origCmd
+	}()
+	t.Setenv("GH_TOKEN", "")
+	t.Setenv("GITHUB_TOKEN", "")
+	lookPath = func(file string) (string, error) { return "/usr/bin/gh", nil }
+	ghTokenCommand = func(ctx context.Context, path string) ([]byte, error) { return []byte("gh-cli-token\n"), nil }
+
+	if got := discoverGitHubToken(); got != "gh-cli-token" {
+		t.Fatalf("discoverGitHubToken() = %q, want gh-cli-token", got)
+	}
+}
+
+func TestFormatGitHubHTTPErrorRateLimit(t *testing.T) {
+	err := formatGitHubHTTPError("catalog API", http.StatusForbidden, []byte(`{"message":"API rate limit exceeded"}`), false)
+	if err == nil || !contains(err.Error(), "GH_TOKEN") {
+		t.Fatalf("expected rate limit guidance error, got %v", err)
+	}
+}
+
+func contains(value, sub string) bool {
+	return strings.Contains(value, sub)
 }
 
 func mockCatalogServer(t *testing.T) *httptest.Server {

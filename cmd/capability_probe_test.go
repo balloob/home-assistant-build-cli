@@ -37,3 +37,12 @@ func TestPlanRequested(t *testing.T) {
 		t.Fatal("expected true when --dry-run is set")
 	}
 }
+
+func TestAnyCapabilityAvailable(t *testing.T) {
+	if anyCapabilityAvailable(capabilityStatus{Available: false}, capabilityStatus{Available: true}) != true {
+		t.Fatal("expected true when any capability is available")
+	}
+	if anyCapabilityAvailable(capabilityStatus{Available: false}, capabilityStatus{Available: false}) {
+		t.Fatal("expected false when no capabilities are available")
+	}
+}

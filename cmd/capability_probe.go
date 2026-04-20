@@ -78,31 +78,30 @@ func runCapabilityProbe(cmd *cobra.Command, args []string) error {
 			wsStatus = statusFromError(wsErr)
 		} else {
 			defer ws.Close()
-			if pingErr := ws.Ping(); pingErr != nil {
-				wsStatus = statusFromError(pingErr)
-			} else {
-				wsStatus = capabilityStatus{Available: true}
-				backupStatus = probeStatus(func() error {
-					_, err := ws.BackupInfo()
-					return err
-				})
-				diagnosticsStatus = probeStatus(func() error {
-					_, err := ws.DiagnosticsList()
-					return err
-				})
-				networkStatus = probeStatus(func() error {
-					_, err := ws.NetworkGet()
-					return err
-				})
-				energyStatus = probeStatus(func() error {
-					_, err := ws.EnergyInfo()
-					return err
-				})
-				repairsStatus = probeStatus(func() error {
-					_, err := ws.RepairListIssues()
-					return err
-				})
-			}
+			wsStatus = probeStatus(func() error {
+				_, err := ws.GetConfig()
+				return err
+			})
+			backupStatus = probeStatus(func() error {
+				_, err := ws.BackupInfo()
+				return err
+			})
+			diagnosticsStatus = probeStatus(func() error {
+				_, err := ws.DiagnosticsList()
+				return err
+			})
+			networkStatus = probeStatus(func() error {
+				_, err := ws.NetworkGet()
+				return err
+			})
+			energyStatus = probeStatus(func() error {
+				_, err := ws.EnergyInfo()
+				return err
+			})
+			repairsStatus = probeStatus(func() error {
+				_, err := ws.RepairListIssues()
+				return err
+			})
 		}
 
 		esClient, esErr := getESPHomeClient()
@@ -120,6 +119,9 @@ func runCapabilityProbe(cmd *cobra.Command, args []string) error {
 	}
 
 	if !supervisorStatus.Available && auth.IsSupervisorEnvironment() {
+		supervisorStatus = capabilityStatus{Available: true}
+	}
+	if !supervisorStatus.Available && anyCapabilityAvailable(backupStatus, diagnosticsStatus, networkStatus, repairsStatus) {
 		supervisorStatus = capabilityStatus{Available: true}
 	}
 
@@ -143,11 +145,11 @@ func runCapabilityProbe(cmd *cobra.Command, args []string) error {
 			"ws":                                  wsStatus.Available,
 			"supervisor":                          supervisorStatus.Available,
 			"esphome":                             esphomeStatus.Available,
-			"can_manage_backups":                  wsStatus.Available && backupStatus.Available,
-			"can_use_diagnostics":                 wsStatus.Available && diagnosticsStatus.Available,
-			"can_manage_network":                  wsStatus.Available && networkStatus.Available,
-			"can_manage_repairs":                  wsStatus.Available && repairsStatus.Available,
-			"supports_energy_preferences":         wsStatus.Available && energyStatus.Available,
+			"can_manage_backups":                  backupStatus.Available,
+			"can_use_diagnostics":                 diagnosticsStatus.Available,
+			"can_manage_network":                  networkStatus.Available,
+			"can_manage_repairs":                  repairsStatus.Available,
+			"supports_energy_preferences":         energyStatus.Available,
 			"requires_supervisor_for_backup":      true,
 			"requires_supervisor_for_network":     true,
 			"requires_supervisor_for_repairs":     true,
@@ -184,6 +186,15 @@ func probeStatus(check func() error) capabilityStatus {
 		return capabilityStatus{Available: true}
 	}
 	return statusFromError(err)
+}
+
+func anyCapabilityAvailable(statuses ...capabilityStatus) bool {
+	for _, status := range statuses {
+		if status.Available {
+			return true
+		}
+	}
+	return false
 }
 
 func statusFromError(err error) capabilityStatus {

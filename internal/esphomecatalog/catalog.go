@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -79,16 +80,20 @@ type Client struct {
 	token      string
 }
 
+var (
+	lookPath       = exec.LookPath
+	ghTokenCommand = func(ctx context.Context, path string) ([]byte, error) {
+		return exec.CommandContext(ctx, path, "auth", "token").Output()
+	}
+)
+
 // NewClient creates a catalog client for a git ref.
 func NewClient(ref string) *Client {
 	if strings.TrimSpace(ref) == "" {
 		ref = defaultRef
 	}
 
-	token := strings.TrimSpace(os.Getenv("GH_TOKEN"))
-	if token == "" {
-		token = strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
-	}
+	token := discoverGitHubToken()
 
 	return &Client{
 		httpClient: &http.Client{Timeout: 20 * time.Second},
@@ -99,6 +104,29 @@ func NewClient(ref string) *Client {
 		ref:        ref,
 		token:      token,
 	}
+}
+
+func discoverGitHubToken() string {
+	token := strings.TrimSpace(os.Getenv("GH_TOKEN"))
+	if token != "" {
+		return token
+	}
+	token = strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
+	if token != "" {
+		return token
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	path, err := lookPath("gh")
+	if err != nil || path == "" {
+		return ""
+	}
+	out, err := ghTokenCommand(ctx, path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // Search finds devices by slug/title and optional metadata filters.
@@ -323,7 +351,7 @@ func (c *Client) apiGetJSON(ctx context.Context, path string, query map[string]s
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("catalog API returned status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return formatGitHubHTTPError("catalog API", resp.StatusCode, body, c.token != "")
 	}
 
 	if err := json.Unmarshal(body, target); err != nil {
@@ -360,10 +388,21 @@ func (c *Client) getURL(ctx context.Context, value string) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("catalog content returned status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return "", formatGitHubHTTPError("catalog content", resp.StatusCode, body, c.token != "")
 	}
 
 	return string(body), nil
+}
+
+func formatGitHubHTTPError(prefix string, statusCode int, body []byte, authenticated bool) error {
+	trimmed := strings.TrimSpace(string(body))
+	if statusCode == http.StatusForbidden && strings.Contains(strings.ToLower(trimmed), "rate limit") {
+		if authenticated {
+			return fmt.Errorf("%s rate limit exceeded even with authentication: %s", prefix, trimmed)
+		}
+		return fmt.Errorf("%s rate limit exceeded; set GH_TOKEN/GITHUB_TOKEN or authenticate gh CLI to raise the limit: %s", prefix, trimmed)
+	}
+	return fmt.Errorf("%s returned status %d: %s", prefix, statusCode, trimmed)
 }
 
 func parseFrontmatter(markdown string) map[string]any {
