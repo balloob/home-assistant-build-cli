@@ -99,6 +99,7 @@ func runDashboardCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		// Dashboard was created but config failed - warn but don't fail
 		noteFallback("dashboard created successfully, but initial section-based config save failed")
+		noteMissingSection("dashboard_config")
 		output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Dashboard %s created, but initial config failed: %v", urlPath, err), output.EnvelopeContext{Operation: "create", ResourceType: "dashboard"})
 		return nil
 	}

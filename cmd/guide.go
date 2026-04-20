@@ -70,6 +70,7 @@ func buildGuideListOutput(topics []guide.Topic) []map[string]interface{} {
 			"aliases":            topic.Aliases,
 			"related_topics":     topic.RelatedTopics,
 			"suggested_commands": topic.SuggestedCommands,
+			"recipes":            topic.Recipes,
 		}
 	}
 
@@ -107,6 +108,7 @@ func buildGuideTopicOutput(topic guide.TopicContent) map[string]interface{} {
 		"mutation_patterns":     topic.Topic.MutationPatterns,
 		"verification_commands": topic.Topic.VerificationCommands,
 		"pitfalls":              topic.Topic.Pitfalls,
+		"recipes":               topic.Topic.Recipes,
 		"content":               topic.Content,
 	}
 }

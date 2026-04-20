@@ -95,3 +95,71 @@ func TestTopicRegistrySuggestedCommandsPrefixedWithHab(t *testing.T) {
 		}
 	}
 }
+
+func TestTopicRegistryRecipesPresentAndStructured(t *testing.T) {
+	for _, topicDef := range topicRegistry {
+		topic := enrichTopic(topicDef.Topic)
+		if len(topic.Recipes) == 0 {
+			t.Fatalf("topic %q missing recipes", topic.ID)
+		}
+		for _, recipe := range topic.Recipes {
+			if recipe.ID == "" {
+				t.Fatalf("topic %q has recipe with empty id", topic.ID)
+			}
+			if len(recipe.Steps) == 0 {
+				t.Fatalf("topic %q recipe %q missing steps", topic.ID, recipe.ID)
+			}
+			for _, step := range recipe.Steps {
+				if step.ID == "" {
+					t.Fatalf("topic %q recipe %q has step with empty id", topic.ID, recipe.ID)
+				}
+				if step.Summary == "" {
+					t.Fatalf("topic %q recipe %q step %q missing summary", topic.ID, recipe.ID, step.ID)
+				}
+			}
+			if len(recipe.RequiredCapabilities) == 0 {
+				t.Fatalf("topic %q recipe %q missing required capabilities", topic.ID, recipe.ID)
+			}
+		}
+	}
+}
+
+func TestTopicRegistryRecipeCapabilitiesKnown(t *testing.T) {
+	allowed := map[string]struct{}{
+		"local": {}, "auth": {}, "rest": {}, "ws": {}, "supervisor": {}, "esphome": {},
+	}
+	for _, topicDef := range topicRegistry {
+		topic := enrichTopic(topicDef.Topic)
+		for _, recipe := range topic.Recipes {
+			for _, capability := range recipe.RequiredCapabilities {
+				if _, ok := allowed[capability]; !ok {
+					t.Fatalf("topic %q recipe %q uses unknown capability %q", topic.ID, recipe.ID, capability)
+				}
+			}
+		}
+	}
+}
+
+func TestTopicRegistryRecipeReferencesValidStepIDs(t *testing.T) {
+	for _, topicDef := range topicRegistry {
+		topic := enrichTopic(topicDef.Topic)
+		for _, recipe := range topic.Recipes {
+			ids := map[string]struct{}{}
+			for _, step := range recipe.Steps {
+				ids[step.ID] = struct{}{}
+			}
+			for _, branch := range recipe.Branches {
+				if _, ok := ids[branch.StepID]; !ok {
+					t.Fatalf("topic %q recipe %q branch references unknown step %q", topic.ID, recipe.ID, branch.StepID)
+				}
+			}
+			for _, step := range recipe.Steps {
+				for _, onFailure := range step.OnFailure {
+					if _, ok := ids[onFailure]; !ok {
+						t.Fatalf("topic %q recipe %q step %q on_failure references unknown step %q", topic.ID, recipe.ID, step.ID, onFailure)
+					}
+				}
+			}
+		}
+	}
+}

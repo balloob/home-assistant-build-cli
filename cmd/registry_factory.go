@@ -223,6 +223,9 @@ func registerRegistryGet(cfg RegistryCRUDConfig) {
 							}
 							resultMap["related"] = rel
 							result = resultMap
+						} else if err != nil {
+							noteFallback(fmt.Sprintf("%s related lookup failed; returned registry data without related items", cfg.ResourceName))
+							noteMissingSection("related")
 						}
 					}
 

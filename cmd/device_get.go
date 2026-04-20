@@ -66,6 +66,7 @@ func runDeviceGet(cmd *cobra.Command, args []string) error {
 					result = resultMap
 				} else if err != nil {
 					noteFallback("device related search failed; returned device registry data without related items")
+					noteMissingSection("related")
 				}
 			}
 

@@ -15,6 +15,8 @@ import (
 var (
 	defaultMetadataMu       sync.RWMutex
 	defaultMetadataProvider func() map[string]interface{}
+	defaultContextMu        sync.RWMutex
+	defaultContextProvider  func() EnvelopeContext
 )
 
 // Text-mode table formatting limits. These keep terminal output readable
@@ -39,7 +41,10 @@ type Response struct {
 	ResourceType          string                 `json:"resource_type,omitempty"`
 	Data                  interface{}            `json:"data,omitempty"`
 	Message               string                 `json:"message,omitempty"`
+	PartialResult         bool                   `json:"partial_result,omitempty"`
 	Warnings              []string               `json:"warnings,omitempty"`
+	FallbacksApplied      []string               `json:"fallbacks_applied,omitempty"`
+	MissingSections       []string               `json:"missing_sections,omitempty"`
 	VerificationCommands  []string               `json:"verification_commands,omitempty"`
 	NextSuggestedCommands []string               `json:"next_suggested_commands,omitempty"`
 	Error                 *ErrorDetail           `json:"error,omitempty"`
@@ -51,7 +56,10 @@ type Response struct {
 type EnvelopeContext struct {
 	Operation             string
 	ResourceType          string
+	PartialResult         bool
 	Warnings              []string
+	FallbacksApplied      []string
+	MissingSections       []string
 	VerificationCommands  []string
 	NextSuggestedCommands []string
 	Metadata              map[string]interface{}
@@ -111,6 +119,13 @@ func FormatErrorText(msg string, suggestion string) string {
 }
 
 func formatJSON(data interface{}, success bool, message string, errDetail *ErrorDetail, ctx EnvelopeContext) string {
+	defaultContextMu.RLock()
+	contextProvider := defaultContextProvider
+	defaultContextMu.RUnlock()
+	if contextProvider != nil {
+		ctx = mergeEnvelopeContext(contextProvider(), ctx)
+	}
+
 	metadata := map[string]interface{}{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
@@ -134,7 +149,10 @@ func formatJSON(data interface{}, success bool, message string, errDetail *Error
 		ResourceType:          ctx.ResourceType,
 		Data:                  data,
 		Message:               message,
+		PartialResult:         ctx.PartialResult,
 		Warnings:              ctx.Warnings,
+		FallbacksApplied:      ctx.FallbacksApplied,
+		MissingSections:       ctx.MissingSections,
 		VerificationCommands:  ctx.VerificationCommands,
 		NextSuggestedCommands: ctx.NextSuggestedCommands,
 		Error:                 errDetail,
@@ -154,6 +172,60 @@ func SetDefaultMetadataProvider(provider func() map[string]interface{}) {
 	defaultMetadataMu.Lock()
 	defer defaultMetadataMu.Unlock()
 	defaultMetadataProvider = provider
+}
+
+// SetDefaultEnvelopeContextProvider configures process-wide JSON envelope fields
+// that will be merged into every response envelope before command-specific values.
+func SetDefaultEnvelopeContextProvider(provider func() EnvelopeContext) {
+	defaultContextMu.Lock()
+	defer defaultContextMu.Unlock()
+	defaultContextProvider = provider
+}
+
+func mergeEnvelopeContext(base, override EnvelopeContext) EnvelopeContext {
+	merged := base
+	if override.Operation != "" {
+		merged.Operation = override.Operation
+	}
+	if override.ResourceType != "" {
+		merged.ResourceType = override.ResourceType
+	}
+	merged.PartialResult = merged.PartialResult || override.PartialResult
+	merged.Warnings = appendUniqueStrings(merged.Warnings, override.Warnings)
+	merged.FallbacksApplied = appendUniqueStrings(merged.FallbacksApplied, override.FallbacksApplied)
+	merged.MissingSections = appendUniqueStrings(merged.MissingSections, override.MissingSections)
+	merged.VerificationCommands = appendUniqueStrings(merged.VerificationCommands, override.VerificationCommands)
+	merged.NextSuggestedCommands = appendUniqueStrings(merged.NextSuggestedCommands, override.NextSuggestedCommands)
+	if len(base.Metadata) > 0 {
+		merged.Metadata = maps.Clone(base.Metadata)
+	}
+	if len(override.Metadata) > 0 {
+		if merged.Metadata == nil {
+			merged.Metadata = map[string]interface{}{}
+		}
+		for key, value := range override.Metadata {
+			merged.Metadata[key] = value
+		}
+	}
+	return merged
+}
+
+func appendUniqueStrings(existing, incoming []string) []string {
+	if len(incoming) == 0 {
+		return existing
+	}
+	seen := make(map[string]struct{}, len(existing))
+	for _, item := range existing {
+		seen[item] = struct{}{}
+	}
+	for _, item := range incoming {
+		if _, ok := seen[item]; ok {
+			continue
+		}
+		existing = append(existing, item)
+		seen[item] = struct{}{}
+	}
+	return existing
 }
 
 func formatText(data interface{}, message string) string {

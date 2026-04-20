@@ -66,4 +66,7 @@ func TestGetTopic(t *testing.T) {
 	if topic.Content == "" {
 		t.Fatal("GetTopic(index).Content is empty")
 	}
+	if len(topic.Topic.Recipes) == 0 {
+		t.Fatal("GetTopic(index).Topic.Recipes is empty")
+	}
 }

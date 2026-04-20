@@ -42,6 +42,7 @@ type schemaCommand struct {
 	Args            []SchemaPositionalArg  `json:"args,omitempty"`
 	FlagConstraints []SchemaFlagConstraint `json:"flag_constraints,omitempty"`
 	GuideTopic      string                 `json:"guide_topic,omitempty"`
+	OutputContract  *SchemaOutputContract  `json:"output_contract,omitempty"`
 	Flags           []schemaFlag           `json:"flags,omitempty"`
 	InheritedFlags  []schemaFlag           `json:"inherited_flags,omitempty"`
 	Subcommands     []schemaCommand        `json:"subcommands,omitempty"`
@@ -134,6 +135,12 @@ func buildSchemaTree(cmd *cobra.Command) schemaCommand {
 		args = parseUseArgs(cmd.Use)
 	}
 
+	outputContract := ann.OutputContract
+	if outputContract == nil {
+		contract := inferOutputContract(path, cmd, ann, sideEffect, outputMode)
+		outputContract = &contract
+	}
+
 	sc := schemaCommand{
 		Path:            path,
 		Use:             cmd.Use,
@@ -153,6 +160,7 @@ func buildSchemaTree(cmd *cobra.Command) schemaCommand {
 		Args:            args,
 		FlagConstraints: slices.Clone(ann.FlagConstraints),
 		GuideTopic:      ann.GuideTopic,
+		OutputContract:  outputContract,
 		Flags:           extractFlags(cmd.LocalFlags(), false),
 		InheritedFlags:  extractFlags(cmd.InheritedFlags(), true),
 	}
@@ -312,4 +320,136 @@ func inferCapabilities(path string) []string {
 		return []string{"auth", "esphome"}
 	}
 	return []string{"auth"}
+}
+
+func inferOutputContract(path string, cmd *cobra.Command, ann SchemaAnnotation, sideEffect, outputMode string) SchemaOutputContract {
+	resourceType := ann.ResourceType
+	if resourceType == "" {
+		resourceType = cmd.Name()
+	}
+	baseSuccess := baseEnvelopeContract(resourceType, outputMode, true)
+	baseError := baseEnvelopeContract(resourceType, outputMode, false)
+	partial := partialEnvelopeContract(resourceType, outputMode)
+
+	variants := make([]SchemaOutputVariant, 0)
+	variantNames := slices.Clone(ann.OutputVariants)
+	if len(variantNames) == 0 {
+		variantNames = defaultVariantNames(path, cmd, sideEffect, outputMode)
+	}
+	for _, variant := range variantNames {
+		variants = append(variants, SchemaOutputVariant{
+			Name:        variant,
+			Description: variantDescription(variant, resourceType),
+			OutputMode:  outputMode,
+			Envelope:    &baseSuccess,
+			Data:        dataContractForVariant(variant, resourceType, sideEffect, cmd.Name()),
+		})
+	}
+
+	contract := SchemaOutputContract{
+		OutputMode:      outputMode,
+		SuccessEnvelope: baseSuccess,
+		ErrorEnvelope:   baseError,
+		PartialEnvelope: &partial,
+		Variants:        variants,
+	}
+	if outputMode == "ndjson_stream" {
+		contract.StreamEvents = []SchemaObjectContract{
+			{
+				Type:        "object",
+				Description: fmt.Sprintf("stream event records for %s", resourceType),
+				Fields:      []SchemaField{{Name: "event", Type: "string", Required: true, Description: "event type"}, {Name: "message", Type: "string", Description: "human-readable event detail"}, {Name: "data", Type: "object", Description: "event-specific payload", AdditionalProps: true}},
+			},
+		}
+	}
+	return contract
+}
+
+func defaultVariantNames(path string, cmd *cobra.Command, sideEffect, outputMode string) []string {
+	if outputMode == "ndjson_stream" {
+		return []string{"stream"}
+	}
+	if cmd.Flags().Lookup("plan") != nil || cmd.Flags().Lookup("dry-run") != nil {
+		return []string{"full", "plan"}
+	}
+	switch cmd.Name() {
+	case "list":
+		return []string{"full", "brief", "count"}
+	case "get", "show", "info", "trace", "history", "logbook", "docs", "probe", "overview", "schema":
+		return []string{"full"}
+	case "create", "update", "patch", "rename", "assign", "remove", "set", "run", "call", "fire", "delete", "restart", "restore":
+		return []string{"full"}
+	default:
+		if sideEffect == "meta" {
+			return []string{"full"}
+		}
+		return []string{"full"}
+	}
+}
+
+func variantDescription(variant, resourceType string) string {
+	switch variant {
+	case "brief":
+		return fmt.Sprintf("minimal %s list entries", resourceType)
+	case "count":
+		return fmt.Sprintf("count summary for %s results", resourceType)
+	case "plan":
+		return fmt.Sprintf("dry-run execution plan for %s mutations", resourceType)
+	case "stream":
+		return fmt.Sprintf("streaming event records for %s", resourceType)
+	default:
+		return fmt.Sprintf("default %s response payload", resourceType)
+	}
+}
+
+func baseEnvelopeContract(resourceType, outputMode string, success bool) SchemaObjectContract {
+	fields := []SchemaField{
+		{Name: "success", Type: "boolean", Required: true, Description: "indicates whether the command succeeded"},
+		{Name: "operation", Type: "string", Description: "normalized operation name"},
+		{Name: "resource_type", Type: "string", Description: fmt.Sprintf("resource family for %s", resourceType)},
+		{Name: "data", Type: "object", Description: fmt.Sprintf("payload for %s responses", resourceType), AdditionalProps: true},
+		{Name: "message", Type: "string", Description: "human-readable status message"},
+		{Name: "partial_result", Type: "boolean", Description: "whether the response omitted or degraded part of the requested data"},
+		{Name: "warnings", Type: "array", ItemType: "string", Description: "non-fatal warnings about the operation or payload"},
+		{Name: "fallbacks_applied", Type: "array", ItemType: "string", Description: "fallback behaviors used to satisfy the request"},
+		{Name: "missing_sections", Type: "array", ItemType: "string", Description: "requested sections that could not be returned"},
+		{Name: "verification_commands", Type: "array", ItemType: "string", Description: "commands recommended to verify the result"},
+		{Name: "next_suggested_commands", Type: "array", ItemType: "string", Description: "commands commonly executed after this result"},
+		{Name: "metadata", Type: "object", Description: "execution metadata such as timestamp, transport, auth source, and resolution decisions", AdditionalProps: true},
+	}
+	if !success {
+		fields = append(fields, SchemaField{Name: "error", Type: "object", Required: true, Description: "structured error detail", Fields: []SchemaField{{Name: "code", Type: "string", Required: true}, {Name: "message", Type: "string", Required: true}, {Name: "details", Type: "object", Description: "error-specific machine-readable context", AdditionalProps: true}}})
+	}
+	return SchemaObjectContract{Type: "object", Description: fmt.Sprintf("%s %s envelope", outputMode, map[bool]string{true: "success", false: "error"}[success]), Fields: fields}
+}
+
+func partialEnvelopeContract(resourceType, outputMode string) SchemaObjectContract {
+	contract := baseEnvelopeContract(resourceType, outputMode, true)
+	contract.Description = fmt.Sprintf("partial %s envelope for %s", outputMode, resourceType)
+	return contract
+}
+
+func dataContractForVariant(variant, resourceType, sideEffect, commandName string) *SchemaObjectContract {
+	switch variant {
+	case "count":
+		return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("count result for %s", resourceType), Fields: []SchemaField{{Name: "count", Type: "number", Required: true, Description: "number of matching items"}}}
+	case "brief":
+		return &SchemaObjectContract{Type: "array", Description: fmt.Sprintf("minimal list rows for %s", resourceType), Fields: []SchemaField{{Name: "items", Type: "object", Description: "brief resource rows", Fields: []SchemaField{{Name: "id", Type: "string", Description: "resource identifier when available"}, {Name: "name", Type: "string", Description: "display name when available"}}, AdditionalProps: true}}}
+	case "plan":
+		return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("execution plan for %s", resourceType), Fields: []SchemaField{{Name: "mode", Type: "string", Required: true, Enum: []string{"plan"}}, {Name: "would_change", Type: "boolean", Required: true}, {Name: "target", Type: "object", Required: true, AdditionalProps: true}, {Name: "inputs", Type: "object", AdditionalProps: true}, {Name: "derived_ids", Type: "object", AdditionalProps: true}, {Name: "steps", Type: "array", ItemType: "string", Required: true}, {Name: "risks", Type: "array", ItemType: "string"}, {Name: "requires_confirmation", Type: "boolean", Required: true}, {Name: "verification_commands", Type: "array", ItemType: "string"}}}
+	case "stream":
+		return &SchemaObjectContract{Type: "array", Description: fmt.Sprintf("stream records for %s", resourceType)}
+	default:
+		shapeType := "object"
+		if commandName == "list" {
+			shapeType = "array"
+		}
+		if sideEffect == "read" {
+			if shapeType == "array" {
+				return &SchemaObjectContract{Type: "array", Description: fmt.Sprintf("resource-specific list payload for %s", resourceType)}
+			}
+			return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("resource-specific payload for %s", resourceType), Fields: []SchemaField{{Name: "payload", Type: "object", Description: fmt.Sprintf("fields vary by %s command", resourceType), AdditionalProps: true}}}
+		}
+		return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("mutation result payload for %s", resourceType), Fields: []SchemaField{{Name: "payload", Type: "object", Description: fmt.Sprintf("fields vary by %s command", resourceType), AdditionalProps: true}}}
+	}
 }

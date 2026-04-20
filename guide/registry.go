@@ -22,6 +22,7 @@ type Topic struct {
 	MutationPatterns     []string `json:"mutation_patterns,omitempty"`
 	VerificationCommands []string `json:"verification_commands,omitempty"`
 	Pitfalls             []string `json:"pitfalls,omitempty"`
+	Recipes              []Recipe `json:"recipes,omitempty"`
 }
 
 // TopicContent is a fully loaded guide topic with markdown content.
@@ -489,7 +490,7 @@ var topicRegistry = []topicDef{
 func List() []Topic {
 	result := make([]Topic, len(topicRegistry))
 	for i, topic := range topicRegistry {
-		result[i] = topic.Topic
+		result[i] = enrichTopic(topic.Topic)
 	}
 	return result
 }
@@ -508,16 +509,21 @@ func Resolve(name string) (Topic, error) {
 	normalized := normalizeTopicName(name)
 	for _, topic := range topicRegistry {
 		if topic.ID == normalized {
-			return topic.Topic, nil
+			return enrichTopic(topic.Topic), nil
 		}
 		for _, alias := range topic.Aliases {
 			if normalizeTopicName(alias) == normalized {
-				return topic.Topic, nil
+				return enrichTopic(topic.Topic), nil
 			}
 		}
 	}
 
 	return Topic{}, fmt.Errorf("%w: %s", ErrTopicNotFound, name)
+}
+
+func enrichTopic(topic Topic) Topic {
+	topic.Recipes = recipesForTopic(topic.ID)
+	return topic
 }
 
 // GetTopic loads a topic's metadata and markdown content by topic name or alias.

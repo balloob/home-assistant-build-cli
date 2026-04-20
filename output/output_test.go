@@ -471,7 +471,10 @@ func TestFormatOutputWithContext_JSONMode(t *testing.T) {
 	ctx := EnvelopeContext{
 		Operation:             "list",
 		ResourceType:          "area",
+		PartialResult:         true,
 		Warnings:              []string{"partial data"},
+		FallbacksApplied:      []string{"used cached registry snapshot"},
+		MissingSections:       []string{"related"},
 		VerificationCommands:  []string{"hab area list --json"},
 		NextSuggestedCommands: []string{"hab area get kitchen --json"},
 		Metadata: map[string]interface{}{
@@ -491,8 +494,17 @@ func TestFormatOutputWithContext_JSONMode(t *testing.T) {
 	if resp.ResourceType != "area" {
 		t.Fatalf("resource_type = %q, want area", resp.ResourceType)
 	}
+	if !resp.PartialResult {
+		t.Fatal("expected partial_result=true")
+	}
 	if len(resp.Warnings) != 1 || resp.Warnings[0] != "partial data" {
 		t.Fatalf("warnings = %#v, want [partial data]", resp.Warnings)
+	}
+	if len(resp.FallbacksApplied) != 1 || resp.FallbacksApplied[0] != "used cached registry snapshot" {
+		t.Fatalf("fallbacks_applied = %#v, unexpected", resp.FallbacksApplied)
+	}
+	if len(resp.MissingSections) != 1 || resp.MissingSections[0] != "related" {
+		t.Fatalf("missing_sections = %#v, unexpected", resp.MissingSections)
 	}
 	if len(resp.VerificationCommands) != 1 || resp.VerificationCommands[0] != "hab area list --json" {
 		t.Fatalf("verification_commands = %#v, unexpected", resp.VerificationCommands)
@@ -526,5 +538,34 @@ func TestFormatErrorWithContext_JSONMode(t *testing.T) {
 	}
 	if resp.Error == nil || resp.Error.Code != "NOT_FOUND" {
 		t.Fatalf("error = %#v, expected NOT_FOUND", resp.Error)
+	}
+}
+
+func TestDefaultEnvelopeContextProvider(t *testing.T) {
+	SetDefaultEnvelopeContextProvider(func() EnvelopeContext {
+		return EnvelopeContext{
+			PartialResult:    true,
+			Warnings:         []string{"provider warning"},
+			FallbacksApplied: []string{"provider fallback"},
+		}
+	})
+	defer SetDefaultEnvelopeContextProvider(nil)
+
+	got := FormatOutputWithContext(map[string]interface{}{"ok": true}, false, "", EnvelopeContext{
+		Warnings: []string{"override warning"},
+	})
+
+	var resp Response
+	if err := json.Unmarshal([]byte(got), &resp); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if !resp.PartialResult {
+		t.Fatal("expected partial_result from provider")
+	}
+	if len(resp.Warnings) != 2 {
+		t.Fatalf("warnings = %#v, want merged warnings", resp.Warnings)
+	}
+	if len(resp.FallbacksApplied) != 1 || resp.FallbacksApplied[0] != "provider fallback" {
+		t.Fatalf("fallbacks_applied = %#v, unexpected", resp.FallbacksApplied)
 	}
 }

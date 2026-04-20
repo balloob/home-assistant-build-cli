@@ -91,22 +91,26 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		noteFallback("config fetch failed; overview omitted instance configuration details")
+		noteMissingSection("config")
 	}
 
 	if floorsErr == nil {
 		result["floors"] = len(floors)
 	} else {
 		noteFallback("floor registry fetch failed; overview omitted floor count")
+		noteMissingSection("floors")
 	}
 	if areasErr == nil {
 		result["areas"] = len(areas)
 	} else {
 		noteFallback("area registry fetch failed; overview omitted area count")
+		noteMissingSection("areas")
 	}
 	if devicesErr == nil {
 		result["devices"] = len(devices)
 	} else {
 		noteFallback("device registry fetch failed; overview omitted device count")
+		noteMissingSection("devices")
 	}
 	if dashboardsErr == nil {
 		if dashboardList, ok := dashboards.([]interface{}); ok {
@@ -114,11 +118,13 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		noteFallback("dashboard list fetch failed; overview omitted dashboard count")
+		noteMissingSection("dashboards")
 	}
 	if labelsErr == nil {
 		result["labels"] = len(labels)
 	} else {
 		noteFallback("label registry fetch failed; overview omitted label count")
+		noteMissingSection("labels")
 	}
 
 	if statesErr == nil {
@@ -156,6 +162,9 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		result["scripts"] = scriptCount
 	} else {
 		noteFallback("state fetch failed; overview omitted entity, automation, and script counts")
+		noteMissingSection("entities")
+		noteMissingSection("automations")
+		noteMissingSection("scripts")
 	}
 
 	if entitiesErr == nil {
@@ -181,6 +190,7 @@ func runOverview(cmd *cobra.Command, args []string) error {
 		result["helpers"] = helperCount
 	} else {
 		noteFallback("entity registry fetch failed; overview omitted helper count")
+		noteMissingSection("helpers")
 	}
 
 	if textMode {
