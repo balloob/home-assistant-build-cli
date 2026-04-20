@@ -94,7 +94,7 @@ run_hab() {
 
 # Run hab with text output (for testing text mode)
 run_hab_text() {
-    "$HAB" --config "$HAB_TEST_CONFIG_DIR" "$@"
+	"$HAB" --config "$HAB_TEST_CONFIG_DIR" --text "$@"
 }
 
 # Run command that might fail or not be supported

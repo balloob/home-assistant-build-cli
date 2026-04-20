@@ -45,7 +45,7 @@ run_core_tests() {
         fail "system health: $OUTPUT"
     fi
 
-    # Test: text output mode (now the default)
+	# Test: explicit text output mode
     log_test "text output mode"
     OUTPUT=$(run_hab_text system info)
     if ! echo "$OUTPUT" | jq . > /dev/null 2>&1; then
