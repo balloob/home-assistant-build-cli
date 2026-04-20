@@ -7,7 +7,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var backupDeleteForce bool
+var (
+	backupDeleteForce  bool
+	backupDeletePlan   bool
+	backupDeleteDryRun bool
+)
 
 var backupDeleteCmd = &cobra.Command{
 	Use:   "delete <backup_id>",
@@ -20,11 +24,42 @@ var backupDeleteCmd = &cobra.Command{
 func init() {
 	backupCmd.AddCommand(backupDeleteCmd)
 	backupDeleteCmd.Flags().BoolVarP(&backupDeleteForce, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(backupDeleteCmd, &backupDeletePlan, &backupDeleteDryRun)
+	mergeSchemaAnnotation(backupDeleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "backup",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runBackupDelete(cmd *cobra.Command, args []string) error {
 	backupID := args[0]
 	textMode := getTextMode()
+
+	if planRequested(backupDeletePlan, backupDeleteDryRun) {
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource":  "backup",
+				"backup_id": backupID,
+			},
+			Steps: []string{
+				"Connect to Home Assistant WebSocket API.",
+				"Send backup delete command for the selected backup ID.",
+				"Return deletion confirmation.",
+			},
+			Risks: []string{
+				"This operation permanently removes the selected backup.",
+			},
+			RequiresConfirmation: !backupDeleteForce,
+			VerificationCommands: []string{
+				"hab backup list --json",
+			},
+		}, textMode, "backup")
+		return nil
+	}
 
 	if err := confirmAction(backupDeleteForce, fmt.Sprintf("Delete backup %s?", backupID), "delete backup"); err != nil {
 		return err

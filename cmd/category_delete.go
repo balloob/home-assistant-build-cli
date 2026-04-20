@@ -10,6 +10,8 @@ import (
 var (
 	categoryDeleteScope string
 	categoryDeleteForce bool
+	categoryDeletePlan  bool
+	categoryDeleteDry   bool
 )
 
 var categoryDeleteCmd = &cobra.Command{
@@ -27,6 +29,14 @@ func init() {
 	categoryDeleteCmd.Flags().StringVar(&categoryDeleteScope, "scope", "", "Scope of the category: automation, script, scene, helpers (required)")
 	categoryDeleteCmd.Flags().BoolVarP(&categoryDeleteForce, "force", "f", false, "Skip confirmation")
 	categoryDeleteCmd.MarkFlagRequired("scope")
+	registerMutationPlanFlags(categoryDeleteCmd, &categoryDeletePlan, &categoryDeleteDry)
+	mergeSchemaAnnotation(categoryDeleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "category",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runCategoryDelete(cmd *cobra.Command, args []string) error {
@@ -36,6 +46,30 @@ func runCategoryDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid scope '%s'. Valid values: automation, script, scene, helpers", categoryDeleteScope)
 	}
 	textMode := getTextMode()
+
+	if planRequested(categoryDeletePlan, categoryDeleteDry) {
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource":    "category",
+				"scope":       categoryDeleteScope,
+				"category_id": categoryID,
+			},
+			Steps: []string{
+				"Connect to Home Assistant WebSocket API.",
+				"Send category registry delete in the selected scope.",
+				"Return deletion confirmation.",
+			},
+			Risks: []string{
+				"Deleting a category affects organization for entities in that scope.",
+			},
+			RequiresConfirmation: !categoryDeleteForce,
+			VerificationCommands: []string{
+				fmt.Sprintf("hab category list --scope %s --json", categoryDeleteScope),
+			},
+		}, textMode, "category")
+		return nil
+	}
 
 	if err := confirmAction(categoryDeleteForce, fmt.Sprintf("Delete category %s from scope %s?", categoryID, categoryDeleteScope), "delete category"); err != nil {
 		return err

@@ -5,7 +5,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var restartForce bool
+var (
+	restartForce  bool
+	restartPlan   bool
+	restartDryRun bool
+)
 
 var systemRestartCmd = &cobra.Command{
 	Use:   "restart",
@@ -17,10 +21,40 @@ var systemRestartCmd = &cobra.Command{
 func init() {
 	systemCmd.AddCommand(systemRestartCmd)
 	systemRestartCmd.Flags().BoolVarP(&restartForce, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(systemRestartCmd, &restartPlan, &restartDryRun)
+	mergeSchemaAnnotation(systemRestartCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: "system",
+		InputSources: []string{"flags"},
+	})
 }
 
 func runSystemRestart(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
+
+	if planRequested(restartPlan, restartDryRun) {
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource": "system",
+				"action":   "restart",
+			},
+			Steps: []string{
+				"Call Home Assistant restart endpoint.",
+				"Restart Home Assistant core.",
+			},
+			Risks: []string{
+				"Restart interrupts active automations, integrations, and API availability briefly.",
+			},
+			RequiresConfirmation: !restartForce,
+			VerificationCommands: []string{
+				"hab system health --json",
+			},
+		}, textMode, "system")
+		return nil
+	}
 
 	if err := confirmAction(restartForce, "This will restart Home Assistant. Continue?", "restart system"); err != nil {
 		return err

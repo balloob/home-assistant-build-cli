@@ -137,6 +137,70 @@ func TestSchemaOutputContractsPresentForVisibleCommands(t *testing.T) {
 	assertOutputContracts(t, tree)
 }
 
+func TestSchemaResourceTypeMatchesCommandFamilyDefaults(t *testing.T) {
+	cases := []struct {
+		path         []string
+		resourceType string
+	}{
+		{path: []string{"backup", "delete"}, resourceType: "backup"},
+		{path: []string{"system", "restart"}, resourceType: "system"},
+		{path: []string{"thread", "delete"}, resourceType: "thread_dataset"},
+		{path: []string{"notification", "list"}, resourceType: "notification"},
+	}
+
+	for _, tc := range cases {
+		t.Run(joinCommandPath(tc.path), func(t *testing.T) {
+			cmd, _, err := rootCmd.Find(tc.path)
+			if err != nil {
+				t.Fatalf("find %v: %v", tc.path, err)
+			}
+			s := buildSchemaTree(cmd)
+			if s.ResourceType != tc.resourceType {
+				t.Fatalf("resource_type = %q, want %q", s.ResourceType, tc.resourceType)
+			}
+		})
+	}
+}
+
+func TestDestructiveCommandsExposeForceAndPlanFlags(t *testing.T) {
+	paths := [][]string{
+		{"backup", "delete"},
+		{"system", "restart"},
+		{"thread", "delete"},
+		{"blueprint", "delete"},
+		{"dashboard", "delete"},
+		{"zone", "delete"},
+		{"device", "delete"},
+		{"person", "delete"},
+		{"category", "delete"},
+		{"esphome", "serial", "erase-flash"},
+	}
+
+	for _, path := range paths {
+		t.Run(joinCommandPath(path), func(t *testing.T) {
+			cmd, _, err := rootCmd.Find(path)
+			if err != nil {
+				t.Fatalf("find %v: %v", path, err)
+			}
+			s := buildSchemaTree(cmd)
+			if s.SideEffect != "destructive" {
+				t.Fatalf("side_effect = %q, want destructive", s.SideEffect)
+			}
+			for _, required := range []string{"force", "plan", "dry-run"} {
+				if !schemaHasFlag(s.Flags, required) {
+					t.Fatalf("missing %q flag; flags = %#v", required, s.Flags)
+				}
+			}
+			if s.OutputContract == nil {
+				t.Fatal("missing output contract")
+			}
+			if !schemaHasVariant(s.OutputContract.Variants, "plan") {
+				t.Fatalf("missing plan output variant: %#v", s.OutputContract.Variants)
+			}
+		})
+	}
+}
+
 func assertOutputContracts(t *testing.T, node schemaCommand) {
 	t.Helper()
 	if node.OutputContract == nil {
@@ -186,4 +250,36 @@ func countVisibleCommands(cmd *cobra.Command) int {
 		total += countVisibleCommands(child)
 	}
 	return total
+}
+
+func joinCommandPath(parts []string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	out := ""
+	for i, part := range parts {
+		if i > 0 {
+			out += " "
+		}
+		out += part
+	}
+	return out
+}
+
+func schemaHasFlag(flags []schemaFlag, name string) bool {
+	for _, flag := range flags {
+		if flag.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func schemaHasVariant(variants []SchemaOutputVariant, name string) bool {
+	for _, variant := range variants {
+		if variant.Name == name {
+			return true
+		}
+	}
+	return false
 }

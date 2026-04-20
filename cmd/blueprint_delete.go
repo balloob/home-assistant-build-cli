@@ -7,6 +7,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	blueprintDeleteDomainValue string
+	blueprintDeleteForce       bool
+	blueprintDeletePlan        bool
+	blueprintDeleteDryRun      bool
+)
+
 var blueprintDeleteCmd = &cobra.Command{
 	Use:   "delete <path>",
 	Short: "Delete a blueprint",
@@ -17,17 +24,47 @@ var blueprintDeleteCmd = &cobra.Command{
 
 func init() {
 	blueprintCmd.AddCommand(blueprintDeleteCmd)
-	blueprintDeleteCmd.Flags().String("domain", "automation", "Domain of the blueprint (automation/script)")
-	blueprintDeleteCmd.Flags().BoolP("force", "f", false, "Skip confirmation")
+	blueprintDeleteCmd.Flags().StringVar(&blueprintDeleteDomainValue, "domain", "automation", "Domain of the blueprint (automation/script)")
+	blueprintDeleteCmd.Flags().BoolVarP(&blueprintDeleteForce, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(blueprintDeleteCmd, &blueprintDeletePlan, &blueprintDeleteDryRun)
+	mergeSchemaAnnotation(blueprintDeleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "blueprint",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runBlueprintDelete(cmd *cobra.Command, args []string) error {
 	path := args[0]
 	textMode := getTextMode()
-	domain, _ := cmd.Flags().GetString("domain")
-	force, _ := cmd.Flags().GetBool("force")
 
-	if err := confirmAction(force, fmt.Sprintf("Delete blueprint %s?", path), "delete blueprint"); err != nil {
+	if planRequested(blueprintDeletePlan, blueprintDeleteDryRun) {
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource": "blueprint",
+				"domain":   blueprintDeleteDomainValue,
+				"path":     path,
+			},
+			Steps: []string{
+				"Connect to Home Assistant WebSocket API.",
+				"Send blueprint delete command with the selected domain and path.",
+				"Return deletion confirmation.",
+			},
+			Risks: []string{
+				"Deleting a blueprint removes reusable automation/script templates from Home Assistant.",
+			},
+			RequiresConfirmation: !blueprintDeleteForce,
+			VerificationCommands: []string{
+				fmt.Sprintf("hab blueprint list %s --json", blueprintDeleteDomainValue),
+			},
+		}, textMode, "blueprint")
+		return nil
+	}
+
+	if err := confirmAction(blueprintDeleteForce, fmt.Sprintf("Delete blueprint %s?", path), "delete blueprint"); err != nil {
 		return err
 	}
 
@@ -38,7 +75,7 @@ func runBlueprintDelete(cmd *cobra.Command, args []string) error {
 	defer ws.Close()
 
 	result, err := ws.SendCommand("blueprint/delete", map[string]interface{}{
-		"domain": domain,
+		"domain": blueprintDeleteDomainValue,
 		"path":   path,
 	})
 	if err != nil {
