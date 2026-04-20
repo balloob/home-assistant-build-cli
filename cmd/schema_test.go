@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -201,6 +203,180 @@ func TestDestructiveCommandsExposeForceAndPlanFlags(t *testing.T) {
 	}
 }
 
+func TestVisibleRunnableCommandsExposeExplicitCapabilities(t *testing.T) {
+	var missing []string
+	walkCommandTree(rootCmd, func(command *cobra.Command) {
+		if command == nil || command.Hidden {
+			return
+		}
+		if command.Run == nil && command.RunE == nil {
+			return
+		}
+		if len(getSchemaAnnotation(command).Capabilities) == 0 {
+			missing = append(missing, schemaPath(command))
+		}
+	})
+
+	if len(missing) > 0 {
+		t.Fatalf("commands missing explicit capabilities: %v", missing)
+	}
+}
+
+func TestVisibleRunnableCommandsExposeGuideTopic(t *testing.T) {
+	var missing []string
+	walkCommandTree(rootCmd, func(command *cobra.Command) {
+		if command == nil || command.Hidden {
+			return
+		}
+		if command.Run == nil && command.RunE == nil {
+			return
+		}
+		path := schemaPath(command)
+		if path == "hab help" {
+			return
+		}
+		if getSchemaAnnotation(command).GuideTopic == "" {
+			missing = append(missing, path)
+		}
+	})
+
+	if len(missing) > 0 {
+		t.Fatalf("commands missing guide_topic: %v", missing)
+	}
+}
+
+func TestMutatingCommandsExposePlanFlags(t *testing.T) {
+	tree := buildSchemaTree(rootCmd)
+	var missing []string
+	collectSchemaNodes(tree, func(node schemaCommand) {
+		if node.SideEffect != "write" && node.SideEffect != "destructive" {
+			return
+		}
+		if !schemaHasFlag(node.Flags, "plan") || !schemaHasFlag(node.Flags, "dry-run") {
+			missing = append(missing, node.Path)
+			return
+		}
+		if node.OutputContract == nil || !schemaHasVariant(node.OutputContract.Variants, "plan") {
+			missing = append(missing, node.Path+"(missing plan variant)")
+		}
+	})
+
+	if len(missing) > 0 {
+		t.Fatalf("mutating commands missing plan support: %v", missing)
+	}
+}
+
+func TestGuideTopicFamilyMappings(t *testing.T) {
+	cases := map[string]string{
+		"hab area list":        "registry",
+		"hab action docs":      "automation",
+		"hab dashboard list":   "dashboard",
+		"hab helper list":      "helpers",
+		"hab calendar list":    "calendar-todo",
+		"hab esphome update":   "esphome",
+		"hab backup list":      "operations",
+		"hab overview":         "discovery",
+		"hab auth status":      "auth",
+		"hab schema":           "input-output",
+		"hab guide":            "index",
+		"hab capability probe": "discovery",
+	}
+
+	tree := buildSchemaTree(rootCmd)
+	for path, expected := range cases {
+		t.Run(path, func(t *testing.T) {
+			node := findSchemaNode(tree, path)
+			if node == nil {
+				t.Fatalf("missing schema node for %s", path)
+			}
+			if node.GuideTopic != expected {
+				t.Fatalf("guide_topic for %s = %q, want %q", path, node.GuideTopic, expected)
+			}
+		})
+	}
+}
+
+func TestHighValueCommandsUseSpecificOutputContracts(t *testing.T) {
+	paths := []string{
+		"hab overview",
+		"hab auth status",
+		"hab capability probe",
+		"hab area list",
+		"hab area get",
+		"hab entity search",
+		"hab action docs",
+		"hab dashboard list",
+		"hab dashboard get",
+		"hab calendar list",
+		"hab todo items",
+		"hab esphome update",
+		"hab esphome validate",
+		"hab esphome logs",
+	}
+
+	tree := buildSchemaTree(rootCmd)
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			node := findSchemaNode(tree, path)
+			if node == nil {
+				t.Fatalf("missing schema node for %s", path)
+			}
+			if node.OutputContract == nil {
+				t.Fatalf("missing output contract for %s", path)
+			}
+			for _, variant := range node.OutputContract.Variants {
+				if variant.Name != "full" {
+					continue
+				}
+				if variant.Data == nil {
+					t.Fatalf("full variant missing data contract for %s", path)
+				}
+				desc := strings.ToLower(variant.Data.Description)
+				if strings.Contains(desc, "fields vary by") {
+					t.Fatalf("full variant for %s remains generic: %#v", path, variant.Data)
+				}
+			}
+		})
+	}
+}
+
+func collectSchemaNodes(node schemaCommand, fn func(schemaCommand)) {
+	fn(node)
+	for _, child := range node.Subcommands {
+		collectSchemaNodes(child, fn)
+	}
+}
+
+func TestSchemaCapabilityAlignmentSmokeCheck(t *testing.T) {
+	cases := []struct {
+		path []string
+		want []string
+	}{
+		{path: []string{"zone", "create"}, want: []string{"auth", "ws"}},
+		{path: []string{"auth", "status"}, want: []string{"local"}},
+		{path: []string{"esphome", "update"}, want: []string{"auth", "esphome"}},
+		{path: []string{"overview"}, want: []string{"auth", "rest", "ws"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(joinCommandPath(tc.path), func(t *testing.T) {
+			command, _, err := rootCmd.Find(tc.path)
+			if err != nil {
+				t.Fatalf("find command %v: %v", tc.path, err)
+			}
+			caps := getSchemaAnnotation(command).Capabilities
+			if len(caps) == 0 {
+				t.Fatalf("no explicit capabilities for %s", schemaPath(command))
+			}
+			for _, capability := range tc.want {
+				if !slices.Contains(caps, capability) {
+					t.Fatalf("capabilities for %s = %v, missing %q", schemaPath(command), caps, capability)
+				}
+			}
+		})
+	}
+}
+
 func assertOutputContracts(t *testing.T, node schemaCommand) {
 	t.Helper()
 	if node.OutputContract == nil {
@@ -282,4 +458,40 @@ func schemaHasVariant(variants []SchemaOutputVariant, name string) bool {
 		}
 	}
 	return false
+}
+
+func TestSchemaOutputContractFallbackList(t *testing.T) {
+	allowedGeneric := map[string]struct{}{
+		"hab":            {},
+		"hab help":       {},
+		"hab guide":      {},
+		"hab schema":     {},
+		"hab version":    {},
+		"hab update":     {},
+		"hab capability": {},
+	}
+
+	tree := buildSchemaTree(rootCmd)
+	var generic []string
+	collectSchemaNodes(tree, func(node schemaCommand) {
+		if node.OutputContract == nil {
+			return
+		}
+		if _, ok := allowedGeneric[node.Path]; ok {
+			return
+		}
+		for _, variant := range node.OutputContract.Variants {
+			if variant.Name != "full" || variant.Data == nil {
+				continue
+			}
+			desc := strings.ToLower(variant.Data.Description)
+			if strings.Contains(desc, "fields vary by") {
+				generic = append(generic, fmt.Sprintf("%s (%s)", node.Path, desc))
+			}
+		}
+	})
+
+	if len(generic) > 30 {
+		t.Fatalf("too many generic full contracts remain (%d): %v", len(generic), generic)
+	}
 }
