@@ -256,7 +256,7 @@ run_misc_tests() {
 
         # Test: backup restore (may not be allowed in test environment)
         log_test "backup restore"
-        OUTPUT=$(run_hab_optional backup restore "$BACKUP_ID" --agent backup.local)
+        OUTPUT=$(run_hab_optional backup restore "$BACKUP_ID" --agent backup.local --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             pass "backup restore"
         elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
@@ -408,7 +408,7 @@ run_misc_tests() {
     log_test "network configure (idempotent apply)"
     CONFIGURED_ADAPTERS=$(echo "$NETWORK_GET_OUTPUT" | jq -r '.data.configured_adapters // [] | join(",")' 2>/dev/null)
     if [ -n "$CONFIGURED_ADAPTERS" ]; then
-        OUTPUT=$(run_hab_optional network configure --adapters "$CONFIGURED_ADAPTERS" --apply)
+        OUTPUT=$(run_hab_optional network configure --adapters "$CONFIGURED_ADAPTERS" --apply --force)
         if echo "$OUTPUT" | jq -e '.success == true and .data.configured_adapters != null' > /dev/null 2>&1; then
             pass "network configure (idempotent apply)"
         elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then

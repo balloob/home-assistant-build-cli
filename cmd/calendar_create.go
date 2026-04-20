@@ -37,6 +37,7 @@ func init() {
 	_ = calendarCreateCmd.MarkFlagRequired("summary")
 	_ = calendarCreateCmd.MarkFlagRequired("start")
 	_ = calendarCreateCmd.MarkFlagRequired("end")
+	annotateServiceMutationCommand(calendarCreateCmd, "write", "calendar_event", []string{"args", "flags"})
 }
 
 func runCalendarCreate(cmd *cobra.Command, args []string) error {
@@ -66,5 +67,5 @@ func runCalendarCreate(cmd *cobra.Command, args []string) error {
 		data["location"] = calendarCreateLocation
 	}
 
-	return callServiceAction("calendar", "create_event", "Event created.", data)
+	return callServiceAction("create", "calendar_event", "calendar", "create_event", "Event created.", data)
 }

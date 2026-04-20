@@ -1,10 +1,17 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
-var calendarDeleteRecurrenceRange string
+var (
+	calendarDeleteRecurrenceRange string
+	calendarDeleteForce           bool
+	calendarDeletePlan            bool
+	calendarDeleteDryRun          bool
+)
 
 var calendarDeleteCmd = &cobra.Command{
 	Use:   "delete <entity_id> <uid>",
@@ -20,11 +27,47 @@ var calendarDeleteCmd = &cobra.Command{
 func init() {
 	calendarCmd.AddCommand(calendarDeleteCmd)
 	calendarDeleteCmd.Flags().StringVar(&calendarDeleteRecurrenceRange, "recurrence-range", "", "For recurring events: THISEVENT or THISANDFUTURE")
+	calendarDeleteCmd.Flags().BoolVarP(&calendarDeleteForce, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(calendarDeleteCmd, &calendarDeletePlan, &calendarDeleteDryRun)
+	annotateServiceMutationCommand(calendarDeleteCmd, "destructive", "calendar_event", []string{"args", "flags"})
 }
 
 func runCalendarDelete(cmd *cobra.Command, args []string) error {
 	entityID := ensureDomainPrefix(args[0], "calendar")
 	uid := args[1]
+	textMode := getTextMode()
+
+	if planRequested(calendarDeletePlan, calendarDeleteDryRun) {
+		inputs := map[string]any{}
+		if calendarDeleteRecurrenceRange != "" {
+			inputs["recurrence_range"] = calendarDeleteRecurrenceRange
+		}
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource":  "calendar_event",
+				"entity_id": entityID,
+				"uid":       uid,
+			},
+			Inputs: inputs,
+			Steps: []string{
+				"Call Home Assistant service calendar.delete_event with calendar entity_id and event UID.",
+				"Return deletion confirmation message.",
+			},
+			Risks: []string{
+				"This operation permanently removes the calendar event.",
+			},
+			RequiresConfirmation: !calendarDeleteForce,
+			VerificationCommands: []string{
+				fmt.Sprintf("hab calendar list %s --json", entityID),
+			},
+		}, textMode, "calendar_event")
+		return nil
+	}
+
+	if err := confirmAction(calendarDeleteForce, fmt.Sprintf("Delete calendar event %s from %s?", uid, entityID), "delete calendar event"); err != nil {
+		return err
+	}
 
 	data := map[string]interface{}{
 		"entity_id": entityID,
@@ -34,5 +77,5 @@ func runCalendarDelete(cmd *cobra.Command, args []string) error {
 		data["recurrence_range"] = calendarDeleteRecurrenceRange
 	}
 
-	return callServiceAction("calendar", "delete_event", "Event deleted.", data)
+	return callServiceAction("delete", "calendar_event", "calendar", "delete_event", "Event deleted.", data)
 }

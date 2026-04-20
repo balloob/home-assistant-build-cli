@@ -24,6 +24,7 @@ func init() {
 	todoCmd.AddCommand(todoAddCmd)
 	todoAddCmd.Flags().StringVar(&todoAddDue, "due", "", "Due date or datetime (ISO 8601: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)")
 	todoAddCmd.Flags().StringVar(&todoAddDescription, "description", "", "Optional description for the item")
+	annotateServiceMutationCommand(todoAddCmd, "write", "todo_item", []string{"args", "flags"})
 }
 
 func runTodoAdd(cmd *cobra.Command, args []string) error {
@@ -46,5 +47,5 @@ func runTodoAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return callServiceAction("todo", "add_item", "Item added.", data)
+	return callServiceAction("add", "todo_item", "todo", "add_item", "Item added.", data)
 }

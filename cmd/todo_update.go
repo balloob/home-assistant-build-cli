@@ -30,6 +30,7 @@ func init() {
 	todoUpdateCmd.Flags().StringVar(&todoUpdateDue, "due", "", "New due date or datetime (ISO 8601)")
 	todoUpdateCmd.Flags().StringVar(&todoUpdateDescription, "description", "", "New description for the item")
 	todoUpdateCmd.Flags().StringVar(&todoUpdateStatus, "status", "", "New status: needs_action or completed")
+	annotateServiceMutationCommand(todoUpdateCmd, "write", "todo_item", []string{"args", "flags"})
 }
 
 func runTodoUpdate(cmd *cobra.Command, args []string) error {
@@ -62,5 +63,5 @@ func runTodoUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return callServiceAction("todo", "update_item", "Item updated.", data)
+	return callServiceAction("update", "todo_item", "todo", "update_item", "Item updated.", data)
 }

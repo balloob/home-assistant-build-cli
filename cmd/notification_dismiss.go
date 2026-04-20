@@ -16,12 +16,13 @@ var notificationDismissCmd = &cobra.Command{
 
 func init() {
 	notificationCmd.AddCommand(notificationDismissCmd)
+	annotateServiceMutationCommand(notificationDismissCmd, "write", "notification", []string{"args"})
 }
 
 func runNotificationDismiss(cmd *cobra.Command, args []string) error {
 	notificationID := args[0]
 
-	return callServiceAction("persistent_notification", "dismiss", "Notification dismissed.", map[string]interface{}{
+	return callServiceAction("dismiss", "notification", "persistent_notification", "dismiss", "Notification dismissed.", map[string]interface{}{
 		"notification_id": notificationID,
 	})
 }

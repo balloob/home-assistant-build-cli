@@ -24,6 +24,7 @@ func init() {
 	notificationCmd.AddCommand(notificationCreateCmd)
 	notificationCreateCmd.Flags().StringVar(&notificationCreateTitle, "title", "", "Title for the notification")
 	notificationCreateCmd.Flags().StringVar(&notificationCreateNotificationID, "notification-id", "", "Custom notification ID (allows updating an existing notification)")
+	annotateServiceMutationCommand(notificationCreateCmd, "write", "notification", []string{"args", "flags"})
 }
 
 func runNotificationCreate(cmd *cobra.Command, args []string) error {
@@ -39,5 +40,5 @@ func runNotificationCreate(cmd *cobra.Command, args []string) error {
 		data["notification_id"] = notificationCreateNotificationID
 	}
 
-	return callServiceAction("persistent_notification", "create", "Notification created.", data)
+	return callServiceAction("create", "notification", "persistent_notification", "create", "Notification created.", data)
 }
