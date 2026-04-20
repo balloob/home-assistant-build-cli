@@ -203,7 +203,7 @@ func classifyError(err error) (code string, msg string, details map[string]any) 
 	}
 
 	lower := strings.ToLower(err.Error())
-	if strings.Contains(lower, "invalid") || strings.Contains(lower, "parse") || strings.Contains(lower, "yaml") || strings.Contains(lower, "json") {
+	if strings.Contains(lower, "invalid") || strings.Contains(lower, "parse") || strings.Contains(lower, "yaml") || strings.Contains(lower, "json") || strings.Contains(lower, "conflicting") {
 		return client.ErrCodeInputError, err.Error(), map[string]any{
 			"category":      "input",
 			"retryable":     false,

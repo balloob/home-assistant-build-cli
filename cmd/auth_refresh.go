@@ -16,6 +16,13 @@ var authRefreshCmd = &cobra.Command{
 
 func init() {
 	authCmd.AddCommand(authRefreshCmd)
+	mergeSchemaAnnotation(authRefreshCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"local"},
+		ResourceType: "auth",
+		GuideTopic:   "auth",
+	})
 }
 
 func runAuthRefresh(cmd *cobra.Command, args []string) error {

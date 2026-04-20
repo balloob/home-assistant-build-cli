@@ -37,18 +37,18 @@ const (
 // Response represents the standard JSON output format
 type Response struct {
 	Success               bool                   `json:"success"`
-	Operation             string                 `json:"operation,omitempty"`
-	ResourceType          string                 `json:"resource_type,omitempty"`
-	Data                  interface{}            `json:"data,omitempty"`
-	Message               string                 `json:"message,omitempty"`
-	PartialResult         bool                   `json:"partial_result,omitempty"`
-	Warnings              []string               `json:"warnings,omitempty"`
-	FallbacksApplied      []string               `json:"fallbacks_applied,omitempty"`
-	MissingSections       []string               `json:"missing_sections,omitempty"`
-	VerificationCommands  []string               `json:"verification_commands,omitempty"`
-	NextSuggestedCommands []string               `json:"next_suggested_commands,omitempty"`
-	Error                 *ErrorDetail           `json:"error,omitempty"`
-	Metadata              map[string]interface{} `json:"metadata,omitempty"`
+	Operation             string                 `json:"operation"`
+	ResourceType          string                 `json:"resource_type"`
+	Data                  interface{}            `json:"data"`
+	Message               string                 `json:"message"`
+	PartialResult         bool                   `json:"partial_result"`
+	Warnings              []string               `json:"warnings"`
+	FallbacksApplied      []string               `json:"fallbacks_applied"`
+	MissingSections       []string               `json:"missing_sections"`
+	VerificationCommands  []string               `json:"verification_commands"`
+	NextSuggestedCommands []string               `json:"next_suggested_commands"`
+	Error                 *ErrorDetail           `json:"error"`
+	Metadata              map[string]interface{} `json:"metadata"`
 }
 
 // EnvelopeContext contains optional machine-readable metadata for JSON responses.
@@ -126,6 +126,10 @@ func formatJSON(data interface{}, success bool, message string, errDetail *Error
 		ctx = mergeEnvelopeContext(contextProvider(), ctx)
 	}
 
+	if len(ctx.NextSuggestedCommands) == 0 && len(ctx.VerificationCommands) > 0 {
+		ctx.NextSuggestedCommands = append([]string(nil), ctx.VerificationCommands...)
+	}
+
 	metadata := map[string]interface{}{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
@@ -150,11 +154,11 @@ func formatJSON(data interface{}, success bool, message string, errDetail *Error
 		Data:                  data,
 		Message:               message,
 		PartialResult:         ctx.PartialResult,
-		Warnings:              ctx.Warnings,
-		FallbacksApplied:      ctx.FallbacksApplied,
-		MissingSections:       ctx.MissingSections,
-		VerificationCommands:  ctx.VerificationCommands,
-		NextSuggestedCommands: ctx.NextSuggestedCommands,
+		Warnings:              normalizedStrings(ctx.Warnings),
+		FallbacksApplied:      normalizedStrings(ctx.FallbacksApplied),
+		MissingSections:       normalizedStrings(ctx.MissingSections),
+		VerificationCommands:  normalizedStrings(ctx.VerificationCommands),
+		NextSuggestedCommands: normalizedStrings(ctx.NextSuggestedCommands),
 		Error:                 errDetail,
 		Metadata:              metadata,
 	}
@@ -164,6 +168,13 @@ func formatJSON(data interface{}, success bool, message string, errDetail *Error
 		return fmt.Sprintf(`{"success": false, "error": {"code": "MARSHAL_ERROR", "message": %q}}`, err.Error())
 	}
 	return string(b)
+}
+
+func normalizedStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 // SetDefaultMetadataProvider configures process-wide JSON metadata that will be

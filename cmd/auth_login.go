@@ -33,6 +33,14 @@ var authLoginCmd = &cobra.Command{
 
 func init() {
 	authCmd.AddCommand(authLoginCmd)
+	mergeSchemaAnnotation(authLoginCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"local"},
+		ResourceType: "auth",
+		InputSources: []string{"flags"},
+		GuideTopic:   "auth",
+	})
 
 	authLoginCmd.Flags().BoolVar(&loginToken, "token", false, "Use long-lived access token instead of OAuth")
 	authLoginCmd.Flags().StringVar(&loginURL, "url", "", "Home Assistant URL")

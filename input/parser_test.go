@@ -170,20 +170,18 @@ func TestParseInput_FormatOverridesExtension(t *testing.T) {
 	}
 }
 
-func TestParseInput_DataTakesPriorityOverFile(t *testing.T) {
+func TestParseInput_DataAndFileConflict(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "data.json")
 	if err := os.WriteFile(path, []byte(`{"source": "file"}`), 0644); err != nil {
 		t.Fatalf("failed to write temp file: %v", err)
 	}
 
-	// When file is provided, data is ignored (file takes priority per code logic)
-	result, err := ParseInput(`{"source": "data"}`, path, "json")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_, err := ParseInput(`{"source": "data"}`, path, "json")
+	if err == nil {
+		t.Fatal("expected conflict error when both data and file are provided")
 	}
-	// Code checks file != "" first, so file wins
-	if result["source"] != "file" {
-		t.Errorf("source = %v, want %q (file should take priority)", result["source"], "file")
+	if err.Error() != "conflicting input sources: use either --data or --file" {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

@@ -140,6 +140,11 @@ func buildSchemaTree(cmd *cobra.Command) schemaCommand {
 		resourceType = inferredResourceType(cmd)
 	}
 
+	guideTopic := ann.GuideTopic
+	if guideTopic == "" {
+		guideTopic = defaultGuideTopicForCommandPath(path)
+	}
+
 	outputContract := ann.OutputContract
 	if outputContract == nil {
 		contract := inferOutputContract(path, cmd, ann, sideEffect, outputMode, resourceType)
@@ -164,7 +169,7 @@ func buildSchemaTree(cmd *cobra.Command) schemaCommand {
 		ResourceType:    resourceType,
 		Args:            args,
 		FlagConstraints: slices.Clone(ann.FlagConstraints),
-		GuideTopic:      ann.GuideTopic,
+		GuideTopic:      guideTopic,
 		OutputContract:  outputContract,
 		Flags:           extractFlags(cmd.LocalFlags(), false),
 		InheritedFlags:  extractFlags(cmd.InheritedFlags(), true),
@@ -295,9 +300,9 @@ func inferSideEffect(cmd *cobra.Command) string {
 
 	name := cmd.Name()
 	switch name {
-	case "delete", "remove", "dismiss", "erase", "restore", "restart":
+	case "delete", "remove", "dismiss", "erase", "restore", "restart", "logout":
 		return "destructive"
-	case "create", "update", "set", "configure", "enable", "disable", "assign", "unassign", "fire", "call", "import", "reload", "run", "trigger", "rename", "add", "patch", "write":
+	case "create", "update", "set", "configure", "enable", "disable", "assign", "unassign", "fire", "call", "import", "reload", "run", "trigger", "rename", "add", "patch", "write", "login", "refresh":
 		return "write"
 	default:
 		return "read"
@@ -452,16 +457,28 @@ func dataContractForVariant(variant, resourceType, sideEffect, commandName strin
 	case "stream":
 		return &SchemaObjectContract{Type: "array", Description: fmt.Sprintf("stream records for %s", resourceType)}
 	default:
-		shapeType := "object"
 		if commandName == "list" {
-			shapeType = "array"
+			return &SchemaObjectContract{Type: "array", Description: fmt.Sprintf("resource-specific list payload for %s", resourceType), Fields: []SchemaField{
+				{Name: "id", Type: "string", Description: fmt.Sprintf("%s identifier when available", resourceType)},
+				{Name: "name", Type: "string", Description: "display name when available"},
+				{Name: "state", Type: "string", Description: "state or status value when relevant"},
+				{Name: "attributes", Type: "object", Description: "resource-specific attributes", AdditionalProps: true},
+			}}
 		}
 		if sideEffect == "read" {
-			if shapeType == "array" {
-				return &SchemaObjectContract{Type: "array", Description: fmt.Sprintf("resource-specific list payload for %s", resourceType)}
-			}
-			return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("resource-specific payload for %s", resourceType), Fields: []SchemaField{{Name: "payload", Type: "object", Description: fmt.Sprintf("fields vary by %s command", resourceType), AdditionalProps: true}}}
+			return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("resource-specific payload for %s", resourceType), Fields: []SchemaField{
+				{Name: "id", Type: "string", Description: fmt.Sprintf("%s identifier when available", resourceType)},
+				{Name: "name", Type: "string", Description: "display name when available"},
+				{Name: "state", Type: "string", Description: "state or status value when relevant"},
+				{Name: "items", Type: "array", ItemType: "object", Description: "collection data when commands return wrapped arrays"},
+				{Name: "attributes", Type: "object", Description: "resource-specific attributes", AdditionalProps: true},
+			}}
 		}
-		return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("mutation result payload for %s", resourceType), Fields: []SchemaField{{Name: "payload", Type: "object", Description: fmt.Sprintf("fields vary by %s command", resourceType), AdditionalProps: true}}}
+		return &SchemaObjectContract{Type: "object", Description: fmt.Sprintf("mutation result payload for %s", resourceType), Fields: []SchemaField{
+			{Name: "id", Type: "string", Description: fmt.Sprintf("%s identifier when available", resourceType)},
+			{Name: "entity_id", Type: "string", Description: "entity identifier when mutations target entities"},
+			{Name: "changed", Type: "boolean", Description: "whether the command applied changes"},
+			{Name: "result", Type: "object", Description: "resource-specific mutation response payload", AdditionalProps: true},
+		}}
 	}
 }

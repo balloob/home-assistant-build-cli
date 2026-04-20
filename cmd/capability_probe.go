@@ -30,7 +30,8 @@ func init() {
 		SideEffect:   "read",
 		OutputMode:   "json_envelope",
 		Capabilities: []string{"local"},
-		ResourceType: "capability_probe",
+		ResourceType: "capability",
+		GuideTopic:   "discovery",
 	})
 }
 

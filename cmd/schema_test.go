@@ -223,26 +223,45 @@ func TestVisibleRunnableCommandsExposeExplicitCapabilities(t *testing.T) {
 }
 
 func TestVisibleRunnableCommandsExposeGuideTopic(t *testing.T) {
+	tree := buildSchemaTree(rootCmd)
 	var missing []string
-	walkCommandTree(rootCmd, func(command *cobra.Command) {
-		if command == nil || command.Hidden {
+	collectSchemaNodes(tree, func(node schemaCommand) {
+		if node.Hidden {
 			return
 		}
-		if command.Run == nil && command.RunE == nil {
+		if node.SideEffect == "meta" {
 			return
 		}
-		path := schemaPath(command)
-		if path == "hab help" {
-			return
-		}
-		if getSchemaAnnotation(command).GuideTopic == "" {
-			missing = append(missing, path)
+		if node.GuideTopic == "" {
+			missing = append(missing, node.Path)
 		}
 	})
 
 	if len(missing) > 0 {
 		t.Fatalf("commands missing guide_topic: %v", missing)
 	}
+}
+
+func TestRunnableCommandsExposeStructuredFullDataContracts(t *testing.T) {
+	tree := buildSchemaTree(rootCmd)
+	collectSchemaNodes(tree, func(node schemaCommand) {
+		if node.SideEffect == "meta" || node.OutputContract == nil {
+			return
+		}
+		for _, variant := range node.OutputContract.Variants {
+			if variant.Name != "full" {
+				continue
+			}
+			if variant.Data == nil {
+				t.Fatalf("full data contract missing for %s", node.Path)
+			}
+			if variant.Data.Type == "array" || variant.Data.Type == "object" {
+				if len(variant.Data.Fields) == 0 {
+					t.Fatalf("full data contract has no fields for %s", node.Path)
+				}
+			}
+		}
+	})
 }
 
 func TestMutatingCommandsExposePlanFlags(t *testing.T) {
@@ -375,6 +394,50 @@ func TestSchemaCapabilityAlignmentSmokeCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAuthMutationCommandsExposeMutatingSideEffects(t *testing.T) {
+	cases := map[string]string{
+		"hab auth login":   "write",
+		"hab auth refresh": "write",
+		"hab auth logout":  "destructive",
+	}
+
+	tree := buildSchemaTree(rootCmd)
+	for path, expected := range cases {
+		t.Run(path, func(t *testing.T) {
+			node := findSchemaNode(tree, path)
+			if node == nil {
+				t.Fatalf("missing schema node for %s", path)
+			}
+			if node.SideEffect != expected {
+				t.Fatalf("side_effect for %s = %q, want %q", path, node.SideEffect, expected)
+			}
+		})
+	}
+}
+
+func TestSchemaResourceTypeMatchesOutputContractResourceFamily(t *testing.T) {
+	tree := buildSchemaTree(rootCmd)
+	collectSchemaNodes(tree, func(node schemaCommand) {
+		if node.OutputContract == nil {
+			return
+		}
+		for _, field := range node.OutputContract.SuccessEnvelope.Fields {
+			if field.Name != "resource_type" {
+				continue
+			}
+			prefix := "resource family for "
+			if !strings.HasPrefix(field.Description, prefix) {
+				return
+			}
+			contractResourceType := strings.TrimPrefix(field.Description, prefix)
+			if contractResourceType != "" && node.ResourceType != "" && contractResourceType != node.ResourceType {
+				t.Fatalf("resource_type mismatch for %s: node=%q contract=%q", node.Path, node.ResourceType, contractResourceType)
+			}
+			return
+		}
+	})
 }
 
 func assertOutputContracts(t *testing.T, node schemaCommand) {

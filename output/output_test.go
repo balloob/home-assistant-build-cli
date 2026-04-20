@@ -234,6 +234,36 @@ func TestFormatOutput_JSONMode(t *testing.T) {
 	}
 }
 
+func TestFormatOutput_JSONIncludesCanonicalEnvelopeFields(t *testing.T) {
+	got := FormatOutput(nil, false, "ok")
+
+	var envelope map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &envelope); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	required := []string{
+		"success",
+		"operation",
+		"resource_type",
+		"data",
+		"message",
+		"partial_result",
+		"warnings",
+		"fallbacks_applied",
+		"missing_sections",
+		"verification_commands",
+		"next_suggested_commands",
+		"error",
+		"metadata",
+	}
+	for _, field := range required {
+		if _, ok := envelope[field]; !ok {
+			t.Fatalf("missing canonical field %q in envelope: %#v", field, envelope)
+		}
+	}
+}
+
 func TestFormatError(t *testing.T) {
 	got := FormatError("NOT_FOUND", "entity not found", nil)
 
@@ -538,6 +568,20 @@ func TestFormatErrorWithContext_JSONMode(t *testing.T) {
 	}
 	if resp.Error == nil || resp.Error.Code != "NOT_FOUND" {
 		t.Fatalf("error = %#v, expected NOT_FOUND", resp.Error)
+	}
+}
+
+func TestFormatOutputWithContext_DerivesNextSuggestedCommands(t *testing.T) {
+	got := FormatOutputWithContext(map[string]interface{}{"ok": true}, false, "", EnvelopeContext{
+		VerificationCommands: []string{"hab area list --json"},
+	})
+
+	var resp Response
+	if err := json.Unmarshal([]byte(got), &resp); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if len(resp.NextSuggestedCommands) != 1 || resp.NextSuggestedCommands[0] != "hab area list --json" {
+		t.Fatalf("next_suggested_commands = %#v, expected derived verification command", resp.NextSuggestedCommands)
 	}
 }
 
