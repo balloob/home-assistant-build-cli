@@ -104,8 +104,10 @@ func TestConfirmActionInteractiveAcceptsAndCancels(t *testing.T) {
 func TestExecutionMetadataIncludesModeAuthAndFallback(t *testing.T) {
 	resetExecutionMetadata()
 	noteOutputMode("json")
+	noteDefaultEnvelope("get", "entity")
 	noteAuthSource("env_token")
 	noteFallback("returned state only")
+	noteMissingSection("related")
 
 	metadata := getExecutionMetadata()
 	if metadata["output_mode"] != "json" {
@@ -116,5 +118,21 @@ func TestExecutionMetadataIncludesModeAuthAndFallback(t *testing.T) {
 	}
 	if metadata["partial_result"] != true {
 		t.Fatalf("metadata = %#v, want partial_result=true", metadata)
+	}
+	ctx := getExecutionEnvelopeContext()
+	if ctx.Operation != "get" {
+		t.Fatalf("operation = %q, want get", ctx.Operation)
+	}
+	if ctx.ResourceType != "entity" {
+		t.Fatalf("resource_type = %q, want entity", ctx.ResourceType)
+	}
+	if !ctx.PartialResult {
+		t.Fatal("expected partial result in envelope context")
+	}
+	if len(ctx.FallbacksApplied) != 1 || ctx.FallbacksApplied[0] != "returned state only" {
+		t.Fatalf("fallbacks = %#v, unexpected", ctx.FallbacksApplied)
+	}
+	if len(ctx.MissingSections) != 1 || ctx.MissingSections[0] != "related" {
+		t.Fatalf("missing sections = %#v, unexpected", ctx.MissingSections)
 	}
 }

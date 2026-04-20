@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/home-assistant/hab/client"
+	"github.com/spf13/cobra"
 )
 
 func TestExecutableName(t *testing.T) {
@@ -91,5 +92,29 @@ func TestClassifyConfirmationRequiredAPIError(t *testing.T) {
 	}
 	if details["category"] != "confirmation" {
 		t.Fatalf("details = %#v, want confirmation category", details)
+	}
+}
+
+func TestDefaultOperationForCommand(t *testing.T) {
+	leaf := &cobra.Command{Use: "list"}
+	leaf.RunE = func(*cobra.Command, []string) error { return nil }
+	if got := defaultOperationForCommand(leaf); got != "list" {
+		t.Fatalf("defaultOperationForCommand = %q, want list", got)
+	}
+
+	meta := &cobra.Command{Use: "helper"}
+	if got := defaultOperationForCommand(meta); got != "meta" {
+		t.Fatalf("defaultOperationForCommand meta = %q, want meta", got)
+	}
+}
+
+func TestDefaultResourceTypeForCommand(t *testing.T) {
+	root := &cobra.Command{Use: "hab"}
+	parent := &cobra.Command{Use: "entity"}
+	child := &cobra.Command{Use: "list"}
+	root.AddCommand(parent)
+	parent.AddCommand(child)
+	if got := defaultResourceTypeForCommand(child); got != "entity" {
+		t.Fatalf("defaultResourceTypeForCommand = %q, want entity", got)
 	}
 }

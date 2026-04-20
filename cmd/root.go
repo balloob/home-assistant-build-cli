@@ -51,6 +51,7 @@ Start with 'hab guide' for workflow-level guidance optimized for LLM and agent u
 		viper.Set("text", text)
 		viper.Set("json", json)
 		noteOutputMode(mode)
+		noteDefaultEnvelope(defaultOperationForCommand(cmd), defaultResourceTypeForCommand(cmd))
 
 		// Set log level based on verbose flag
 		if viper.GetBool("verbose") {
@@ -71,6 +72,34 @@ Start with 'hab guide' for workflow-level guidance optimized for LLM and agent u
 		checkUpdateOnStartup(cmd)
 		return nil
 	},
+}
+
+func defaultOperationForCommand(cmd *cobra.Command) string {
+	if cmd == nil {
+		return ""
+	}
+	name := cmd.Name()
+	if name == "" {
+		return ""
+	}
+	if cmd.RunE == nil && cmd.Run == nil {
+		return "meta"
+	}
+	return name
+}
+
+func defaultResourceTypeForCommand(cmd *cobra.Command) string {
+	if cmd == nil {
+		return ""
+	}
+	ann := getSchemaAnnotation(cmd)
+	if ann.ResourceType != "" {
+		return ann.ResourceType
+	}
+	if cmd.Parent() != nil && cmd.Parent().Parent() != nil {
+		return cmd.Parent().Name()
+	}
+	return cmd.Name()
 }
 
 func executableName(arg0 string) string {

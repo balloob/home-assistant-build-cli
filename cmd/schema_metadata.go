@@ -24,11 +24,50 @@ type SchemaFlagConstraint struct {
 	Description string   `json:"description,omitempty"`
 }
 
+// SchemaField describes a machine-readable field in a command contract.
+type SchemaField struct {
+	Name            string        `json:"name"`
+	Type            string        `json:"type"`
+	Required        bool          `json:"required,omitempty"`
+	Description     string        `json:"description,omitempty"`
+	ItemType        string        `json:"item_type,omitempty"`
+	Enum            []string      `json:"enum,omitempty"`
+	Fields          []SchemaField `json:"fields,omitempty"`
+	AdditionalProps bool          `json:"additional_props,omitempty"`
+}
+
+// SchemaObjectContract describes an object payload or envelope shape.
+type SchemaObjectContract struct {
+	Type        string        `json:"type"`
+	Description string        `json:"description,omitempty"`
+	Fields      []SchemaField `json:"fields,omitempty"`
+}
+
+// SchemaOutputVariant describes a distinct output variant for a command.
+type SchemaOutputVariant struct {
+	Name        string                `json:"name"`
+	Description string                `json:"description,omitempty"`
+	OutputMode  string                `json:"output_mode,omitempty"`
+	Envelope    *SchemaObjectContract `json:"envelope,omitempty"`
+	Data        *SchemaObjectContract `json:"data,omitempty"`
+}
+
+// SchemaOutputContract describes the machine-readable response contract for a command.
+type SchemaOutputContract struct {
+	OutputMode      string                 `json:"output_mode"`
+	SuccessEnvelope SchemaObjectContract   `json:"success_envelope"`
+	ErrorEnvelope   SchemaObjectContract   `json:"error_envelope"`
+	PartialEnvelope *SchemaObjectContract  `json:"partial_envelope,omitempty"`
+	Variants        []SchemaOutputVariant  `json:"variants,omitempty"`
+	StreamEvents    []SchemaObjectContract `json:"stream_events,omitempty"`
+}
+
 // SchemaAnnotation stores supplemental command metadata not inferable from Cobra.
 type SchemaAnnotation struct {
 	SideEffect      string                 `json:"side_effect,omitempty"`
 	OutputMode      string                 `json:"output_mode,omitempty"`
 	OutputVariants  []string               `json:"output_variants,omitempty"`
+	OutputContract  *SchemaOutputContract  `json:"output_contract,omitempty"`
 	Capabilities    []string               `json:"capabilities,omitempty"`
 	InputSources    []string               `json:"input_sources,omitempty"`
 	ResourceType    string                 `json:"resource_type,omitempty"`
@@ -84,6 +123,9 @@ func mergeSchemaAnnotation(cmd *cobra.Command, incoming SchemaAnnotation) {
 	}
 	if len(incoming.Args) > 0 {
 		current.Args = incoming.Args
+	}
+	if incoming.OutputContract != nil {
+		current.OutputContract = incoming.OutputContract
 	}
 	if len(incoming.FlagConstraints) > 0 {
 		current.FlagConstraints = append(current.FlagConstraints, incoming.FlagConstraints...)

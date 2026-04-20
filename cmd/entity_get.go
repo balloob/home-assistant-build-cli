@@ -53,6 +53,9 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		// Fall back to just REST state if WS is unavailable.
 		noteFallback("websocket unavailable; returned REST state without registry, device, or related data")
+		noteMissingSection("registry")
+		noteMissingSection("device")
+		noteMissingSection("related")
 		state, stateErr := restClient.GetState(entityID)
 		if stateErr != nil {
 			return stateErr
@@ -88,6 +91,9 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	if registryErr != nil {
 		// Entity might not be in registry, just return state
 		noteFallback("entity registry unavailable for target; returned REST state only")
+		noteMissingSection("registry")
+		noteMissingSection("device")
+		noteMissingSection("related")
 		output.PrintOutputWithContext(state, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "entity"})
 		return nil
 	}
@@ -116,6 +122,7 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 			relatedResult, relatedErr = ws.SearchRelated("entity", entityID)
 			if relatedErr != nil {
 				noteFallback("entity related search failed; returned state and registry data without related items")
+				noteMissingSection("related")
 			}
 		}()
 	}

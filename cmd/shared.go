@@ -61,6 +61,7 @@ var (
 
 func init() {
 	output.SetDefaultMetadataProvider(getExecutionMetadata)
+	output.SetDefaultEnvelopeContextProvider(getExecutionEnvelopeContext)
 }
 
 // getAuthManager returns a cached auth.Manager using the configured config dir.
@@ -179,6 +180,29 @@ func noteFallback(message string) {
 	fallbacks, _ := executionMetadata["fallbacks_applied"].([]string)
 	executionMetadata["fallbacks_applied"] = append(fallbacks, message)
 	executionMetadata["partial_result"] = true
+	warnings, _ := executionMetadata["warnings"].([]string)
+	executionMetadata["warnings"] = append(warnings, message)
+}
+
+func noteWarning(message string) {
+	if message == "" {
+		return
+	}
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	warnings, _ := executionMetadata["warnings"].([]string)
+	executionMetadata["warnings"] = append(warnings, message)
+}
+
+func noteMissingSection(section string) {
+	if section == "" {
+		return
+	}
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	missing, _ := executionMetadata["missing_sections"].([]string)
+	executionMetadata["missing_sections"] = append(missing, section)
+	executionMetadata["partial_result"] = true
 }
 
 func noteOutputMode(mode string) {
@@ -194,6 +218,40 @@ func getExecutionMetadata() map[string]interface{} {
 		return nil
 	}
 	return maps.Clone(executionMetadata)
+}
+
+func getExecutionEnvelopeContext() output.EnvelopeContext {
+	executionMetadataMu.Lock()
+	defer executionMetadataMu.Unlock()
+	ctx := output.EnvelopeContext{}
+	if op, ok := executionMetadata["default_operation"].(string); ok {
+		ctx.Operation = op
+	}
+	if resourceType, ok := executionMetadata["default_resource_type"].(string); ok {
+		ctx.ResourceType = resourceType
+	}
+	if partial, ok := executionMetadata["partial_result"].(bool); ok {
+		ctx.PartialResult = partial
+	}
+	if warnings, ok := executionMetadata["warnings"].([]string); ok {
+		ctx.Warnings = append([]string(nil), warnings...)
+	}
+	if fallbacks, ok := executionMetadata["fallbacks_applied"].([]string); ok {
+		ctx.FallbacksApplied = append([]string(nil), fallbacks...)
+	}
+	if missing, ok := executionMetadata["missing_sections"].([]string); ok {
+		ctx.MissingSections = append([]string(nil), missing...)
+	}
+	return ctx
+}
+
+func noteDefaultEnvelope(operation, resourceType string) {
+	if operation != "" {
+		setExecutionMetadata("default_operation", operation)
+	}
+	if resourceType != "" {
+		setExecutionMetadata("default_resource_type", resourceType)
+	}
 }
 
 func determineOutputMode(cmd *cobra.Command) (text bool, json bool, mode string, err error) {
