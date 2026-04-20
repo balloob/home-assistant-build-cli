@@ -341,7 +341,7 @@ func resolveStateConfigID(restClient interface {
 // label list and a message.  If the returned list is nil, the message is
 // treated as an early-exit notice (e.g. "already has label") and no update
 // is performed.
-func modifyEntityLabels(entityID, labelID string, modify func(labels []string) ([]string, string)) error {
+func modifyEntityLabels(entityID, labelID, operation string, modify func(labels []string) ([]string, string)) error {
 	textMode := getTextMode()
 
 	ws, err := getWSClient()
@@ -365,7 +365,7 @@ func modifyEntityLabels(entityID, labelID string, modify func(labels []string) (
 
 	newLabels, msg := modify(labels)
 	if newLabels == nil {
-		output.PrintSuccess(nil, textMode, msg)
+		output.PrintSuccessWithContext(nil, textMode, msg, output.EnvelopeContext{Operation: operation, ResourceType: "label_assignment"})
 		return nil
 	}
 
@@ -376,6 +376,6 @@ func modifyEntityLabels(entityID, labelID string, modify func(labels []string) (
 		return err
 	}
 
-	output.PrintSuccess(result, textMode, msg)
+	output.PrintSuccessWithContext(result, textMode, msg, output.EnvelopeContext{Operation: operation, ResourceType: "label_assignment"})
 	return nil
 }

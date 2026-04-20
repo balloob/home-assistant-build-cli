@@ -18,6 +18,13 @@ hab action data --json`,
 
 func init() {
 	actionCmd.AddCommand(actionDataCmd)
+	mergeSchemaAnnotation(actionDataCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: "action",
+		InputSources: []string{"args"},
+	})
 }
 
 func runActionData(cmd *cobra.Command, args []string) error {
@@ -48,6 +55,6 @@ func runActionData(cmd *cobra.Command, args []string) error {
 		return hasOptional && !optional
 	})
 
-	output.PrintOutput(actions, textMode, "")
+	output.PrintOutputWithContext(actions, textMode, "", output.EnvelopeContext{Operation: "list", ResourceType: "action"})
 	return nil
 }

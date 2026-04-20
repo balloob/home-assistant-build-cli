@@ -577,9 +577,8 @@ func (f *ListFlags) RenderBriefFields(items []interface{}, textMode bool, idFiel
 // ---------------------------------------------------------------------------
 
 // callServiceAction calls a Home Assistant service action via REST and prints
-// a success message. It is a convenience wrapper used by commands that map
-// directly to a single service call (todo, notification, calendar, etc.).
-func callServiceAction(domain, service, successMsg string, data map[string]interface{}) error {
+// a success message with explicit envelope context.
+func callServiceAction(operation, resourceType, domain, service, successMsg string, data map[string]interface{}) error {
 	textMode := getTextMode()
 	restClient, err := getRESTClient()
 	if err != nil {
@@ -589,10 +588,20 @@ func callServiceAction(domain, service, successMsg string, data map[string]inter
 		return err
 	}
 	output.PrintSuccessWithContext(nil, textMode, successMsg, output.EnvelopeContext{
-		Operation:    "call_service",
-		ResourceType: domain + "." + service,
+		Operation:    operation,
+		ResourceType: resourceType,
 	})
 	return nil
+}
+
+func annotateServiceMutationCommand(cmd *cobra.Command, sideEffect, resourceType string, inputSources []string) {
+	mergeSchemaAnnotation(cmd, SchemaAnnotation{
+		SideEffect:   sideEffect,
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: resourceType,
+		InputSources: inputSources,
+	})
 }
 
 // ---------------------------------------------------------------------------

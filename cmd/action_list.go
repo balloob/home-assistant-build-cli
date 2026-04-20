@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -18,6 +21,13 @@ hab action list climate --json`,
 
 func init() {
 	actionCmd.AddCommand(actionListCmd)
+	mergeSchemaAnnotation(actionListCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: "action",
+		InputSources: []string{"args"},
+	})
 }
 
 func runActionList(cmd *cobra.Command, args []string) error {
@@ -39,7 +49,7 @@ func runActionList(cmd *cobra.Command, args []string) error {
 	}
 
 	actions := collectActions(services, domain, nil)
-	output.PrintOutput(actions, textMode, "")
+	output.PrintOutputWithContext(actions, textMode, "", output.EnvelopeContext{Operation: "list", ResourceType: "action"})
 	return nil
 }
 
@@ -84,5 +94,17 @@ func collectActions(services []interface{}, domain string, filter func(actionInf
 			})
 		}
 	}
+
+	slices.SortFunc(actions, func(a, b map[string]interface{}) int {
+		actionA, _ := a["action"].(string)
+		actionB, _ := b["action"].(string)
+		if cmpResult := cmp.Compare(actionA, actionB); cmpResult != 0 {
+			return cmpResult
+		}
+		nameA, _ := a["name"].(string)
+		nameB, _ := b["name"].(string)
+		return cmp.Compare(nameA, nameB)
+	})
+
 	return actions
 }

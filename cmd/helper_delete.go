@@ -24,8 +24,23 @@ input_button, counter, timer, schedule, and group helpers.`,
 	RunE:    runHelperDelete,
 }
 
+var (
+	helperDeleteForce  bool
+	helperDeletePlan   bool
+	helperDeleteDryRun bool
+)
+
 func init() {
 	helperCmd.AddCommand(helperDeleteCmd)
+	helperDeleteCmd.Flags().BoolVarP(&helperDeleteForce, "force", "f", false, "Skip confirmation")
+	registerMutationPlanFlags(helperDeleteCmd, &helperDeletePlan, &helperDeleteDryRun)
+	mergeSchemaAnnotation(helperDeleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "helper",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runHelperDelete(cmd *cobra.Command, args []string) error {
@@ -59,6 +74,34 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unsupported helper domain: %s", domain)
 	}
 
+	if planRequested(helperDeletePlan, helperDeleteDryRun) {
+		printMutationPlan(MutationPlan{
+			WouldChange: true,
+			Target: map[string]any{
+				"resource":  "helper",
+				"entity_id": entityID,
+				"type":      helperType,
+			},
+			Steps: []string{
+				"Connect to Home Assistant WebSocket API.",
+				"Resolve helper deletion path (storage helper or config-entry helper).",
+				"Submit helper delete command and return success metadata.",
+			},
+			Risks: []string{
+				"This operation permanently removes the helper entity/configuration.",
+			},
+			RequiresConfirmation: !helperDeleteForce,
+			VerificationCommands: []string{
+				"hab helper list --json",
+			},
+		}, textMode, "helper")
+		return nil
+	}
+
+	if err := confirmAction(helperDeleteForce, fmt.Sprintf("Delete helper %s?", entityID), "delete helper"); err != nil {
+		return err
+	}
+
 	ws, err := getWSClient()
 	if err != nil {
 		return err
@@ -78,6 +121,6 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 		"deleted":   true,
 	}
 
-	output.PrintSuccess(result, textMode, fmt.Sprintf("Helper '%s' deleted successfully.", entityID))
+	output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("Helper '%s' deleted successfully.", entityID), output.EnvelopeContext{Operation: "delete", ResourceType: "helper"})
 	return nil
 }

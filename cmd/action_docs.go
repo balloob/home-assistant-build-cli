@@ -24,6 +24,13 @@ func init() {
 	actionCmd.AddCommand(actionDocsCmd)
 	actionDocsCmd.Flags().StringVar(&actionDocsName, "action", "", "Action name in domain.action format")
 	actionDocsCmd.Flags().StringVar(&actionDocsName, "action-name", "", "Alias for --action")
+	mergeSchemaAnnotation(actionDocsCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: "action",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runActionDocs(cmd *cobra.Command, args []string) error {
@@ -86,7 +93,7 @@ func runActionDocs(cmd *cobra.Command, args []string) error {
 			"target":      serviceData["target"],
 		}
 
-		output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "docs", ResourceType: actionName})
+		output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "docs", ResourceType: "action"})
 		return nil
 	}
 

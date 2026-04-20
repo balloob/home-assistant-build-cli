@@ -16,13 +16,14 @@ var todoCompleteCmd = &cobra.Command{
 
 func init() {
 	todoCmd.AddCommand(todoCompleteCmd)
+	annotateServiceMutationCommand(todoCompleteCmd, "write", "todo_item", []string{"args"})
 }
 
 func runTodoComplete(cmd *cobra.Command, args []string) error {
 	entityID := ensureDomainPrefix(args[0], "todo")
 	uid := args[1]
 
-	return callServiceAction("todo", "update_item", "Item marked complete.", map[string]interface{}{
+	return callServiceAction("complete", "todo_item", "todo", "update_item", "Item marked complete.", map[string]interface{}{
 		"entity_id": entityID,
 		"item":      uid,
 		"status":    "completed",

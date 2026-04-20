@@ -25,6 +25,13 @@ func init() {
 	labelAssignCmd.Flags().StringVar(&labelAssignLabelID, "label-id", "", "Alias for --label")
 	labelAssignCmd.Flags().StringVar(&labelAssignEntityID, "entity", "", "Entity ID to assign the label to")
 	labelAssignCmd.Flags().StringVar(&labelAssignEntityID, "entity-id", "", "Alias for --entity")
+	mergeSchemaAnnotation(labelAssignCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "label_assignment",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runLabelAssign(cmd *cobra.Command, args []string) error {
@@ -37,7 +44,7 @@ func runLabelAssign(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return modifyEntityLabels(entityID, labelID, func(labels []string) ([]string, string) {
+	return modifyEntityLabels(entityID, labelID, "assign", func(labels []string) ([]string, string) {
 		for _, l := range labels {
 			if l == labelID {
 				return nil, fmt.Sprintf("Entity %s already has label %s.", entityID, labelID)

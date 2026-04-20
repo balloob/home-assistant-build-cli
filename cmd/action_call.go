@@ -39,6 +39,13 @@ func init() {
 	actionCallCmd.Flags().StringVarP(&actionCallArea, "area", "a", "", "Target area ID")
 	actionCallCmd.Flags().StringVar(&actionCallArea, "area-id", "", "Alias for --area")
 	actionCallCmd.Flags().BoolVarP(&actionCallReturnResponse, "return-response", "r", false, "Return action response")
+	mergeSchemaAnnotation(actionCallCmd, SchemaAnnotation{
+		SideEffect:   "write",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: "action",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runActionCall(cmd *cobra.Command, args []string) error {
@@ -87,9 +94,9 @@ func runActionCall(cmd *cobra.Command, args []string) error {
 	}
 
 	if actionCallReturnResponse && result != nil {
-		output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "call_service", ResourceType: actionName})
+		output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "call", ResourceType: "action"})
 	} else {
-		output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Action %s called successfully.", actionName), output.EnvelopeContext{Operation: "call_service", ResourceType: actionName})
+		output.PrintSuccessWithContext(nil, textMode, fmt.Sprintf("Action %s called successfully.", actionName), output.EnvelopeContext{Operation: "call", ResourceType: "action"})
 	}
 
 	return nil
