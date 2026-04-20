@@ -16,6 +16,13 @@ var authLogoutCmd = &cobra.Command{
 
 func init() {
 	authCmd.AddCommand(authLogoutCmd)
+	mergeSchemaAnnotation(authLogoutCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"local"},
+		ResourceType: "auth",
+		GuideTopic:   "auth",
+	})
 }
 
 func runAuthLogout(cmd *cobra.Command, args []string) error {

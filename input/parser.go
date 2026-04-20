@@ -17,6 +17,10 @@ func ParseInput(data, file, format string) (map[string]interface{}, error) {
 	var inputData []byte
 	var err error
 
+	if data != "" && file != "" {
+		return nil, fmt.Errorf("conflicting input sources: use either --data or --file")
+	}
+
 	if file != "" {
 		// Read from file
 		inputData, err = os.ReadFile(file)

@@ -360,8 +360,9 @@ func printMutationPlan(plan MutationPlan, textMode bool, resourceType string) {
 		plan.Mode = "plan"
 	}
 	output.PrintOutputWithContext(plan, textMode, "Plan only. No changes were applied.", output.EnvelopeContext{
-		Operation:    "plan",
-		ResourceType: resourceType,
+		Operation:            "plan",
+		ResourceType:         resourceType,
+		VerificationCommands: plan.VerificationCommands,
 	})
 }
 

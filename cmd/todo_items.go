@@ -17,6 +17,14 @@ var todoItemsCmd = &cobra.Command{
 
 func init() {
 	todoCmd.AddCommand(todoItemsCmd)
+	mergeSchemaAnnotation(todoItemsCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "todo_item",
+		InputSources: []string{"args"},
+		GuideTopic:   "calendar-todo",
+	})
 }
 
 func runTodoItems(cmd *cobra.Command, args []string) error {
@@ -35,10 +43,16 @@ func runTodoItems(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(items) == 0 {
-		output.PrintOutput([]interface{}{}, textMode, "No items found.")
+		output.PrintOutputWithContext([]interface{}{}, textMode, "No items found.", output.EnvelopeContext{
+			Operation:    "items",
+			ResourceType: "todo_item",
+		})
 		return nil
 	}
 
-	output.PrintOutput(items, textMode, "")
+	output.PrintOutputWithContext(items, textMode, "", output.EnvelopeContext{
+		Operation:    "items",
+		ResourceType: "todo_item",
+	})
 	return nil
 }

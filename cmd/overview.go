@@ -20,6 +20,13 @@ var overviewCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(overviewCmd)
+	mergeSchemaAnnotation(overviewCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest", "ws"},
+		ResourceType: "instance",
+		GuideTopic:   "discovery",
+	})
 }
 
 func runOverview(cmd *cobra.Command, args []string) error {

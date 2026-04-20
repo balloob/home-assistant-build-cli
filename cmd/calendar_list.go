@@ -20,11 +20,19 @@ var calendarListCmd = &cobra.Command{
 	Example: `  hab calendar list calendar.personal
   hab calendar list calendar.work -s "2025-03-01T00:00:00Z" -e "2025-03-31T23:59:59Z"`,
 	Args: cobra.ExactArgs(1),
-	RunE:  runCalendarList,
+	RunE: runCalendarList,
 }
 
 func init() {
 	calendarCmd.AddCommand(calendarListCmd)
+	mergeSchemaAnnotation(calendarListCmd, SchemaAnnotation{
+		SideEffect:   "read",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "rest"},
+		ResourceType: "calendar_event",
+		InputSources: []string{"args", "flags"},
+		GuideTopic:   "calendar-todo",
+	})
 	calendarListCmd.Flags().StringVarP(&calendarListStart, "start", "s", "", "Start time (ISO format)")
 	calendarListCmd.Flags().StringVarP(&calendarListEnd, "end", "e", "", "End time (ISO format)")
 }
@@ -63,7 +71,10 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 	}
 
 	if result == nil {
-		output.PrintOutput([]interface{}{}, textMode, "No events found.")
+		output.PrintOutputWithContext([]interface{}{}, textMode, "No events found.", output.EnvelopeContext{
+			Operation:    "list",
+			ResourceType: "calendar_event",
+		})
 		return nil
 	}
 
@@ -73,6 +84,9 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 		"events": result,
 	}
 
-	output.PrintOutput(wrapped, textMode, "")
+	output.PrintOutputWithContext(wrapped, textMode, "", output.EnvelopeContext{
+		Operation:    "list",
+		ResourceType: "calendar_event",
+	})
 	return nil
 }
