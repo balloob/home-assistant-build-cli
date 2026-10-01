@@ -641,10 +641,13 @@ hab backup config update --data '{"retention":{"days":7}}'
 hab backup list
 hab backup create
 hab backup create "Nightly Backup"
+hab backup create "Offsite" --agent backup.local --agent cloud.cloud
 hab backup get <backup_id>
 hab backup restore <backup_id> --agent backup.local --force
 hab backup delete <backup_id> --force
 ```
+
+`hab backup create` stores the backup in the local agent unless `--agent` is given. `hab backup config get` leaves out the encryption password and shows `create_backup.password_set` instead; pass `--show-password` to include it.
 
 `hab backup restore` also supports `--password`, `--restore-addon`, `--restore-folder`, `--restore-database`, and `--restore-homeassistant`.
 

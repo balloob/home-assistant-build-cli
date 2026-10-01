@@ -58,6 +58,11 @@ type WebSocketCommander interface {
 	SendCommand(cmdType string, params map[string]interface{}) (interface{}, error)
 }
 
+// EventSubscriber subscribes to Home Assistant events.
+type EventSubscriber interface {
+	SubscribeEvents(eventType string) (<-chan map[string]interface{}, func(), error)
+}
+
 // StateAPI provides state and service queries.
 type StateAPI interface {
 	GetStates() ([]interface{}, error)
@@ -229,6 +234,7 @@ type RepairAPI interface {
 type WebSocketAPI interface {
 	WebSocketConnection
 	WebSocketCommander
+	EventSubscriber
 	StateAPI
 	AreaRegistryAPI
 	FloorRegistryAPI

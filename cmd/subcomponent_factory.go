@@ -372,7 +372,7 @@ func makeSubComponentCreate(cfg SubComponentConfig, flags *InputFlags) func(*cob
 		items = append(items, itemConfig)
 		config[key] = items
 
-		_, err = restClient.Post(cfg.APIBasePath+configID, config)
+		_, err = postConfig(restClient, cfg.APIBasePath, configID, config)
 		if err != nil {
 			return err
 		}
@@ -485,7 +485,7 @@ func makeSubComponentUpdate(cfg SubComponentConfig, flags *InputFlags) func(*cob
 		items[idx] = newItem
 		config[key] = items
 
-		_, err = restClient.Post(cfg.APIBasePath+configID, config)
+		_, err = postConfig(restClient, cfg.APIBasePath, configID, config)
 		if err != nil {
 			return err
 		}
@@ -599,7 +599,7 @@ func makeSubComponentDelete(cfg SubComponentConfig, force *bool) func(*cobra.Com
 		items = append(items[:idx], items[idx+1:]...)
 		config[key] = items
 
-		_, err = restClient.Post(cfg.APIBasePath+configID, config)
+		_, err = postConfig(restClient, cfg.APIBasePath, configID, config)
 		if err != nil {
 			return err
 		}
