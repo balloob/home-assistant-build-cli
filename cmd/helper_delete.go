@@ -37,7 +37,7 @@ func init() {
 	mergeSchemaAnnotation(helperDeleteCmd, SchemaAnnotation{
 		SideEffect:   "destructive",
 		OutputMode:   "json_envelope",
-		Capabilities: []string{"auth", "ws"},
+		Capabilities: []string{"auth", "rest", "ws"},
 		ResourceType: "helper",
 		InputSources: []string{"args", "flags"},
 	})
@@ -67,7 +67,7 @@ func runHelperDelete(cmd *cobra.Command, args []string) error {
 		helperType = "timer"
 	case "schedule":
 		helperType = "schedule"
-	case "light", "switch", "binary_sensor", "cover", "fan", "lock", "media_player", "sensor", "event":
+	case "light", "switch", "binary_sensor", "button", "cover", "fan", "lock", "media_player", "notify", "sensor", "event", "valve":
 		// These could be group helpers (config entry based)
 		helperType = "group"
 	default:

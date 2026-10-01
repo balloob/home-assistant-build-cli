@@ -289,7 +289,7 @@ func aggregateHealthEvents(eventCh <-chan map[string]interface{}, data map[strin
 							if errData, ok := event["error"].(map[string]interface{}); ok {
 								infoData[key] = map[string]interface{}{
 									"error": true,
-									"value": errData["msg"],
+									"value": errData["error"],
 								}
 							}
 						}
@@ -391,14 +391,6 @@ func (c *WebSocketClient) ConfigEntriesList(domain string) ([]interface{}, error
 		params["domain"] = domain
 	}
 	return c.sendListCommand("config_entries/get", params)
-}
-
-// ConfigEntryDelete deletes a config entry
-func (c *WebSocketClient) ConfigEntryDelete(entryID string) error {
-	_, err := c.SendCommand("config_entries/delete", map[string]interface{}{
-		"entry_id": entryID,
-	})
-	return err
 }
 
 // ResolveEntityToConfigEntry resolves an entity_id to its config_entry_id
@@ -551,7 +543,9 @@ func (c *WebSocketClient) BackupRestore(params map[string]interface{}) (map[stri
 	for k, v := range params {
 		req[k] = v
 	}
-	return c.sendMapCommand("backup/restore", req)
+	// Core replies with a null result on success.
+	_, err := c.SendCommand("backup/restore", req)
+	return nil, err
 }
 
 // BackupAgentsInfo returns backup agent information.
@@ -570,7 +564,9 @@ func (c *WebSocketClient) BackupConfigUpdate(params map[string]interface{}) (map
 	for k, v := range params {
 		req[k] = v
 	}
-	return c.sendMapCommand("backup/config/update", req)
+	// Core replies with a null result on success.
+	_, err := c.SendCommand("backup/config/update", req)
+	return nil, err
 }
 
 // Energy operations
@@ -594,13 +590,9 @@ func (c *WebSocketClient) EnergySavePrefs(params map[string]interface{}) (map[st
 	return c.sendMapCommand("energy/save_prefs", req)
 }
 
-// EnergyValidate validates energy dashboard preferences.
-func (c *WebSocketClient) EnergyValidate(params map[string]interface{}) (map[string]interface{}, error) {
-	req := make(map[string]interface{}, len(params))
-	for k, v := range params {
-		req[k] = v
-	}
-	return c.sendMapCommand("energy/validate", req)
+// EnergyValidate validates the saved energy dashboard preferences.
+func (c *WebSocketClient) EnergyValidate() (map[string]interface{}, error) {
+	return c.sendMapCommand("energy/validate", nil)
 }
 
 // EnergySolarForecast returns configured solar forecast data.

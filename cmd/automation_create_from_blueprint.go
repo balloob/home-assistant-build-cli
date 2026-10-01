@@ -69,7 +69,7 @@ func runAutomationCreateFromBlueprint(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	result, err := restClient.Post(fmt.Sprintf("config/automation/config/%s", automationID), config)
+	result, err := postConfig(restClient, "config/automation/config/", automationID, config)
 	if err != nil {
 		return err
 	}

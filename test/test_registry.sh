@@ -602,7 +602,7 @@ run_person_tests() {
     # Test: person CRUD
     log_test "person create"
     PERSON_NAME="Test Person $(date +%s)"
-    OUTPUT=$(run_hab person create "$PERSON_NAME")
+    OUTPUT=$(run_hab person create "$PERSON_NAME" --device-trackers device_tracker.test_phone)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         PERSON_ID=$(echo "$OUTPUT" | jq -r '.data.id // empty')
         pass "person create (id: $PERSON_ID)"
@@ -618,7 +618,7 @@ run_person_tests() {
 
             log_test "person update"
             OUTPUT=$(run_hab person update "$PERSON_ID" --name "Updated Test Person")
-            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            if echo "$OUTPUT" | jq -e '.success == true and .data.device_trackers == ["device_tracker.test_phone"]' > /dev/null 2>&1; then
                 pass "person update"
             else
                 fail "person update: $OUTPUT"

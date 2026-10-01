@@ -16,9 +16,11 @@ var (
 var deviceDeleteCmd = &cobra.Command{
 	Use:   "delete <device_id>",
 	Short: "Delete a device",
-	Long:  `Delete a device from Home Assistant.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDeviceDelete,
+	Long: `Delete a device from Home Assistant.
+
+Requires Home Assistant 2026.9 or later.`,
+	Args: cobra.ExactArgs(1),
+	RunE: runDeviceDelete,
 }
 
 func init() {
@@ -47,7 +49,7 @@ func runDeviceDelete(cmd *cobra.Command, args []string) error {
 			},
 			Steps: []string{
 				"Connect to Home Assistant WebSocket API.",
-				"Send config/device_registry/remove_config_entry for the selected device ID.",
+				"Send config/device_registry/remove for the selected device ID.",
 				"Return deletion confirmation.",
 			},
 			Risks: []string{
@@ -71,7 +73,7 @@ func runDeviceDelete(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	_, err = ws.SendCommand("config/device_registry/remove_config_entry", map[string]interface{}{
+	_, err = ws.SendCommand("config/device_registry/remove", map[string]interface{}{
 		"device_id": deviceID,
 	})
 	if err != nil {

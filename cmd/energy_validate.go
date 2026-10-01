@@ -5,31 +5,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var energyValidateInput InputFlags
-
 var energyValidateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate energy preferences",
-	Long:  `Validate energy dashboard preferences. Optionally pass preferences via --data/--file for server-side validation without saving.`,
+	Long:  `Validate the saved energy dashboard preferences.`,
 	RunE:  runEnergyValidate,
 }
 
 func init() {
 	energyCmd.AddCommand(energyValidateCmd)
-	energyValidateInput.Register(energyValidateCmd)
 }
 
 func runEnergyValidate(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
-
-	params := map[string]interface{}{}
-	if energyValidateInput.Data != "" || energyValidateInput.File != "" {
-		parsed, err := energyValidateInput.Parse()
-		if err != nil {
-			return err
-		}
-		params = parsed
-	}
 
 	ws, err := getWSClient()
 	if err != nil {
@@ -37,7 +25,7 @@ func runEnergyValidate(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	result, err := ws.EnergyValidate(params)
+	result, err := ws.EnergyValidate()
 	if err != nil {
 		return err
 	}

@@ -38,11 +38,39 @@ func TestPlanRequested(t *testing.T) {
 	}
 }
 
-func TestAnyCapabilityAvailable(t *testing.T) {
-	if anyCapabilityAvailable(capabilityStatus{Available: false}, capabilityStatus{Available: true}) != true {
-		t.Fatal("expected true when any capability is available")
+type fakeCommander struct {
+	cmdType string
+	params  map[string]interface{}
+	err     error
+}
+
+func (f *fakeCommander) SendCommand(cmdType string, params map[string]interface{}) (interface{}, error) {
+	f.cmdType = cmdType
+	f.params = params
+	if f.err != nil {
+		return nil, f.err
 	}
-	if anyCapabilityAvailable(capabilityStatus{Available: false}, capabilityStatus{Available: false}) {
-		t.Fatal("expected false when no capabilities are available")
+	return map[string]interface{}{}, nil
+}
+
+func TestProbeSupervisorAvailable(t *testing.T) {
+	ws := &fakeCommander{}
+	status := probeSupervisor(ws)
+	if !status.Available {
+		t.Fatalf("available = %v, want true", status.Available)
+	}
+	if ws.cmdType != "supervisor/api" || ws.params["endpoint"] != "/info" || ws.params["method"] != "get" {
+		t.Fatalf("sent %q %v, want supervisor/api with endpoint /info and method get", ws.cmdType, ws.params)
+	}
+}
+
+func TestProbeSupervisorUnknownCommand(t *testing.T) {
+	ws := &fakeCommander{err: &client.APIError{Code: "unknown_command", Message: "Unknown command."}}
+	status := probeSupervisor(ws)
+	if status.Available {
+		t.Fatalf("available = %v, want false", status.Available)
+	}
+	if status.Reason != "supervisor endpoint unavailable" {
+		t.Fatalf("reason = %q, want supervisor endpoint unavailable", status.Reason)
 	}
 }

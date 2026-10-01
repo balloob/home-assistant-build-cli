@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
 var (
+	calendarDeleteRecurrenceID    string
 	calendarDeleteRecurrenceRange string
 	calendarDeleteForce           bool
 	calendarDeletePlan            bool
@@ -18,18 +20,25 @@ var calendarDeleteCmd = &cobra.Command{
 	Short: "Delete a calendar event",
 	Long:  `Delete an event from a Home Assistant calendar by its uid.`,
 	Example: `  hab calendar delete calendar.personal abc123def456
-  hab calendar delete calendar.personal abc123def456 --recurrence-range THISEVENT
-  hab calendar delete calendar.personal abc123def456 --recurrence-range THISANDFUTURE`,
+  hab calendar delete calendar.personal abc123def456 --recurrence-id 20990601T100000
+  hab calendar delete calendar.personal abc123def456 --recurrence-id 20990601T100000 --recurrence-range THISANDFUTURE`,
 	Args: cobra.ExactArgs(2),
 	RunE: runCalendarDelete,
 }
 
 func init() {
 	calendarCmd.AddCommand(calendarDeleteCmd)
+	calendarDeleteCmd.Flags().StringVar(&calendarDeleteRecurrenceID, "recurrence-id", "", "For recurring events: the recurrence_id of the instance to delete")
 	calendarDeleteCmd.Flags().StringVar(&calendarDeleteRecurrenceRange, "recurrence-range", "", "For recurring events: THISEVENT or THISANDFUTURE")
 	calendarDeleteCmd.Flags().BoolVarP(&calendarDeleteForce, "force", "f", false, "Skip confirmation")
 	registerMutationPlanFlags(calendarDeleteCmd, &calendarDeletePlan, &calendarDeleteDryRun)
-	annotateServiceMutationCommand(calendarDeleteCmd, "destructive", "calendar_event", []string{"args", "flags"})
+	mergeSchemaAnnotation(calendarDeleteCmd, SchemaAnnotation{
+		SideEffect:   "destructive",
+		OutputMode:   "json_envelope",
+		Capabilities: []string{"auth", "ws"},
+		ResourceType: "calendar_event",
+		InputSources: []string{"args", "flags"},
+	})
 }
 
 func runCalendarDelete(cmd *cobra.Command, args []string) error {
@@ -39,6 +48,9 @@ func runCalendarDelete(cmd *cobra.Command, args []string) error {
 
 	if planRequested(calendarDeletePlan, calendarDeleteDryRun) {
 		inputs := map[string]any{}
+		if calendarDeleteRecurrenceID != "" {
+			inputs["recurrence_id"] = calendarDeleteRecurrenceID
+		}
 		if calendarDeleteRecurrenceRange != "" {
 			inputs["recurrence_range"] = calendarDeleteRecurrenceRange
 		}
@@ -51,7 +63,7 @@ func runCalendarDelete(cmd *cobra.Command, args []string) error {
 			},
 			Inputs: inputs,
 			Steps: []string{
-				"Call Home Assistant service calendar.delete_event with calendar entity_id and event UID.",
+				"Send WebSocket command calendar/event/delete with calendar entity_id and event UID.",
 				"Return deletion confirmation message.",
 			},
 			Risks: []string{
@@ -69,13 +81,27 @@ func runCalendarDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	data := map[string]interface{}{
+	params := map[string]interface{}{
 		"entity_id": entityID,
 		"uid":       uid,
 	}
+	if calendarDeleteRecurrenceID != "" {
+		params["recurrence_id"] = calendarDeleteRecurrenceID
+	}
 	if calendarDeleteRecurrenceRange != "" {
-		data["recurrence_range"] = calendarDeleteRecurrenceRange
+		params["recurrence_range"] = calendarDeleteRecurrenceRange
 	}
 
-	return callServiceAction("delete", "calendar_event", "calendar", "delete_event", "Event deleted.", data)
+	ws, err := getWSClient()
+	if err != nil {
+		return err
+	}
+	defer ws.Close()
+
+	if _, err := ws.SendCommand("calendar/event/delete", params); err != nil {
+		return err
+	}
+
+	output.PrintSuccessWithContext(nil, textMode, "Event deleted.", output.EnvelopeContext{Operation: "delete", ResourceType: "calendar_event"})
+	return nil
 }
