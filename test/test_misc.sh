@@ -279,13 +279,11 @@ run_misc_tests() {
         pass "backup get/restore/delete (skipped - no backup_id returned)"
     fi
 
-    # Test: backup config update (may not be supported by empty-hass)
+    # Test: backup config update (core replies with a null result)
     log_test "backup config update"
-    OUTPUT=$(run_hab_optional backup config update --data '{"retention":{"days":7}}')
+    OUTPUT=$(run_hab backup config update --data '{"retention":{"days":7}}')
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         pass "backup config update"
-    elif echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
-        pass "backup config update (not supported by server)"
     else
         fail "backup config update: $OUTPUT"
     fi
