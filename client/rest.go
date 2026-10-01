@@ -417,8 +417,7 @@ func (c *RestClient) RenderTemplate(template string) (string, error) {
 // ConfigFlowCreate starts a new config flow for an integration
 func (c *RestClient) ConfigFlowCreate(handler string) (map[string]interface{}, error) {
 	body := map[string]interface{}{
-		"handler":               handler,
-		"show_advanced_options": false,
+		"handler": handler,
 	}
 	return c.postMap("config/config_entries/flow", body)
 }
