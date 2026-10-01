@@ -63,6 +63,15 @@ run_misc_tests() {
         fail "action call with -d data: $OUTPUT"
     fi
 
+    # Test: action call with --return-response on a response-only action
+    log_test "action call with --return-response"
+    OUTPUT=$(run_hab action call recorder.get_statistics -d '{"statistic_ids":["sensor.hab_test"],"start_time":"2026-01-01T00:00:00Z","period":"hour","types":["mean"]}' --return-response)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data.service_response | type == "object")' > /dev/null 2>&1; then
+        pass "action call with --return-response"
+    else
+        fail "action call with --return-response: $OUTPUT"
+    fi
+
     # Test: blueprint list
     log_test "blueprint list"
     OUTPUT=$(run_hab blueprint list)

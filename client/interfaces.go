@@ -290,6 +290,7 @@ type RestAPI interface {
 	GetState(entityID string) (map[string]interface{}, error)
 	GetServices() ([]interface{}, error)
 	CallService(domain, service string, data map[string]interface{}) (interface{}, error)
+	CallServiceWithResponse(domain, service string, data map[string]interface{}) (interface{}, error)
 	CheckConfig() (map[string]interface{}, error)
 	Restart() error
 	GetErrorLog() (string, error)

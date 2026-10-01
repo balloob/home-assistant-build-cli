@@ -320,6 +320,13 @@ func (c *RestClient) CallService(domain, service string, data map[string]interfa
 	return c.Post(endpoint, data)
 }
 
+// CallServiceWithResponse calls a service and requests its response data.
+// Home Assistant reads return_response from the query string, not the body.
+func (c *RestClient) CallServiceWithResponse(domain, service string, data map[string]interface{}) (interface{}, error) {
+	endpoint := fmt.Sprintf("services/%s/%s?return_response", domain, service)
+	return c.Post(endpoint, data)
+}
+
 // CheckConfig validates the Home Assistant configuration
 func (c *RestClient) CheckConfig() (map[string]interface{}, error) {
 	return c.postMap("config/core/check_config", nil)
