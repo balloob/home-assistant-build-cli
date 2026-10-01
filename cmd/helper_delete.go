@@ -37,7 +37,7 @@ func init() {
 	mergeSchemaAnnotation(helperDeleteCmd, SchemaAnnotation{
 		SideEffect:   "destructive",
 		OutputMode:   "json_envelope",
-		Capabilities: []string{"auth", "ws"},
+		Capabilities: []string{"auth", "rest", "ws"},
 		ResourceType: "helper",
 		InputSources: []string{"args", "flags"},
 	})

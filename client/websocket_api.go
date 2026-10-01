@@ -393,14 +393,6 @@ func (c *WebSocketClient) ConfigEntriesList(domain string) ([]interface{}, error
 	return c.sendListCommand("config_entries/get", params)
 }
 
-// ConfigEntryDelete deletes a config entry
-func (c *WebSocketClient) ConfigEntryDelete(entryID string) error {
-	_, err := c.SendCommand("config_entries/delete", map[string]interface{}{
-		"entry_id": entryID,
-	})
-	return err
-}
-
 // ResolveEntityToConfigEntry resolves an entity_id to its config_entry_id
 // Returns the config_entry_id if found, or empty string if the entity doesn't have one
 func (c *WebSocketClient) ResolveEntityToConfigEntry(entityID string) (string, error) {

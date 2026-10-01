@@ -389,6 +389,20 @@ run_helpers_tests() {
             fail "helper group create: $OUTPUT"
         fi
 
+        log_test "helper delete (group by entity_id)"
+        OUTPUT=$(run_hab helper group create "Test Delete Group" --type sensor --entities "$GROUP_SENSOR1_ENTITY,$GROUP_SENSOR2_ENTITY")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            sleep 1
+            OUTPUT=$(run_hab helper delete sensor.test_delete_group --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper delete (group by entity_id)"
+            else
+                fail "helper delete (group by entity_id): $OUTPUT"
+            fi
+        else
+            fail "helper delete (group by entity_id) setup: $OUTPUT"
+        fi
+
         # Cleanup the template sensors we created for the group test
         run_hab helper template delete "$GROUP_SENSOR1_ENTRY_ID" > /dev/null 2>&1
         run_hab helper template delete "$GROUP_SENSOR2_ENTRY_ID" > /dev/null 2>&1
