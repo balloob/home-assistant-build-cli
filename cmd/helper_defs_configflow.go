@@ -401,8 +401,6 @@ At least one of --sampling-size or --max-age must be specified.`,
 }
 
 func registerLocalCalendar() {
-	var icon string
-
 	registerHelperType(HelperDef{
 		TypeName:        "local_calendar",
 		CommandName:     "local-calendar",
@@ -411,27 +409,18 @@ func registerLocalCalendar() {
 		Long:            "Create, list, and delete local calendar helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "A local calendar for storing events in Home Assistant (config flow)",
-		CreateParams:    []string{"name (required)", "icon"},
+		CreateParams:    []string{"name (required)"},
 		CreateShort:     "Create a new local calendar",
 		CreateLong:      "Create a new local calendar helper.",
-		SetupFlags: func(cmd *cobra.Command) {
-			cmd.Flags().StringVarP(&icon, "icon", "i", "", "Icon for the calendar")
-		},
 		RunCreate: helperConfigFlowCreate("local_calendar", "local calendar", func(cmd *cobra.Command, name string) (map[string]interface{}, error) {
-			formData := map[string]interface{}{
+			return map[string]interface{}{
 				"calendar_name": name,
-			}
-			if icon != "" {
-				formData["icon"] = icon
-			}
-			return formData, nil
+			}, nil
 		}),
 	})
 }
 
 func registerLocalTodo() {
-	var icon string
-
 	registerHelperType(HelperDef{
 		TypeName:        "local_todo",
 		CommandName:     "local-todo",
@@ -440,20 +429,13 @@ func registerLocalTodo() {
 		Long:            "Create, list, and delete local to-do list helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "A local to-do list for storing tasks in Home Assistant (config flow)",
-		CreateParams:    []string{"name (required)", "icon"},
+		CreateParams:    []string{"name (required)"},
 		CreateShort:     "Create a new local to-do list",
 		CreateLong:      "Create a new local to-do list helper.",
-		SetupFlags: func(cmd *cobra.Command) {
-			cmd.Flags().StringVarP(&icon, "icon", "i", "", "Icon for the to-do list")
-		},
 		RunCreate: helperConfigFlowCreate("local_todo", "local to-do list", func(cmd *cobra.Command, name string) (map[string]interface{}, error) {
-			formData := map[string]interface{}{
+			return map[string]interface{}{
 				"todo_list_name": name,
-			}
-			if icon != "" {
-				formData["icon"] = icon
-			}
-			return formData, nil
+			}, nil
 		}),
 	})
 }
