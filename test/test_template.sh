@@ -1,9 +1,31 @@
 #!/bin/bash
-# Template entity tests: alarm_control_panel, binary_sensor, button, image, number, select, sensor, switch
+# Template entity tests: alarm_control_panel, binary_sensor, button, cover, fan, image, light, lock, number, select, sensor, switch, vacuum, weather
 # Usage: ./test_template.sh (standalone) or source from run_integration_test.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
+
+# Create a template entity of type $1 with name $2 and extra args, then delete it.
+template_create_delete() {
+    local type="$1" name="$2"
+    shift 2
+    log_test "helper template create ($type)"
+    OUTPUT=$(run_hab helper template create "$name" --type "$type" "$@")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        TEMPLATE_ENTRY_ID=$(echo "$OUTPUT" | jq -r '.data.entry_id // empty')
+        pass "helper template create $type (entry_id: $TEMPLATE_ENTRY_ID)"
+
+        log_test "helper template delete ($type)"
+        OUTPUT=$(run_hab helper template delete "$TEMPLATE_ENTRY_ID")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper template delete $type"
+        else
+            fail "helper template delete $type: $OUTPUT"
+        fi
+    else
+        fail "helper template create $type: $OUTPUT"
+    fi
+}
 
 run_template_tests() {
     log_section "Template Entity Tests"
@@ -182,6 +204,29 @@ run_template_tests() {
     else
         fail "helper template create switch: $OUTPUT"
     fi
+
+    # ==========================================================================
+    # Template Cover, Fan, Light, Lock, Vacuum, and Weather Tests
+    # ==========================================================================
+    template_create_delete cover "Test Cover" --state "{{ 'open' }}" \
+        --open "script.turn_on" --close "script.turn_on" --stop "script.turn_on" \
+        --position "{{ 50 }}" --set-position "script.turn_on" --device-class garage
+    template_create_delete fan "Test Fan" --state "{{ true }}" \
+        --turn-on "script.turn_on" --turn-off "script.turn_off" \
+        --percentage "{{ 50 }}" --set-percentage "script.turn_on"
+    template_create_delete light "Test Light" --state "{{ true }}" \
+        --turn-on "script.turn_on" --turn-off "script.turn_off" \
+        --brightness "{{ 128 }}" --set-brightness "script.turn_on" \
+        --hs "{{ (30, 50) }}" --set-hs "script.turn_on" \
+        --temperature "{{ 300 }}" --set-temperature "script.turn_on"
+    template_create_delete lock "Test Lock" --state "{{ 'locked' }}" \
+        --lock "script.turn_on" --unlock "script.turn_off" --open "script.turn_on"
+    template_create_delete vacuum "Test Vacuum" --state "{{ 'docked' }}" \
+        --start "script.turn_on" --stop "script.turn_off" --pause "script.turn_off" \
+        --return-to-base "script.turn_on" --clean-spot "script.turn_on" --locate "script.turn_on" \
+        --set-fan-speed "script.turn_on" --fan-speed "{{ 'low' }}"
+    template_create_delete weather "Test Weather" \
+        --condition "{{ 'sunny' }}" --temperature "{{ 20 }}" --humidity "{{ 50 }}"
 }
 
 # Run standalone if executed directly

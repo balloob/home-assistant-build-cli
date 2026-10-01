@@ -553,11 +553,11 @@ func registerTemplate() {
 		Long:            "Create, list, and delete template entity helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "Create template entities using Jinja2 expressions (config flow)",
-		CreateParams:    []string{"name (required)", "type (alarm_control_panel/binary_sensor/button/image/number/select/sensor/switch)", "state (Jinja2 template)", "icon", "turn-on", "turn-off"},
+		CreateParams:    []string{"name (required)", "type (alarm_control_panel/binary_sensor/button/cover/fan/image/light/lock/number/select/sensor/switch/vacuum/weather)", "state (Jinja2 template)", "turn-on", "turn-off"},
 		CreateShort:     "Create a new template entity",
 		CreateLong: `Create a new template entity helper using the config entry flow.
 
-Template types available: alarm_control_panel, binary_sensor, button, image, number, select, sensor, switch.
+Template types available: alarm_control_panel, binary_sensor, button, cover, fan, image, light, lock, number, select, sensor, switch, vacuum, weather.
 
 Templates use Jinja2 syntax. State templates should return valid values for the entity type.`,
 		CreateExample: `  hab helper-template create "Is Sun Up" --type binary_sensor --state "{{ is_state('sun.sun', 'above_horizon') }}"
