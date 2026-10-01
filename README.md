@@ -649,6 +649,41 @@ hab backup delete <backup_id> --force
 
 `hab backup restore` also supports `--password`, `--restore-addon`, `--restore-folder`, `--restore-database`, and `--restore-homeassistant`.
 
+### Marketplace
+
+Requires Home Assistant 2026.11 or later. Commands that take a repository accept its Marketplace ID or its GitHub full name.
+
+```bash
+# Status and discovery
+hab marketplace info
+hab marketplace list --installed
+hab marketplace list --category plugin --search mushroom --brief
+hab marketplace get piitaya/lovelace-mushroom
+hab marketplace releases piitaya/lovelace-mushroom
+
+# Install and manage (the user must accept the Marketplace warning first)
+hab marketplace accept-warning
+hab marketplace install piitaya/lovelace-mushroom
+hab marketplace install piitaya/lovelace-mushroom --version v5.2.2
+hab marketplace set-version piitaya/lovelace-mushroom v5.2.2
+hab marketplace set-beta piitaya/lovelace-mushroom true
+hab marketplace refresh piitaya/lovelace-mushroom
+hab marketplace uninstall piitaya/lovelace-mushroom --force
+
+# Custom repositories need a connected GitHub account
+hab marketplace github-connect
+hab marketplace custom detect custom-cards/button-card
+hab marketplace custom add custom-cards/button-card --category plugin
+hab marketplace custom remove custom-cards/button-card
+
+# Removed and critical repositories
+hab marketplace removed
+hab marketplace ignore <repository>
+hab marketplace critical list
+hab marketplace critical acknowledge <owner/repo>
+hab marketplace clear-new --category plugin
+```
+
 ### Energy dashboard
 
 ```bash
@@ -1032,6 +1067,7 @@ hab action call light.turn_on -d '{"entity_id":"light.kitchen","brightness":200}
 | `repairs` | Manage Home Assistant repair issues |
 | `dashboard` | Manage dashboards, views, badges, sections, cards, and raw config |
 | `backup` | Inspect backup support and manage backup lifecycle |
+| `marketplace` | Browse, install, and manage Marketplace repositories |
 | `energy` | Manage energy dashboard preferences and metadata |
 | `diagnostics` | Inspect diagnostics handlers |
 | `network` | Inspect and configure network settings |
