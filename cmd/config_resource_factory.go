@@ -147,7 +147,7 @@ func registerConfigCreate(cfg ConfigResourceConfig) {
 				return err
 			}
 
-			result, err := restClient.Post(cfg.APIPrefix+id, config)
+			result, err := postConfig(restClient, cfg.APIPrefix, id, config)
 			if err != nil {
 				return err
 			}
@@ -225,7 +225,7 @@ func registerConfigUpdate(cfg ConfigResourceConfig) {
 				return nil
 			}
 
-			result, err := restClient.Post(cfg.APIPrefix+configID, config)
+			result, err := postConfig(restClient, cfg.APIPrefix, configID, config)
 			if err != nil {
 				return err
 			}
