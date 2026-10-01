@@ -624,6 +624,15 @@ run_helpers_tests() {
             fail "helper statistics create: $OUTPUT"
         fi
 
+        log_test "helper statistics create (value_max)"
+        OUTPUT=$(run_hab helper statistics create "Test Statistics Max" --entity "$CF_SOURCE_ENTITY" --characteristic value_max --sampling-size 100)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper statistics create (value_max)"
+            run_hab helper statistics delete "$(echo "$OUTPUT" | jq -r '.data.entry_id')" > /dev/null 2>&1
+        else
+            fail "helper statistics create (value_max): $OUTPUT"
+        fi
+
         # Cleanup the source sensor we created for config flow helper tests
         run_hab helper template delete "$CF_SOURCE_ENTRY_ID" > /dev/null 2>&1
     else

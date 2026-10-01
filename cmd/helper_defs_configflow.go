@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -268,10 +269,17 @@ func registerStatistics() {
 		CreateShort:     "Create a new statistics sensor",
 		CreateLong: `Create a new statistics sensor helper that provides statistical analysis of sensor history.
 
-State characteristics: mean, median, standard_deviation, variance, sum, min, max, count,
-                       datetime_newest, datetime_oldest, change, change_second,
-                       average_linear, average_step, average_timeless, total,
-                       change_sample, count_on, count_off, percentile, noisiness
+State characteristics for a sensor source:
+  average_linear, average_step, average_timeless, change, change_sample,
+  change_second, count, datetime_newest, datetime_oldest, datetime_value_max,
+  datetime_value_min, distance_95_percent_of_values,
+  distance_99_percent_of_values, distance_absolute, mean, mean_circular,
+  median, noisiness, percentile, standard_deviation, sum, sum_differences,
+  sum_differences_nonnegative, total, value_max, value_min, variance
+
+State characteristics for a binary_sensor source:
+  average_step, average_timeless, count, count_on, count_off,
+  datetime_newest, datetime_oldest, mean
 
 At least one of --sampling-size or --max-age must be specified.`,
 		CreateExample: `  hab helper-statistics create "Temp Average" --entity sensor.temperature --characteristic mean --sampling-size 100
@@ -291,14 +299,24 @@ At least one of --sampling-size or --max-age must be specified.`,
 			textMode := getTextMode()
 
 			// Validate
+			// Core offers a different characteristic list for binary_sensor sources.
 			validCharacteristics := map[string]bool{
-				"mean": true, "median": true, "standard_deviation": true, "variance": true,
-				"sum": true, "min": true, "max": true, "count": true,
-				"datetime_newest": true, "datetime_oldest": true,
-				"change": true, "change_second": true, "change_sample": true,
 				"average_linear": true, "average_step": true, "average_timeless": true,
-				"total": true, "count_on": true, "count_off": true,
-				"percentile": true, "noisiness": true,
+				"change": true, "change_sample": true, "change_second": true, "count": true,
+				"datetime_newest": true, "datetime_oldest": true,
+				"datetime_value_max": true, "datetime_value_min": true,
+				"distance_95_percent_of_values": true, "distance_99_percent_of_values": true,
+				"distance_absolute": true, "mean": true, "mean_circular": true, "median": true,
+				"noisiness": true, "percentile": true, "standard_deviation": true, "sum": true,
+				"sum_differences": true, "sum_differences_nonnegative": true, "total": true,
+				"value_max": true, "value_min": true, "variance": true,
+			}
+			if strings.HasPrefix(entity, "binary_sensor.") {
+				validCharacteristics = map[string]bool{
+					"average_step": true, "average_timeless": true, "count": true,
+					"count_on": true, "count_off": true,
+					"datetime_newest": true, "datetime_oldest": true, "mean": true,
+				}
 			}
 			if err := validateOneOf(characteristic, "characteristic", validCharacteristics, false); err != nil {
 				return err
