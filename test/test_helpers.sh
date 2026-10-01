@@ -586,6 +586,15 @@ run_helpers_tests() {
             fail "helper utility-meter create: $OUTPUT"
         fi
 
+        log_test "helper utility-meter create (quarter-hourly)"
+        OUTPUT=$(run_hab helper utility-meter create "Test Quarter Hourly Meter" --source "$CF_SOURCE_ENTITY" --cycle quarter-hourly)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper utility-meter create (quarter-hourly)"
+            run_hab helper utility-meter delete "$(echo "$OUTPUT" | jq -r '.data.entry_id')" > /dev/null 2>&1
+        else
+            fail "helper utility-meter create (quarter-hourly): $OUTPUT"
+        fi
+
         # ==========================================================================
         # Statistics Helper Tests (requires sensor or binary_sensor domain entity)
         # ==========================================================================
