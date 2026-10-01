@@ -65,16 +65,16 @@ func registerDashResourceUpdate(parentCmd *cobra.Command, cfg DashboardResourceC
 			// For view update: args[1] is the view index, and that IS the item
 			if depth == 1 {
 				var err error
-				itemIndex, err = strconv.Atoi(args[1])
+				itemIndex, err = parseViewArg(urlPath, args[1])
 				if err != nil {
-					return fmt.Errorf("invalid %s index: %s", name, args[1])
+					return err
 				}
 				viewIndex = itemIndex // view IS the item
 			} else {
 				var err error
-				viewIndex, err = strconv.Atoi(args[1])
+				viewIndex, err = parseViewArg(urlPath, args[1])
 				if err != nil {
-					return fmt.Errorf("invalid view index: %s", args[1])
+					return err
 				}
 				itemIndex, err = strconv.Atoi(args[2])
 				if err != nil {

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -48,9 +47,9 @@ func registerDashResourceList(parentCmd *cobra.Command, cfg DashboardResourceCon
 			viewIndex := -1
 			if depth >= 2 {
 				var err error
-				viewIndex, err = strconv.Atoi(args[1])
+				viewIndex, err = parseViewArg(urlPath, args[1])
 				if err != nil {
-					return fmt.Errorf("invalid view index: %s", args[1])
+					return err
 				}
 			}
 

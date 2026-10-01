@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -161,6 +162,39 @@ func fetchDashboardConfig(ws interface {
 		return nil, nil // caller decides how to handle
 	}
 	return config, nil
+}
+
+// parseViewArg returns the index of the view that arg names in the dashboard.
+// arg is a view index or the path of a view.
+func parseViewArg(urlPath, arg string) (int, error) {
+	if index, err := strconv.Atoi(arg); err == nil {
+		return index, nil
+	}
+	ws, err := getWSClient()
+	if err != nil {
+		return -1, err
+	}
+	if ws == nil {
+		return -1, fmt.Errorf("invalid view index: %s", arg)
+	}
+	defer ws.Close()
+	config, err := fetchDashboardConfig(ws, urlPath)
+	if err != nil {
+		return -1, err
+	}
+	return viewIndexByPath(config, arg)
+}
+
+// viewIndexByPath returns the index of the view whose path is path.
+func viewIndexByPath(config map[string]interface{}, path string) (int, error) {
+	views, _ := config["views"].([]interface{})
+	for i, v := range views {
+		view, _ := v.(map[string]interface{})
+		if viewPath, _ := view["path"].(string); viewPath == path {
+			return i, nil
+		}
+	}
+	return -1, fmt.Errorf("view %q not found: give a view index or the path of a view", path)
 }
 
 // saveDashboardConfig saves the lovelace config for the given dashboard URL path.

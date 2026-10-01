@@ -57,17 +57,24 @@ func registerDashResourceGet(parentCmd *cobra.Command, cfg DashboardResourceConf
 			argIdx := 1
 			if depth >= 2 {
 				var err error
-				viewIndex, err = strconv.Atoi(args[argIdx])
+				viewIndex, err = parseViewArg(urlPath, args[argIdx])
 				if err != nil {
-					return fmt.Errorf("invalid view index: %s", args[argIdx])
+					return err
 				}
 				argIdx++
 			}
 
 			var err error
-			itemIndex, err = strconv.Atoi(args[argIdx])
-			if err != nil {
-				return fmt.Errorf("invalid %s index: %s", name, args[argIdx])
+			if depth == 1 {
+				itemIndex, err = parseViewArg(urlPath, args[argIdx])
+				if err != nil {
+					return err
+				}
+			} else {
+				itemIndex, err = strconv.Atoi(args[argIdx])
+				if err != nil {
+					return fmt.Errorf("invalid %s index: %s", name, args[argIdx])
+				}
 			}
 
 			textMode := getTextMode()
@@ -179,9 +186,9 @@ func registerDashResourceGetWithFlags(parentCmd *cobra.Command, cfg DashboardRes
 				viewIndex = viewFlag
 				if viewIndex < 0 && len(args) > argIdx {
 					var err error
-					viewIndex, err = strconv.Atoi(args[argIdx])
+					viewIndex, err = parseViewArg(urlPath, args[argIdx])
 					if err != nil {
-						return fmt.Errorf("invalid view index: %s", args[argIdx])
+						return err
 					}
 				}
 				if viewIndex < 0 {
@@ -194,9 +201,16 @@ func registerDashResourceGetWithFlags(parentCmd *cobra.Command, cfg DashboardRes
 			itemIndex := indexFlag
 			if itemIndex < 0 && len(args) > argIdx {
 				var err error
-				itemIndex, err = strconv.Atoi(args[argIdx])
-				if err != nil {
-					return fmt.Errorf("invalid %s index: %s", name, args[argIdx])
+				if depth == 1 {
+					itemIndex, err = parseViewArg(urlPath, args[argIdx])
+					if err != nil {
+						return err
+					}
+				} else {
+					itemIndex, err = strconv.Atoi(args[argIdx])
+					if err != nil {
+						return fmt.Errorf("invalid %s index: %s", name, args[argIdx])
+					}
 				}
 			}
 			if itemIndex < 0 {

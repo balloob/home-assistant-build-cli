@@ -14,6 +14,8 @@ var dashboardCmd = &cobra.Command{
 	Short: "Manage dashboards",
 	Long: `Create, update, and delete dashboards.
 
+Commands that take a view_index also accept the path of the view, such as "home".
+
 If you are new to creating Home Assistant dashboards, run 'hab guide dashboard' first.
 The legacy alias 'hab dashboard guide' is also available.`,
 	GroupID: "dashboard",
