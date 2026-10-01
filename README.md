@@ -2,8 +2,6 @@
 
 A CLI utility designed for LLMs to build and manage Home Assistant configurations.
 
-_Vibe coded, use at own risk._
-
 ## Installation
 
 ### From Source
