@@ -70,8 +70,6 @@ func runCapabilityProbe(cmd *cobra.Command, args []string) error {
 				environment["ha_state"] = config["state"]
 				environment["location_name"] = config["location_name"]
 			}
-
-			supervisorStatus = probeSupervisor(restClient)
 		}
 
 		ws, wsErr := getWSClient()
@@ -83,6 +81,7 @@ func runCapabilityProbe(cmd *cobra.Command, args []string) error {
 				_, err := ws.GetConfig()
 				return err
 			})
+			supervisorStatus = probeSupervisor(ws)
 			backupStatus = probeStatus(func() error {
 				_, err := ws.BackupInfo()
 				return err
@@ -120,9 +119,6 @@ func runCapabilityProbe(cmd *cobra.Command, args []string) error {
 	}
 
 	if !supervisorStatus.Available && auth.IsSupervisorEnvironment() {
-		supervisorStatus = capabilityStatus{Available: true}
-	}
-	if !supervisorStatus.Available && anyCapabilityAvailable(backupStatus, diagnosticsStatus, networkStatus, repairsStatus) {
 		supervisorStatus = capabilityStatus{Available: true}
 	}
 
@@ -165,11 +161,11 @@ func runCapabilityProbe(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func probeSupervisor(restClient client.RestAPI) capabilityStatus {
-	if restClient == nil {
-		return capabilityStatus{Available: false, Reason: "rest unavailable"}
-	}
-	_, err := restClient.Get("hassio/info")
+func probeSupervisor(ws client.WebSocketCommander) capabilityStatus {
+	_, err := ws.SendCommand("supervisor/api", map[string]interface{}{
+		"endpoint": "/info",
+		"method":   "get",
+	})
 	if err == nil {
 		return capabilityStatus{Available: true}
 	}
@@ -187,15 +183,6 @@ func probeStatus(check func() error) capabilityStatus {
 		return capabilityStatus{Available: true}
 	}
 	return statusFromError(err)
-}
-
-func anyCapabilityAvailable(statuses ...capabilityStatus) bool {
-	for _, status := range statuses {
-		if status.Available {
-			return true
-		}
-	}
-	return false
 }
 
 func statusFromError(err error) capabilityStatus {
