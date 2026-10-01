@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
@@ -74,7 +75,7 @@ func registerIntegration() {
 		TypeDescription: "Calculates the Riemann sum (integral) of a source sensor (config flow)",
 		CreateParams:    []string{"name (required)", "source (required)", "round", "unit-prefix (k/M/G/T)", "unit-time (s/min/h/d)", "method (trapezoidal/left/right)"},
 		CreateShort:     "Create a new integration sensor",
-		CreateLong: `Create a new integration (Riemann sum integral) sensor helper.`,
+		CreateLong:      `Create a new integration (Riemann sum integral) sensor helper.`,
 		CreateExample: `  hab helper-integration create "Total Energy" --source sensor.power
   hab helper-integration create "Water Usage" --source sensor.flow_rate --method trapezoidal`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -126,8 +127,8 @@ func registerMinMax() {
 		TypeDescription: "Aggregates values from multiple sensors (min/max/mean/etc) (config flow)",
 		CreateParams:    []string{"name (required)", "entities (required, array)", "type (min/max/mean/median/last/range/sum)", "round"},
 		CreateShort:     "Create a new min/max sensor",
-		CreateLong: `Create a new min/max sensor helper.`,
-		CreateExample: `  hab helper-min-max create "Highest Temp" --type max --entities sensor.temp1,sensor.temp2`,
+		CreateLong:      `Create a new min/max sensor helper.`,
+		CreateExample:   `  hab helper-min-max create "Highest Temp" --type max --entities sensor.temp1,sensor.temp2`,
 		SetupFlags: func(cmd *cobra.Command) {
 			cmd.Flags().StringSliceVarP(&entities, "entities", "e", nil, "Source entity IDs (required)")
 			cmd.Flags().StringVarP(&minMaxType, "type", "t", "max", "Aggregation type: min, max, mean, median, last, range")
@@ -159,7 +160,7 @@ func registerThreshold() {
 		TypeDescription: "Monitors a sensor value against configurable thresholds (config flow)",
 		CreateParams:    []string{"name (required)", "entity (required)", "lower", "upper", "hysteresis"},
 		CreateShort:     "Create a new threshold sensor",
-		CreateLong: `Create a new threshold binary sensor helper. At least one of --lower or --upper must be specified.`,
+		CreateLong:      `Create a new threshold binary sensor helper. At least one of --lower or --upper must be specified.`,
 		CreateExample: `  hab helper-threshold create "Freezing Alert" --entity sensor.temperature --lower 0
   hab helper-threshold create "Overheat Alert" --entity sensor.cpu_temp --upper 80 --hysteresis 5`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -224,7 +225,7 @@ Cycle options: quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarte
 		RequiredFlags: []string{"source"},
 		RunCreate: helperConfigFlowCreate("utility_meter", "utility meter", func(cmd *cobra.Command, name string) (map[string]interface{}, error) {
 			cycleMap := map[string]string{
-				"none": "none", "quarter-hourly": "quarter_hourly",
+				"none": "none", "quarter-hourly": "quarter-hourly",
 				"hourly": "hourly", "daily": "daily", "weekly": "weekly",
 				"monthly": "monthly", "bimonthly": "bimonthly",
 				"quarterly": "quarterly", "yearly": "yearly",
@@ -245,7 +246,7 @@ Cycle options: quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarte
 				"delta_values":           deltaValues,
 				"net_consumption":        netConsumption,
 				"periodically_resetting": periodicallyResetting,
-				"tariffs":               t,
+				"tariffs":                t,
 				"always_available":       alwaysAvailable,
 			}, nil
 		}),
@@ -268,10 +269,17 @@ func registerStatistics() {
 		CreateShort:     "Create a new statistics sensor",
 		CreateLong: `Create a new statistics sensor helper that provides statistical analysis of sensor history.
 
-State characteristics: mean, median, standard_deviation, variance, sum, min, max, count,
-                       datetime_newest, datetime_oldest, change, change_second,
-                       average_linear, average_step, average_timeless, total,
-                       change_sample, count_on, count_off, percentile, noisiness
+State characteristics for a sensor source:
+  average_linear, average_step, average_timeless, change, change_sample,
+  change_second, count, datetime_newest, datetime_oldest, datetime_value_max,
+  datetime_value_min, distance_95_percent_of_values,
+  distance_99_percent_of_values, distance_absolute, mean, mean_circular,
+  median, noisiness, percentile, standard_deviation, sum, sum_differences,
+  sum_differences_nonnegative, total, value_max, value_min, variance
+
+State characteristics for a binary_sensor source:
+  average_step, average_timeless, count, count_on, count_off,
+  datetime_newest, datetime_oldest, mean
 
 At least one of --sampling-size or --max-age must be specified.`,
 		CreateExample: `  hab helper-statistics create "Temp Average" --entity sensor.temperature --characteristic mean --sampling-size 100
@@ -291,14 +299,24 @@ At least one of --sampling-size or --max-age must be specified.`,
 			textMode := getTextMode()
 
 			// Validate
+			// Core offers a different characteristic list for binary_sensor sources.
 			validCharacteristics := map[string]bool{
-				"mean": true, "median": true, "standard_deviation": true, "variance": true,
-				"sum": true, "min": true, "max": true, "count": true,
-				"datetime_newest": true, "datetime_oldest": true,
-				"change": true, "change_second": true, "change_sample": true,
 				"average_linear": true, "average_step": true, "average_timeless": true,
-				"total": true, "count_on": true, "count_off": true,
-				"percentile": true, "noisiness": true,
+				"change": true, "change_sample": true, "change_second": true, "count": true,
+				"datetime_newest": true, "datetime_oldest": true,
+				"datetime_value_max": true, "datetime_value_min": true,
+				"distance_95_percent_of_values": true, "distance_99_percent_of_values": true,
+				"distance_absolute": true, "mean": true, "mean_circular": true, "median": true,
+				"noisiness": true, "percentile": true, "standard_deviation": true, "sum": true,
+				"sum_differences": true, "sum_differences_nonnegative": true, "total": true,
+				"value_max": true, "value_min": true, "variance": true,
+			}
+			if strings.HasPrefix(entity, "binary_sensor.") {
+				validCharacteristics = map[string]bool{
+					"average_step": true, "average_timeless": true, "count": true,
+					"count_on": true, "count_off": true,
+					"datetime_newest": true, "datetime_oldest": true, "mean": true,
+				}
 			}
 			if err := validateOneOf(characteristic, "characteristic", validCharacteristics, false); err != nil {
 				return err
@@ -383,8 +401,6 @@ At least one of --sampling-size or --max-age must be specified.`,
 }
 
 func registerLocalCalendar() {
-	var icon string
-
 	registerHelperType(HelperDef{
 		TypeName:        "local_calendar",
 		CommandName:     "local-calendar",
@@ -393,27 +409,18 @@ func registerLocalCalendar() {
 		Long:            "Create, list, and delete local calendar helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "A local calendar for storing events in Home Assistant (config flow)",
-		CreateParams:    []string{"name (required)", "icon"},
+		CreateParams:    []string{"name (required)"},
 		CreateShort:     "Create a new local calendar",
 		CreateLong:      "Create a new local calendar helper.",
-		SetupFlags: func(cmd *cobra.Command) {
-			cmd.Flags().StringVarP(&icon, "icon", "i", "", "Icon for the calendar")
-		},
 		RunCreate: helperConfigFlowCreate("local_calendar", "local calendar", func(cmd *cobra.Command, name string) (map[string]interface{}, error) {
-			formData := map[string]interface{}{
+			return map[string]interface{}{
 				"calendar_name": name,
-			}
-			if icon != "" {
-				formData["icon"] = icon
-			}
-			return formData, nil
+			}, nil
 		}),
 	})
 }
 
 func registerLocalTodo() {
-	var icon string
-
 	registerHelperType(HelperDef{
 		TypeName:        "local_todo",
 		CommandName:     "local-todo",
@@ -422,20 +429,13 @@ func registerLocalTodo() {
 		Long:            "Create, list, and delete local to-do list helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "A local to-do list for storing tasks in Home Assistant (config flow)",
-		CreateParams:    []string{"name (required)", "icon"},
+		CreateParams:    []string{"name (required)"},
 		CreateShort:     "Create a new local to-do list",
 		CreateLong:      "Create a new local to-do list helper.",
-		SetupFlags: func(cmd *cobra.Command) {
-			cmd.Flags().StringVarP(&icon, "icon", "i", "", "Icon for the to-do list")
-		},
 		RunCreate: helperConfigFlowCreate("local_todo", "local to-do list", func(cmd *cobra.Command, name string) (map[string]interface{}, error) {
-			formData := map[string]interface{}{
+			return map[string]interface{}{
 				"todo_list_name": name,
-			}
-			if icon != "" {
-				formData["icon"] = icon
-			}
-			return formData, nil
+			}, nil
 		}),
 	})
 }
@@ -453,18 +453,18 @@ func registerGroup() {
 		Long:            "Create, list, and delete group helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "A group of entities that can be controlled together (config flow)",
-		CreateParams:    []string{"name (required)", "type (light/switch/binary_sensor/cover/fan/lock/media_player/sensor/event)", "entities (required, array)", "all (true/false, for binary_sensor/light/switch)", "hide-members (true/false)"},
+		CreateParams:    []string{"name (required)", "type (light/switch/binary_sensor/button/cover/fan/lock/media_player/notify/sensor/event/valve)", "entities (required, array)", "all (true/false, for binary_sensor/light/switch)", "hide-members (true/false)"},
 		CreateShort:     "Create a new group",
 		CreateLong: `Create a new group helper using the config entry flow.
 
-Group types available: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch.
+Group types available: binary_sensor, button, cover, event, fan, light, lock, media_player, notify, sensor, switch, valve.
 
 For sensor groups, use --sensor-type to specify aggregation: last, max, mean, median, min, product, range, stdev, sum.`,
 		CreateExample: `  hab helper-group create "Living Room Lights" --type light --entities light.lamp1,light.lamp2
   hab helper-group create "All Motion Sensors" --type binary_sensor --entities binary_sensor.motion1,binary_sensor.motion2 --all
   hab helper-group create "Average Temperature" --type sensor --sensor-type mean --entities sensor.temp1,sensor.temp2`,
 		SetupFlags: func(cmd *cobra.Command) {
-			cmd.Flags().StringVarP(&groupType, "type", "t", "light", "Group type: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch")
+			cmd.Flags().StringVarP(&groupType, "type", "t", "light", "Group type: binary_sensor, button, cover, event, fan, light, lock, media_player, notify, sensor, switch, valve")
 			cmd.Flags().StringSliceVarP(&entities, "entities", "e", nil, "Entity IDs to include in the group (required)")
 			cmd.Flags().BoolVar(&all, "all", false, "Set to true if all entities must be on for group to be on (only for binary_sensor, light, switch)")
 			cmd.Flags().BoolVar(&hideMembers, "hide-members", false, "Hide member entities from the UI")
@@ -476,8 +476,9 @@ For sensor groups, use --sensor-type to specify aggregation: last, max, mean, me
 			textMode := getTextMode()
 
 			validTypes := map[string]bool{
-				"binary_sensor": true, "cover": true, "event": true, "fan": true,
-				"light": true, "lock": true, "media_player": true, "sensor": true, "switch": true,
+				"binary_sensor": true, "button": true, "cover": true, "event": true, "fan": true,
+				"light": true, "lock": true, "media_player": true, "notify": true,
+				"sensor": true, "switch": true, "valve": true,
 			}
 			if err := validateOneOf(groupType, "group type", validTypes, false); err != nil {
 				return err
