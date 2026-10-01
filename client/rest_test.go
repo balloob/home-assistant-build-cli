@@ -1,6 +1,9 @@
 package client
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -71,5 +74,35 @@ func TestNewRestClientWithOptions(t *testing.T) {
 	}
 	if rc.VerifySSL {
 		t.Error("VerifySSL should be false")
+	}
+}
+
+func TestCallServiceWithResponseUsesQueryParam(t *testing.T) {
+	var gotPath, gotQuery string
+	var gotBody map[string]interface{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotQuery = r.URL.RawQuery
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"changed_states":[],"service_response":{}}`))
+	}))
+	defer srv.Close()
+
+	rc := NewRestClient(srv.URL, "tok")
+	if _, err := rc.CallServiceWithResponse("weather", "get_forecasts", map[string]interface{}{"type": "daily"}); err != nil {
+		t.Fatalf("CallServiceWithResponse: %v", err)
+	}
+	if gotPath != "/api/services/weather/get_forecasts" {
+		t.Errorf("path = %q", gotPath)
+	}
+	if gotQuery != "return_response" {
+		t.Errorf("query = %q, want return_response", gotQuery)
+	}
+	if _, ok := gotBody["return_response"]; ok {
+		t.Error("body must not contain return_response")
+	}
+	if gotBody["type"] != "daily" {
+		t.Errorf("body type = %v, want daily", gotBody["type"])
 	}
 }

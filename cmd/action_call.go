@@ -84,11 +84,12 @@ func runActionCall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var result interface{}
 	if actionCallReturnResponse {
-		serviceData["return_response"] = true
+		result, err = restClient.CallServiceWithResponse(domain, service, serviceData)
+	} else {
+		result, err = restClient.CallService(domain, service, serviceData)
 	}
-
-	result, err := restClient.CallService(domain, service, serviceData)
 	if err != nil {
 		return err
 	}
