@@ -289,7 +289,7 @@ func aggregateHealthEvents(eventCh <-chan map[string]interface{}, data map[strin
 							if errData, ok := event["error"].(map[string]interface{}); ok {
 								infoData[key] = map[string]interface{}{
 									"error": true,
-									"value": errData["msg"],
+									"value": errData["error"],
 								}
 							}
 						}
