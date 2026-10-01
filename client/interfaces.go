@@ -182,7 +182,7 @@ type EnergyAPI interface {
 	EnergyInfo() (map[string]interface{}, error)
 	EnergyGetPrefs() (map[string]interface{}, error)
 	EnergySavePrefs(params map[string]interface{}) (map[string]interface{}, error)
-	EnergyValidate(params map[string]interface{}) (map[string]interface{}, error)
+	EnergyValidate() (map[string]interface{}, error)
 	EnergySolarForecast() (map[string]interface{}, error)
 }
 
