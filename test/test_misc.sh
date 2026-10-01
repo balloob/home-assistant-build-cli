@@ -731,6 +731,77 @@ run_repairs_tests() {
     fi
 }
 
+run_marketplace_tests() {
+    log_section "Marketplace Tests"
+    do_auth_login
+
+    log_test "marketplace info"
+    OUTPUT=$(run_hab_optional marketplace info)
+    if ! echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        # The Marketplace ships with Home Assistant 2026.11
+        pass "marketplace (not available in this Home Assistant version)"
+        return
+    fi
+    pass "marketplace info"
+
+    log_test "marketplace list --count"
+    OUTPUT=$(run_hab marketplace list --count)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.count > 0' > /dev/null 2>&1; then
+        pass "marketplace list --count ($(echo "$OUTPUT" | jq '.data.count') repositories)"
+    else
+        fail "marketplace list --count: $OUTPUT"
+    fi
+
+    log_test "marketplace list --search --brief"
+    OUTPUT=$(run_hab marketplace list --category plugin --search piitaya/lovelace-mushroom --brief)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data | map(.full_name) | index("piitaya/lovelace-mushroom"))' > /dev/null 2>&1; then
+        pass "marketplace list --search --brief"
+    else
+        fail "marketplace list --search --brief: $OUTPUT"
+    fi
+
+    log_test "marketplace get by full name"
+    OUTPUT=$(run_hab marketplace get piitaya/lovelace-mushroom)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.full_name == "piitaya/lovelace-mushroom"' > /dev/null 2>&1; then
+        pass "marketplace get"
+    else
+        fail "marketplace get: $OUTPUT"
+    fi
+
+    log_test "marketplace get unknown repository"
+    OUTPUT=$(run_hab_optional marketplace get nobody/nothing)
+    if echo "$OUTPUT" | jq -e '.success == false' > /dev/null 2>&1; then
+        pass "marketplace get unknown repository"
+    else
+        fail "marketplace get unknown repository: $OUTPUT"
+    fi
+
+    log_test "marketplace install --plan"
+    OUTPUT=$(run_hab marketplace install piitaya/lovelace-mushroom --plan)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.would_change == true' > /dev/null 2>&1; then
+        pass "marketplace install --plan"
+    else
+        fail "marketplace install --plan: $OUTPUT"
+    fi
+
+    log_test "marketplace critical list"
+    OUTPUT=$(run_hab marketplace critical list)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "marketplace critical list"
+    else
+        fail "marketplace critical list: $OUTPUT"
+    fi
+
+    log_test "marketplace custom detect without GitHub"
+    OUTPUT=$(run_hab_optional marketplace custom detect custom-cards/button-card)
+    # run_hab_optional appends a fallback document on failure, so check the first
+    if echo "$OUTPUT" | jq -es 'first | .success == true or .error.code == "github_not_connected" or .error.code == "warning_not_accepted"' > /dev/null 2>&1; then
+        pass "marketplace custom detect"
+    else
+        fail "marketplace custom detect: $OUTPUT"
+    fi
+}
+
 # Run standalone if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     init_standalone_test "Miscellaneous Tests"
@@ -741,6 +812,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     run_integration_tests
     run_event_tests
     run_repairs_tests
+    run_marketplace_tests
     print_summary "Miscellaneous Tests"
     exit $?
 fi
