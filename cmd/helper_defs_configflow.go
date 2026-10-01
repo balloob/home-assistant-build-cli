@@ -453,18 +453,18 @@ func registerGroup() {
 		Long:            "Create, list, and delete group helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "A group of entities that can be controlled together (config flow)",
-		CreateParams:    []string{"name (required)", "type (light/switch/binary_sensor/cover/fan/lock/media_player/sensor/event)", "entities (required, array)", "all (true/false, for binary_sensor/light/switch)", "hide-members (true/false)"},
+		CreateParams:    []string{"name (required)", "type (light/switch/binary_sensor/button/cover/fan/lock/media_player/notify/sensor/event/valve)", "entities (required, array)", "all (true/false, for binary_sensor/light/switch)", "hide-members (true/false)"},
 		CreateShort:     "Create a new group",
 		CreateLong: `Create a new group helper using the config entry flow.
 
-Group types available: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch.
+Group types available: binary_sensor, button, cover, event, fan, light, lock, media_player, notify, sensor, switch, valve.
 
 For sensor groups, use --sensor-type to specify aggregation: last, max, mean, median, min, product, range, stdev, sum.`,
 		CreateExample: `  hab helper-group create "Living Room Lights" --type light --entities light.lamp1,light.lamp2
   hab helper-group create "All Motion Sensors" --type binary_sensor --entities binary_sensor.motion1,binary_sensor.motion2 --all
   hab helper-group create "Average Temperature" --type sensor --sensor-type mean --entities sensor.temp1,sensor.temp2`,
 		SetupFlags: func(cmd *cobra.Command) {
-			cmd.Flags().StringVarP(&groupType, "type", "t", "light", "Group type: binary_sensor, cover, event, fan, light, lock, media_player, sensor, switch")
+			cmd.Flags().StringVarP(&groupType, "type", "t", "light", "Group type: binary_sensor, button, cover, event, fan, light, lock, media_player, notify, sensor, switch, valve")
 			cmd.Flags().StringSliceVarP(&entities, "entities", "e", nil, "Entity IDs to include in the group (required)")
 			cmd.Flags().BoolVar(&all, "all", false, "Set to true if all entities must be on for group to be on (only for binary_sensor, light, switch)")
 			cmd.Flags().BoolVar(&hideMembers, "hide-members", false, "Hide member entities from the UI")
@@ -476,8 +476,9 @@ For sensor groups, use --sensor-type to specify aggregation: last, max, mean, me
 			textMode := getTextMode()
 
 			validTypes := map[string]bool{
-				"binary_sensor": true, "cover": true, "event": true, "fan": true,
-				"light": true, "lock": true, "media_player": true, "sensor": true, "switch": true,
+				"binary_sensor": true, "button": true, "cover": true, "event": true, "fan": true,
+				"light": true, "lock": true, "media_player": true, "notify": true,
+				"sensor": true, "switch": true, "valve": true,
 			}
 			if err := validateOneOf(groupType, "group type", validTypes, false); err != nil {
 				return err
