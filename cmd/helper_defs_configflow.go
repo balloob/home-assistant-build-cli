@@ -74,7 +74,7 @@ func registerIntegration() {
 		TypeDescription: "Calculates the Riemann sum (integral) of a source sensor (config flow)",
 		CreateParams:    []string{"name (required)", "source (required)", "round", "unit-prefix (k/M/G/T)", "unit-time (s/min/h/d)", "method (trapezoidal/left/right)"},
 		CreateShort:     "Create a new integration sensor",
-		CreateLong: `Create a new integration (Riemann sum integral) sensor helper.`,
+		CreateLong:      `Create a new integration (Riemann sum integral) sensor helper.`,
 		CreateExample: `  hab helper-integration create "Total Energy" --source sensor.power
   hab helper-integration create "Water Usage" --source sensor.flow_rate --method trapezoidal`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -126,8 +126,8 @@ func registerMinMax() {
 		TypeDescription: "Aggregates values from multiple sensors (min/max/mean/etc) (config flow)",
 		CreateParams:    []string{"name (required)", "entities (required, array)", "type (min/max/mean/median/last/range/sum)", "round"},
 		CreateShort:     "Create a new min/max sensor",
-		CreateLong: `Create a new min/max sensor helper.`,
-		CreateExample: `  hab helper-min-max create "Highest Temp" --type max --entities sensor.temp1,sensor.temp2`,
+		CreateLong:      `Create a new min/max sensor helper.`,
+		CreateExample:   `  hab helper-min-max create "Highest Temp" --type max --entities sensor.temp1,sensor.temp2`,
 		SetupFlags: func(cmd *cobra.Command) {
 			cmd.Flags().StringSliceVarP(&entities, "entities", "e", nil, "Source entity IDs (required)")
 			cmd.Flags().StringVarP(&minMaxType, "type", "t", "max", "Aggregation type: min, max, mean, median, last, range")
@@ -159,7 +159,7 @@ func registerThreshold() {
 		TypeDescription: "Monitors a sensor value against configurable thresholds (config flow)",
 		CreateParams:    []string{"name (required)", "entity (required)", "lower", "upper", "hysteresis"},
 		CreateShort:     "Create a new threshold sensor",
-		CreateLong: `Create a new threshold binary sensor helper. At least one of --lower or --upper must be specified.`,
+		CreateLong:      `Create a new threshold binary sensor helper. At least one of --lower or --upper must be specified.`,
 		CreateExample: `  hab helper-threshold create "Freezing Alert" --entity sensor.temperature --lower 0
   hab helper-threshold create "Overheat Alert" --entity sensor.cpu_temp --upper 80 --hysteresis 5`,
 		SetupFlags: func(cmd *cobra.Command) {
@@ -245,7 +245,7 @@ Cycle options: quarter-hourly, hourly, daily, weekly, monthly, bimonthly, quarte
 				"delta_values":           deltaValues,
 				"net_consumption":        netConsumption,
 				"periodically_resetting": periodicallyResetting,
-				"tariffs":               t,
+				"tariffs":                t,
 				"always_available":       alwaysAvailable,
 			}, nil
 		}),
@@ -552,11 +552,11 @@ func registerTemplate() {
 		Long:            "Create, list, and delete template entity helpers.",
 		Category:        HelperCategoryConfigFlow,
 		TypeDescription: "Create template entities using Jinja2 expressions (config flow)",
-		CreateParams:    []string{"name (required)", "type (alarm_control_panel/binary_sensor/button/image/number/select/sensor/switch)", "state (Jinja2 template)", "icon", "turn-on", "turn-off"},
+		CreateParams:    []string{"name (required)", "type (alarm_control_panel/binary_sensor/button/cover/fan/image/light/lock/number/select/sensor/switch/vacuum/weather)", "state (Jinja2 template)", "turn-on", "turn-off"},
 		CreateShort:     "Create a new template entity",
 		CreateLong: `Create a new template entity helper using the config entry flow.
 
-Template types available: alarm_control_panel, binary_sensor, button, image, number, select, sensor, switch.
+Template types available: alarm_control_panel, binary_sensor, button, cover, fan, image, light, lock, number, select, sensor, switch, vacuum, weather.
 
 Templates use Jinja2 syntax. State templates should return valid values for the entity type.`,
 		CreateExample: `  hab helper-template create "Is Sun Up" --type binary_sensor --state "{{ is_state('sun.sun', 'above_horizon') }}"

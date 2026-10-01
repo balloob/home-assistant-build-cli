@@ -14,7 +14,6 @@ type templateCreateOpts struct {
 	Type string
 	// Common
 	StateTemplate string
-	Icon          string
 	// Sensor
 	Unit        string
 	DeviceClass string
@@ -25,13 +24,11 @@ type templateCreateOpts struct {
 	// Button
 	Press string
 	// Cover
-	Open    string
-	Close   string
-	Stop    string
+	Open     string
+	Close    string
+	Stop     string
 	Position string
-	SetPos  string
-	Tilt    string
-	SetTilt string
+	SetPos   string
 	// Lock
 	Lock   string
 	Unlock string
@@ -50,20 +47,14 @@ type templateCreateOpts struct {
 	Temperature string
 	Humidity    string
 	// Light
-	Brightness string
-	Color      string
-	Effect     string
-	Effects    []string
+	Brightness     string
+	SetBrightness  string
+	HS             string
+	SetHS          string
+	SetTemperature string
 	// Fan
 	Percentage string
 	SetPct     string
-	Preset     string
-	SetPreset  string
-	Oscillate  string
-	OscOn      string
-	OscOff     string
-	Direction  string
-	SetDir     string
 	// Vacuum
 	Start        string
 	Pause        string
@@ -72,7 +63,6 @@ type templateCreateOpts struct {
 	Locate       string
 	SetFanSpeed  string
 	FanSpeed     string
-	Battery      string
 }
 
 // package-level instance populated by cobra flags.
@@ -83,20 +73,17 @@ func setupTemplateCreateFlags(cmd *cobra.Command) {
 	o := &tplOpts
 	cmd.Flags().StringVarP(&o.Type, "type", "t", "sensor", "Template type: alarm_control_panel, binary_sensor, button, cover, fan, image, light, lock, number, select, sensor, switch, vacuum, weather")
 	cmd.Flags().StringVar(&o.StateTemplate, "state", "", "State template (Jinja2)")
-	cmd.Flags().StringVar(&o.Icon, "icon", "", "Icon (e.g., mdi:thermometer)")
 	cmd.Flags().StringVar(&o.Unit, "unit", "", "Unit of measurement (sensor)")
 	cmd.Flags().StringVar(&o.DeviceClass, "device-class", "", "Device class (sensor, binary_sensor, cover)")
 	cmd.Flags().StringVar(&o.StateClass, "state-class", "", "State class: measurement, total, total_increasing (sensor)")
 	cmd.Flags().StringVar(&o.TurnOn, "turn-on", "", "Turn on action (switch, light, fan)")
 	cmd.Flags().StringVar(&o.TurnOff, "turn-off", "", "Turn off action (switch, light, fan)")
 	cmd.Flags().StringVar(&o.Press, "press", "", "Press action (button)")
-	cmd.Flags().StringVar(&o.Open, "open", "", "Open action (cover)")
+	cmd.Flags().StringVar(&o.Open, "open", "", "Open action (cover, lock)")
 	cmd.Flags().StringVar(&o.Close, "close", "", "Close action (cover)")
-	cmd.Flags().StringVar(&o.Stop, "stop", "", "Stop action (cover)")
+	cmd.Flags().StringVar(&o.Stop, "stop", "", "Stop action (cover, vacuum)")
 	cmd.Flags().StringVar(&o.Position, "position", "", "Position template (cover)")
 	cmd.Flags().StringVar(&o.SetPos, "set-position", "", "Set position action (cover)")
-	cmd.Flags().StringVar(&o.Tilt, "tilt", "", "Tilt template (cover)")
-	cmd.Flags().StringVar(&o.SetTilt, "set-tilt", "", "Set tilt action (cover)")
 	cmd.Flags().StringVar(&o.Lock, "lock", "", "Lock action (lock)")
 	cmd.Flags().StringVar(&o.Unlock, "unlock", "", "Unlock action (lock)")
 	cmd.Flags().StringVar(&o.URL, "url", "", "URL template (image)")
@@ -107,21 +94,15 @@ func setupTemplateCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSliceVar(&o.Options, "options", nil, "Options (select, comma-separated)")
 	cmd.Flags().StringVar(&o.SelectOption, "select-option", "", "Select option action (select)")
 	cmd.Flags().StringVar(&o.Condition, "condition", "", "Condition template (weather)")
-	cmd.Flags().StringVar(&o.Temperature, "temperature", "", "Temperature template (weather)")
+	cmd.Flags().StringVar(&o.Temperature, "temperature", "", "Temperature template (weather), color temperature template (light)")
 	cmd.Flags().StringVar(&o.Humidity, "humidity", "", "Humidity template (weather)")
 	cmd.Flags().StringVar(&o.Brightness, "brightness", "", "Brightness template (light)")
-	cmd.Flags().StringVar(&o.Color, "color", "", "Color template (light)")
-	cmd.Flags().StringVar(&o.Effect, "effect", "", "Effect template (light)")
-	cmd.Flags().StringSliceVar(&o.Effects, "effects", nil, "Effect list (light, comma-separated)")
+	cmd.Flags().StringVar(&o.SetBrightness, "set-brightness", "", "Set brightness action (light)")
+	cmd.Flags().StringVar(&o.HS, "hs", "", "Hue/saturation color template (light)")
+	cmd.Flags().StringVar(&o.SetHS, "set-hs", "", "Set hue/saturation color action (light)")
+	cmd.Flags().StringVar(&o.SetTemperature, "set-temperature", "", "Set color temperature action (light)")
 	cmd.Flags().StringVar(&o.Percentage, "percentage", "", "Percentage template (fan)")
 	cmd.Flags().StringVar(&o.SetPct, "set-percentage", "", "Set percentage action (fan)")
-	cmd.Flags().StringVar(&o.Preset, "preset", "", "Preset mode template (fan)")
-	cmd.Flags().StringVar(&o.SetPreset, "set-preset", "", "Set preset mode action (fan)")
-	cmd.Flags().StringVar(&o.Oscillate, "oscillate", "", "Oscillating template (fan)")
-	cmd.Flags().StringVar(&o.OscOn, "oscillate-on", "", "Set oscillating on action (fan)")
-	cmd.Flags().StringVar(&o.OscOff, "oscillate-off", "", "Set oscillating off action (fan)")
-	cmd.Flags().StringVar(&o.Direction, "direction", "", "Direction template (fan)")
-	cmd.Flags().StringVar(&o.SetDir, "set-direction", "", "Set direction action (fan)")
 	cmd.Flags().StringVar(&o.Start, "start", "", "Start action (vacuum)")
 	cmd.Flags().StringVar(&o.Pause, "pause", "", "Pause action (vacuum)")
 	cmd.Flags().StringVar(&o.ReturnToBase, "return-to-base", "", "Return to base action (vacuum)")
@@ -129,7 +110,6 @@ func setupTemplateCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&o.Locate, "locate", "", "Locate action (vacuum)")
 	cmd.Flags().StringVar(&o.SetFanSpeed, "set-fan-speed", "", "Set fan speed action (vacuum)")
 	cmd.Flags().StringVar(&o.FanSpeed, "fan-speed", "", "Fan speed template (vacuum)")
-	cmd.Flags().StringVar(&o.Battery, "battery", "", "Battery level template (vacuum)")
 }
 
 // templateFormBuilders maps each template type to a function that populates
@@ -158,55 +138,48 @@ var templateFormBuilders = map[string]func(m map[string]interface{}){
 		setAction(m, "press", tplOpts.Press)
 	},
 	"cover": func(m map[string]interface{}) {
-		setIf(m, "value_template", tplOpts.StateTemplate)
+		setIf(m, "state", tplOpts.StateTemplate)
 		setIf(m, "device_class", tplOpts.DeviceClass)
-		setIf(m, "position_template", tplOpts.Position)
+		setIf(m, "position", tplOpts.Position)
 		setAction(m, "open_cover", tplOpts.Open)
 		setAction(m, "close_cover", tplOpts.Close)
 		setAction(m, "stop_cover", tplOpts.Stop)
 		setAction(m, "set_cover_position", tplOpts.SetPos)
-		setIf(m, "tilt_template", tplOpts.Tilt)
-		setAction(m, "set_cover_tilt_position", tplOpts.SetTilt)
 	},
 	"lock": func(m map[string]interface{}) {
-		setIf(m, "value_template", tplOpts.StateTemplate)
+		setIf(m, "state", tplOpts.StateTemplate)
 		setAction(m, "lock", tplOpts.Lock)
 		setAction(m, "unlock", tplOpts.Unlock)
+		setAction(m, "open", tplOpts.Open)
 	},
 	"light": func(m map[string]interface{}) {
-		setIf(m, "value_template", tplOpts.StateTemplate)
+		setIf(m, "state", tplOpts.StateTemplate)
 		setAction(m, "turn_on", tplOpts.TurnOn)
 		setAction(m, "turn_off", tplOpts.TurnOff)
-		setIf(m, "level_template", tplOpts.Brightness)
-		setIf(m, "color_template", tplOpts.Color)
-		setIf(m, "effect_template", tplOpts.Effect)
-		if len(tplOpts.Effects) > 0 {
-			m["effect_list"] = tplOpts.Effects
-		}
+		setIf(m, "level", tplOpts.Brightness)
+		setAction(m, "set_level", tplOpts.SetBrightness)
+		setIf(m, "hs", tplOpts.HS)
+		setAction(m, "set_hs", tplOpts.SetHS)
+		setIf(m, "temperature", tplOpts.Temperature)
+		setAction(m, "set_temperature", tplOpts.SetTemperature)
 	},
 	"fan": func(m map[string]interface{}) {
-		setIf(m, "value_template", tplOpts.StateTemplate)
+		setIf(m, "state", tplOpts.StateTemplate)
 		setAction(m, "turn_on", tplOpts.TurnOn)
 		setAction(m, "turn_off", tplOpts.TurnOff)
-		setIf(m, "percentage_template", tplOpts.Percentage)
+		setIf(m, "percentage", tplOpts.Percentage)
 		setAction(m, "set_percentage", tplOpts.SetPct)
-		setIf(m, "preset_mode_template", tplOpts.Preset)
-		setAction(m, "set_preset_mode", tplOpts.SetPreset)
-		setIf(m, "oscillating_template", tplOpts.Oscillate)
-		setAction(m, "set_oscillating", tplOpts.OscOn)
-		setIf(m, "direction_template", tplOpts.Direction)
-		setAction(m, "set_direction", tplOpts.SetDir)
 	},
 	"vacuum": func(m map[string]interface{}) {
-		setIf(m, "value_template", tplOpts.StateTemplate)
+		setIf(m, "state", tplOpts.StateTemplate)
 		setAction(m, "start", tplOpts.Start)
+		setAction(m, "stop", tplOpts.Stop)
 		setAction(m, "pause", tplOpts.Pause)
 		setAction(m, "return_to_base", tplOpts.ReturnToBase)
 		setAction(m, "clean_spot", tplOpts.Clean)
 		setAction(m, "locate", tplOpts.Locate)
 		setAction(m, "set_fan_speed", tplOpts.SetFanSpeed)
-		setIf(m, "fan_speed_template", tplOpts.FanSpeed)
-		setIf(m, "battery_level_template", tplOpts.Battery)
+		setIf(m, "fan_speed", tplOpts.FanSpeed)
 	},
 	"image": func(m map[string]interface{}) {
 		setIf(m, "url", tplOpts.URL)
@@ -226,9 +199,9 @@ var templateFormBuilders = map[string]func(m map[string]interface{}){
 		setAction(m, "select_option", tplOpts.SelectOption)
 	},
 	"weather": func(m map[string]interface{}) {
-		setIf(m, "condition_template", tplOpts.Condition)
-		setIf(m, "temperature_template", tplOpts.Temperature)
-		setIf(m, "humidity_template", tplOpts.Humidity)
+		setIf(m, "condition", tplOpts.Condition)
+		setIf(m, "temperature", tplOpts.Temperature)
+		setIf(m, "humidity", tplOpts.Humidity)
 	},
 }
 
@@ -282,7 +255,6 @@ func runTemplateCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	formData := map[string]interface{}{"name": name}
-	setIf(formData, "icon", tplOpts.Icon)
 	builder(formData)
 
 	finalResult, err := rest.ConfigFlowStep(flowID, formData)
