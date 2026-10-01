@@ -594,13 +594,9 @@ func (c *WebSocketClient) EnergySavePrefs(params map[string]interface{}) (map[st
 	return c.sendMapCommand("energy/save_prefs", req)
 }
 
-// EnergyValidate validates energy dashboard preferences.
-func (c *WebSocketClient) EnergyValidate(params map[string]interface{}) (map[string]interface{}, error) {
-	req := make(map[string]interface{}, len(params))
-	for k, v := range params {
-		req[k] = v
-	}
-	return c.sendMapCommand("energy/validate", req)
+// EnergyValidate validates the saved energy dashboard preferences.
+func (c *WebSocketClient) EnergyValidate() (map[string]interface{}, error) {
+	return c.sendMapCommand("energy/validate", nil)
 }
 
 // EnergySolarForecast returns configured solar forecast data.
