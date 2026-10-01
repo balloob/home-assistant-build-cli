@@ -414,7 +414,11 @@ func deleteHelperByEntityOrEntryID(ws client.WebSocketAPI, id, helperType string
 		entryID = id
 	}
 
-	return ws.ConfigEntryDelete(entryID)
+	rest, err := getRESTClient()
+	if err != nil {
+		return err
+	}
+	return rest.ConfigEntryDelete(entryID)
 }
 
 // ---------------------------------------------------------------------------

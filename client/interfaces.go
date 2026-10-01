@@ -153,12 +153,11 @@ type ConfigAPI interface {
 	ConfigFlowInit(handler string, context map[string]interface{}) (map[string]interface{}, error)
 	ConfigFlowConfigure(flowID string, data map[string]interface{}) (map[string]interface{}, error)
 	ConfigEntriesList(domain string) ([]interface{}, error)
-	ConfigEntryDelete(entryID string) error
 	ResolveEntityToConfigEntry(entityID string) (string, error)
 }
 
 // IntegrationAPI provides management operations on config entries (integrations).
-// It extends the basic ConfigEntriesList/ConfigEntryDelete on ConfigAPI with
+// It extends the basic ConfigEntriesList on ConfigAPI with
 // single-entry lookup, enable/disable, and reload.
 type IntegrationAPI interface {
 	ConfigEntryGet(entryID string) (map[string]interface{}, error)
@@ -273,7 +272,7 @@ type ESPHomeAPI interface {
 // RestAPI defines the interface for REST operations against Home Assistant.
 // This enables unit-testing command handlers with mock implementations.
 //
-// Some operations (GetConfig, GetStates, GetServices, ConfigEntryDelete) are
+// Some operations (GetConfig, GetStates, GetServices) are
 // also available on WebSocketAPI. REST variants are used when WebSocket is
 // unnecessary or unavailable; WebSocket variants are used when the caller
 // already holds a connection or needs subscription semantics.
