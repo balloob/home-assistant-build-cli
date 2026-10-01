@@ -233,15 +233,14 @@ run_misc_tests() {
 
     BACKUP_ID=""
 
-    # Test: backup create (may not work with empty-hass)
+    # Test: backup create
     log_test "backup create"
     OUTPUT=$(run_hab_optional backup create)
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         BACKUP_ID=$(echo "$OUTPUT" | jq -r '.data.backup_id // empty')
         pass "backup create"
     else
-        # Backup create not supported by empty-hass - CLI command was executed
-        pass "backup create (not available in empty-hass)"
+        fail "backup create: $OUTPUT"
     fi
 
     if [ -n "$BACKUP_ID" ]; then
