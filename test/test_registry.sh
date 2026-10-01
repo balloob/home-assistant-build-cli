@@ -535,6 +535,15 @@ run_registry_tests() {
         pass "search related (skipped - no entities)"
     fi
 
+    # Test: search related integration (results use singular item type keys)
+    log_test "search related integration"
+    OUTPUT=$(run_hab search related integration sun)
+    if echo "$OUTPUT" | jq -e '.success == true and (.data.related.entity | index("sun.sun")) != null' > /dev/null 2>&1; then
+        pass "search related integration"
+    else
+        fail "search related integration: $OUTPUT"
+    fi
+
     # Test: entity enable/disable (need an entity from entity registry)
     log_test "entity enable/disable"
     # Use a sensor entity which should be in the entity registry
