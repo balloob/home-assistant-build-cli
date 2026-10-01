@@ -139,12 +139,21 @@ run_misc_tests() {
     OUTPUT=$(run_hab_optional blueprint import "$BLUEPRINT_URL")
     if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
         pass "blueprint import"
-        BLUEPRINT_PATH=$(echo "$OUTPUT" | jq -r '.data.suggested_filename // "homeassistant/motion_light.yaml"')
+        BLUEPRINT_PATH=$(echo "$OUTPUT" | jq -r '.data.path')
+
+        # Test: blueprint import refuses to replace an existing blueprint
+        log_test "blueprint import (exists)"
+        OUTPUT=$(run_hab blueprint import "$BLUEPRINT_URL")
+        if echo "$OUTPUT" | jq -e '.success == false and (.error.message | contains("--override"))' > /dev/null 2>&1; then
+            pass "blueprint import (exists)"
+        else
+            fail "blueprint import (exists): $OUTPUT"
+        fi
 
         # Test: blueprint get
         log_test "blueprint get"
         OUTPUT=$(run_hab blueprint get "$BLUEPRINT_PATH")
-        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        if echo "$OUTPUT" | jq -e '.success == true and .data.blueprint != null' > /dev/null 2>&1; then
             pass "blueprint get"
         else
             fail "blueprint get: $OUTPUT"
@@ -152,11 +161,11 @@ run_misc_tests() {
 
         # Test: blueprint delete
         log_test "blueprint delete"
-        OUTPUT=$(run_hab_optional blueprint delete "$BLUEPRINT_PATH")
+        OUTPUT=$(run_hab blueprint delete "$BLUEPRINT_PATH" --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
             pass "blueprint delete"
         else
-            pass "blueprint delete (may not be supported)"
+            fail "blueprint delete: $OUTPUT"
         fi
     else
         pass "blueprint import (network access may be restricted)"
