@@ -384,8 +384,9 @@ hab blueprint list
 hab blueprint list automation
 hab blueprint list script
 
-# Import, inspect, and delete
+# Import (fetch and save), inspect, and delete
 hab blueprint import https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/automation/blueprints/motion_light.yaml
+hab blueprint import <url> --override   # replace a blueprint with the same filename
 hab blueprint get homeassistant/motion_light.yaml
 hab blueprint get --domain script my_namespace/my_script_blueprint.yaml
 hab blueprint delete homeassistant/motion_light.yaml --force
