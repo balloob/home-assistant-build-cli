@@ -551,7 +551,9 @@ func (c *WebSocketClient) BackupRestore(params map[string]interface{}) (map[stri
 	for k, v := range params {
 		req[k] = v
 	}
-	return c.sendMapCommand("backup/restore", req)
+	// Core replies with a null result on success.
+	_, err := c.SendCommand("backup/restore", req)
+	return nil, err
 }
 
 // BackupAgentsInfo returns backup agent information.
@@ -570,7 +572,9 @@ func (c *WebSocketClient) BackupConfigUpdate(params map[string]interface{}) (map
 	for k, v := range params {
 		req[k] = v
 	}
-	return c.sendMapCommand("backup/config/update", req)
+	// Core replies with a null result on success.
+	_, err := c.SendCommand("backup/config/update", req)
+	return nil, err
 }
 
 // Energy operations
