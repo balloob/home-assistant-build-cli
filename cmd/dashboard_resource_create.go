@@ -71,9 +71,9 @@ func registerDashResourceCreate(parentCmd *cobra.Command, cfg DashboardResourceC
 			viewIndex := -1
 			if depth >= 2 && len(args) > 1 {
 				var err error
-				viewIndex, err = strconv.Atoi(args[1])
+				viewIndex, err = parseViewArg(urlPath, args[1])
 				if err != nil {
-					return fmt.Errorf("invalid view index: %s", args[1])
+					return err
 				}
 			}
 
@@ -266,6 +266,9 @@ func runBadgeStyleCreate(cmd *cobra.Command, cfg DashboardResourceConfig, urlPat
 		parsed, err := flags.Parse()
 		if err != nil {
 			return err
+		}
+		if typeVal != "" {
+			parsed["type"] = typeVal
 		}
 		badgeConfig = parsed
 	} else if entityVal != "" {

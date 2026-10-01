@@ -415,6 +415,8 @@ hab dashboard get my-dashboard --json
 
 ### Views
 
+Every command that takes a view index also accepts the path of the view.
+
 ```bash
 hab dashboard view list my-dashboard
 hab dashboard view get my-dashboard 0
@@ -429,6 +431,7 @@ hab dashboard view delete my-dashboard 0 --force
 hab dashboard badge list my-dashboard 0
 hab dashboard badge get my-dashboard 0 0
 hab dashboard badge create my-dashboard 0 --entity sun.sun
+hab dashboard badge create my-dashboard home --type entity-filter --data '{"entities":["light.kitchen","light.hall"],"state_filter":["on"]}'
 hab dashboard badge update my-dashboard 0 0 --entity person.jane_doe
 hab dashboard badge delete my-dashboard 0 0 --force
 ```

@@ -187,6 +187,36 @@ run_dashboard_tests() {
             pass "dashboard badge list (not available)"
         fi
 
+        # Test: a view path addresses a view, and --type is kept with --data
+        log_test "dashboard badge create by view path with --type"
+        OUTPUT=$(run_hab_optional dashboard view create "$DASHBOARD_URL" --title "Badge Path" --path badge-path)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            OUTPUT=$(run_hab dashboard badge create "$DASHBOARD_URL" badge-path --type entity-filter --data '{"entities":["sun.sun"],"state_filter":["above_horizon"]}')
+            if echo "$OUTPUT" | jq -e '.success == true and .data.config.type == "entity-filter"' > /dev/null 2>&1; then
+                pass "dashboard badge create by view path with --type"
+            else
+                fail "dashboard badge create by view path with --type: $OUTPUT"
+            fi
+
+            log_test "dashboard badge list by view path"
+            OUTPUT=$(run_hab dashboard badge list "$DASHBOARD_URL" badge-path)
+            if echo "$OUTPUT" | jq -e '.success == true and (.data | length) == 1 and .data[0].type == "entity-filter"' > /dev/null 2>&1; then
+                pass "dashboard badge list by view path"
+            else
+                fail "dashboard badge list by view path: $OUTPUT"
+            fi
+
+            log_test "dashboard view delete by path"
+            OUTPUT=$(run_hab dashboard view delete "$DASHBOARD_URL" badge-path --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "dashboard view delete by path"
+            else
+                fail "dashboard view delete by path: $OUTPUT"
+            fi
+        else
+            fail "dashboard view create with --path: $OUTPUT"
+        fi
+
         # Test: dashboard section CRUD
         log_test "dashboard section list"
         OUTPUT=$(run_hab_optional dashboard section list "$DASHBOARD_URL" 0)
