@@ -35,6 +35,7 @@ hab integration reload <entry_id>
 hab network get --json
 hab notification list --json
 hab thread list --json
+hab marketplace list --installed --json
 ```
 
 ## Verification Commands

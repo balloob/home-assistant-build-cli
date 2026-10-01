@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/home-assistant/hab/client"
@@ -92,15 +91,19 @@ func enrichAutomationItems(items []map[string]interface{}, restClient client.Res
 
 	for i, item := range items {
 		entityID, _ := item["entity_id"].(string)
-		automationID := strings.TrimPrefix(entityID, "automation.")
 
 		wg.Add(1)
-		go func(idx int, autoID string) {
+		go func(idx int, entityID string) {
 			defer wg.Done()
 			sem <- struct{}{}        // acquire
 			defer func() { <-sem }() // release
 
-			config, err := restClient.Get("config/automation/config/" + autoID)
+			// The entity ID comes from the alias, so it can differ from the config ID
+			configID, err := resolveAutomationConfigID(restClient, entityID)
+			if err != nil {
+				return
+			}
+			config, err := restClient.Get("config/automation/config/" + configID)
 			if err != nil {
 				return
 			}
@@ -123,7 +126,7 @@ func enrichAutomationItems(items []map[string]interface{}, restClient client.Res
 			}
 
 			extInfos[idx] = info
-		}(i, automationID)
+		}(i, entityID)
 	}
 	wg.Wait()
 

@@ -307,6 +307,77 @@ func (c *WebSocketClient) SendCommand(cmdType string, params map[string]interfac
 	}
 }
 
+// SubscribeEvents subscribes to Home Assistant events of eventType. Events
+// arrive on the returned channel until the returned function is called.
+func (c *WebSocketClient) SubscribeEvents(eventType string) (<-chan map[string]interface{}, func(), error) {
+	if err := c.requireAuth(); err != nil {
+		return nil, nil, err
+	}
+
+	eventCh := make(chan map[string]interface{}, 10)
+
+	// Register the callback before the subscription is sent, so that no
+	// event that arrives right after the result is lost.
+	c.writeMu.Lock()
+	msgID := c.nextID()
+
+	c.subsMu.Lock()
+	c.subscriptions[msgID] = func(event map[string]interface{}) {
+		select {
+		case eventCh <- event:
+		default:
+		}
+	}
+	c.subsMu.Unlock()
+
+	respCh := make(chan *WSMessage, 1)
+	c.pendingMu.Lock()
+	c.pending[msgID] = respCh
+	c.pendingMu.Unlock()
+
+	writeErr := c.conn.WriteJSON(map[string]interface{}{
+		"id":         msgID,
+		"type":       "subscribe_events",
+		"event_type": eventType,
+	})
+	c.writeMu.Unlock()
+
+	removeSubscription := func() {
+		c.subsMu.Lock()
+		delete(c.subscriptions, msgID)
+		c.subsMu.Unlock()
+	}
+
+	if writeErr != nil {
+		removeSubscription()
+		c.pendingMu.Lock()
+		delete(c.pending, msgID)
+		c.pendingMu.Unlock()
+		return nil, nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send command: %s", writeErr), Category: "connection", Retryable: true, Transport: "websocket"}
+	}
+
+	select {
+	case resp := <-respCh:
+		if resp == nil {
+			removeSubscription()
+			return nil, nil, &APIError{Code: ErrCodeConnectionError, Message: "connection closed", Category: "connection", Retryable: true, Transport: "websocket"}
+		}
+		if !resp.Success {
+			removeSubscription()
+			return nil, nil, wsResponseError(resp)
+		}
+	case <-time.After(c.Timeout):
+		removeSubscription()
+		return nil, nil, &APIError{Code: ErrCodeTimeout, Message: "timeout waiting for subscription confirmation", Category: "timeout", Retryable: true, Transport: "websocket"}
+	}
+
+	unsubscribe := func() {
+		removeSubscription()
+		_, _ = c.SendCommand("unsubscribe_events", map[string]interface{}{"subscription": msgID})
+	}
+	return eventCh, unsubscribe, nil
+}
+
 // wsResponseError converts a failed WSMessage into an *APIError.
 // It extracts the code and message from the WSError field, falling back to
 // defaults when the fields are absent.

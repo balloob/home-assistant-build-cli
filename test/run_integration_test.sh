@@ -2,7 +2,7 @@
 # Integration test orchestrator for hab CLI using empty-hass
 # Usage: ./run_integration_test.sh [test_group...]
 #
-# Test groups: core, registry, automation, script, dashboard, helpers, template, calendar, esphome, misc, notification, integration, event, repairs
+# Test groups: core, registry, automation, script, dashboard, helpers, template, calendar, esphome, misc, notification, integration, event, repairs, marketplace
 # Run all tests: ./run_integration_test.sh (no arguments)
 # Run specific tests: ./run_integration_test.sh core registry
 
@@ -18,7 +18,7 @@ source "$ORCHESTRATOR_DIR/lib/common.sh"
 trap cleanup EXIT
 
 # Order of test execution (matters for dependencies)
-TEST_ORDER=(core registry automation script dashboard helpers template calendar esphome misc notification integration event repairs)
+TEST_ORDER=(core registry automation script dashboard helpers template calendar esphome misc notification integration event repairs marketplace)
 
 # Get the test function for a given group (Bash 3.x compatible - no associative arrays)
 get_test_function() {
@@ -38,6 +38,7 @@ get_test_function() {
         integration)  echo "run_integration_tests" ;;
         event)        echo "run_event_tests" ;;
         repairs)      echo "run_repairs_tests" ;;
+        marketplace)  echo "run_marketplace_tests" ;;
         *)          echo "" ;;
     esac
 }
@@ -75,6 +76,7 @@ print_usage() {
     echo "  integration   - Integration (config entry) tests"
     echo "  event         - Event bus tests"
     echo "  repairs       - Repairs/issues tests"
+    echo "  marketplace   - Marketplace tests (Home Assistant 2026.11+)"
     echo ""
     echo "Examples:"
     echo "  $0              # Run all tests"

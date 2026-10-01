@@ -389,6 +389,20 @@ run_helpers_tests() {
             fail "helper group create: $OUTPUT"
         fi
 
+        log_test "helper delete (group by entity_id)"
+        OUTPUT=$(run_hab helper group create "Test Delete Group" --type sensor --entities "$GROUP_SENSOR1_ENTITY,$GROUP_SENSOR2_ENTITY")
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            sleep 1
+            OUTPUT=$(run_hab helper delete sensor.test_delete_group --force)
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+                pass "helper delete (group by entity_id)"
+            else
+                fail "helper delete (group by entity_id): $OUTPUT"
+            fi
+        else
+            fail "helper delete (group by entity_id) setup: $OUTPUT"
+        fi
+
         # Cleanup the template sensors we created for the group test
         run_hab helper template delete "$GROUP_SENSOR1_ENTRY_ID" > /dev/null 2>&1
         run_hab helper template delete "$GROUP_SENSOR2_ENTRY_ID" > /dev/null 2>&1
@@ -572,6 +586,15 @@ run_helpers_tests() {
             fail "helper utility-meter create: $OUTPUT"
         fi
 
+        log_test "helper utility-meter create (quarter-hourly)"
+        OUTPUT=$(run_hab helper utility-meter create "Test Quarter Hourly Meter" --source "$CF_SOURCE_ENTITY" --cycle quarter-hourly)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper utility-meter create (quarter-hourly)"
+            run_hab helper utility-meter delete "$(echo "$OUTPUT" | jq -r '.data.entry_id')" > /dev/null 2>&1
+        else
+            fail "helper utility-meter create (quarter-hourly): $OUTPUT"
+        fi
+
         # ==========================================================================
         # Statistics Helper Tests (requires sensor or binary_sensor domain entity)
         # ==========================================================================
@@ -599,6 +622,15 @@ run_helpers_tests() {
             fi
         else
             fail "helper statistics create: $OUTPUT"
+        fi
+
+        log_test "helper statistics create (value_max)"
+        OUTPUT=$(run_hab helper statistics create "Test Statistics Max" --entity "$CF_SOURCE_ENTITY" --characteristic value_max --sampling-size 100)
+        if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+            pass "helper statistics create (value_max)"
+            run_hab helper statistics delete "$(echo "$OUTPUT" | jq -r '.data.entry_id')" > /dev/null 2>&1
+        else
+            fail "helper statistics create (value_max): $OUTPUT"
         fi
 
         # Cleanup the source sensor we created for config flow helper tests

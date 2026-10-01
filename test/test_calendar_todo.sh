@@ -264,9 +264,24 @@ run_calendar_create_delete_tests() {
         else
             fail "calendar create all-day event: $OUTPUT"
         fi
+
+        log_test "calendar delete event"
+        EVENT_UID=$(run_hab calendar list "$CAL_ENTITY" --start "2099-06-01T00:00:00" --end "2099-06-02T00:00:00" | jq -r '.data.events[]? | select(.summary == "Integration Test Event") | .uid' | head -1)
+        if [ -n "$EVENT_UID" ]; then
+            OUTPUT=$(run_hab calendar delete "$CAL_ENTITY" "$EVENT_UID" --force)
+            REMAINING=$(run_hab calendar list "$CAL_ENTITY" --start "2099-06-01T00:00:00" --end "2099-06-02T00:00:00" | jq -r '[.data.events[]? | select(.uid == "'"$EVENT_UID"'")] | length')
+            if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1 && [ "$REMAINING" = "0" ]; then
+                pass "calendar delete event"
+            else
+                fail "calendar delete event: $OUTPUT (remaining: $REMAINING)"
+            fi
+        else
+            fail "calendar delete event: could not find uid of created event"
+        fi
     else
         pass "calendar create event (skipped - no calendar entity)"
         pass "calendar create all-day event (skipped)"
+        pass "calendar delete event (skipped)"
     fi
 
     # Cleanup

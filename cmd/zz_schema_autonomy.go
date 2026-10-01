@@ -80,7 +80,7 @@ func defaultCapabilitiesForCommandPath(path string) []string {
 	if top == "esphome" {
 		return []string{"auth", "esphome"}
 	}
-	if slices.Contains([]string{"area", "backup", "category", "dashboard", "device", "diagnostics", "energy", "entity", "floor", "helper", "label", "network", "person", "repairs", "search", "thread", "zone"}, top) {
+	if slices.Contains([]string{"area", "backup", "category", "dashboard", "device", "diagnostics", "energy", "entity", "floor", "helper", "label", "marketplace", "network", "person", "repairs", "search", "thread", "zone"}, top) {
 		return []string{"auth", "ws"}
 	}
 	if slices.Contains([]string{"action", "automation", "blueprint", "calendar", "event", "integration", "notification", "scene", "script", "system", "template", "todo"}, top) {
@@ -118,7 +118,7 @@ func defaultGuideTopicForCommandPath(path string) string {
 		return "calendar-todo"
 	case top == "esphome":
 		return "esphome"
-	case slices.Contains([]string{"backup", "diagnostics", "energy", "network", "repairs", "system", "update"}, top):
+	case slices.Contains([]string{"backup", "diagnostics", "energy", "marketplace", "network", "repairs", "system", "update"}, top):
 		return "operations"
 	default:
 		return "index"
@@ -267,6 +267,8 @@ func genericVerificationCommands(commandPath string, args []string) []string {
 		return []string{"hab energy prefs get --json"}
 	case "network":
 		return []string{"hab network get --json"}
+	case "marketplace":
+		return []string{"hab marketplace list --installed --json"}
 	default:
 		return nil
 	}

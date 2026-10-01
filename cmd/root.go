@@ -237,6 +237,15 @@ func defaultSuggestedFixForCode(code string) string {
 		return "Use --force only after validating the target, or rerun interactively to confirm the prompt."
 	case client.ErrCodeCancelled:
 		return "Retry the command and confirm the prompt or use --force when appropriate."
+	// Error codes of the Marketplace WebSocket commands
+	case "warning_not_accepted":
+		return "Ask the user to accept the Marketplace warning, then run 'hab marketplace accept-warning'."
+	case "github_not_connected":
+		return "Connect a GitHub account with 'hab marketplace github-connect'."
+	case "repository_not_found":
+		return "Find the repository with 'hab marketplace list --search <text>' and retry with its full_name."
+	case "replaces_built_in":
+		return "The integration replaces a built-in one. Retry with --confirm-replace-built-in only if the user agrees."
 	default:
 		return "Retry with --verbose and inspect command output for additional context."
 	}

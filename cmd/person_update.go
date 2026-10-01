@@ -55,6 +55,22 @@ func runPersonUpdate(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
+	// Core sets device_trackers to [] when the key is missing, so send the current list.
+	if !cmd.Flags().Changed("device-trackers") {
+		persons, err := ws.PersonRegistryList()
+		if err != nil {
+			return err
+		}
+		for _, p := range persons {
+			if m, ok := p.(map[string]interface{}); ok && m["id"] == personID {
+				if trackers, ok := m["device_trackers"]; ok {
+					params["device_trackers"] = trackers
+				}
+				break
+			}
+		}
+	}
+
 	result, err := ws.PersonRegistryUpdate(personID, params)
 	if err != nil {
 		return err
