@@ -23,8 +23,56 @@ For machine-readable output while inspecting dashboard resources, add `--json` t
 
 ## Mutation Pattern
 
-- Use targeted `view`, `section`, and `card` subcommands for incremental edits.
+- Use `dashboard patch` for field-level edits with an actual diff and verification.
+- Existing `view`, `section`, and `card update --data` commands replace the selected object.
 - Use YAML input (`-f` or heredoc) when creating complete views.
+
+## Patch → Diff → Apply → Verify
+
+```bash
+hab schema dashboard patch --compact --json
+hab dashboard patch my-dashboard --target /views/0/cards/0 --data '{"name":"Kitchen"}' --plan --json
+hab dashboard patch my-dashboard --target /views/0/cards/0 --data '{"name":"Kitchen"}' --if-match 'sha256:<hash-from-base_revision>' --json
+```
+
+Use the preview's `base_revision` unchanged for apply. The target is an exact
+JSON Pointer: `/views/0/sections/1/cards/2` addresses a section card, while
+`/views/0/cards/0` addresses a regular-view card. Empty target selects the root.
+No names are guessed and no missing parents are created. Whole-config freshness
+checks protect index selectors against intervening reorderings.
+
+The target must be an existing object. Escape `/` as `~1` and `~` as `~0` in
+pointer segments; array indexes must be canonical nonnegative integers (`0`,
+`1`, etc., without leading zeros).
+
+`--data`/`--file` deep-merge objects and replace explicitly supplied arrays.
+`--set '/name="Kitchen"'` uses a JSON value; `--remove /icon` deletes an object
+field. Null remains a value. The operation order is merge, sets, removals.
+Unrelated fields, including nested fields and exact JSON numbers, are retained.
+Removing an already-missing object field is a no-op; missing intermediate
+parents are errors. To remove array entries, replace the array explicitly.
+
+Apply rechecks freshness immediately before saving and verifies stored JSON
+afterward on the same connection. `status: verified` confirms read-back;
+`status: noop` performs no save. On failure inspect `error.details.result`:
+`saved: true` means save acknowledged, `saved: null` means uncertain. No write is
+automatically retried. `reloaded: not_applicable` is explicit for storage saves.
+
+HA has no conditional dashboard-save API: an edit after the final check can
+still be overwritten. Verification proves stored JSON at `observed_at`, not
+rendering, valid entity references, or custom resource readiness. Preview checks
+local structure using live config; it does not check write permission or server
+acceptance. Saving requires administrator permission. YAML dashboards may reject
+saves, and patching does not expand generated strategy layouts. `--timeout`
+bounds connection and requests after credential resolution; a timeout or
+cancellation after sending a save does not prove it was unapplied.
+
+`--diff-limit` bounds returned changes and exposes `change_count` and
+`diff_complete`. This limits entry count, not bytes: replacing a large array can
+still produce a large diff entry. Known credential fields and URL credentials
+are redacted; secrets embedded in unlabelled prose cannot be reliably detected.
+A conflict requires reinspection; copying a new hash without reviewing the new
+diff defeats the freshness check.
 
 ## Look Beyond Entities - Explore Devices
 

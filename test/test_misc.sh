@@ -5,8 +5,28 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
+run_contract_discovery_tests() {
+    log_section "Command Contract Discovery"
+    local result
+    result=$(run_hab schema --index --search "dashboard patch" --limit 1)
+    if echo "$result" | jq -e '.success and .data.total == 1 and .data.complete and .data.commands[0].path == "hab dashboard patch" and .data.commands[0].preview == "live_diff" and .data.schema_version != null' >/dev/null; then
+        pass "compact searchable command index"
+    else fail "compact command index: $result"; fi
+    result=$(run_hab schema dashboard save-config --compact)
+    if echo "$result" | jq -e '.success and .data.side_effect == "write" and .data.envelope_ref == "hab.envelope.v1" and .data.schema_id != null and .data.output_contract.success_envelope == null and ([.data.output_contract.variants[] | select(.name == "full") | .data.type] == ["null"])' >/dev/null; then
+        pass "targeted schema has corrected contract and shared envelope reference"
+    else fail "targeted schema: $result"; fi
+    if "$HAB" --config "$HAB_TEST_CONFIG_DIR" --json schema dashboard get nonexistent >/dev/null 2>&1; then
+        fail "unknown schema suffix was accepted"
+    else pass "unknown schema suffix fails with nonzero exit"; fi
+    result=$(run_hab schema --index --search dashboard --limit 1)
+    if echo "$result" | jq -e '.success and .data.complete == false and .data.next_offset == 1' >/dev/null; then pass "index pagination is explicit"; else fail "index pagination: $result"; fi
+}
+
 run_misc_tests() {
     log_section "Miscellaneous Tests"
+
+    run_contract_discovery_tests
 
     # Ensure we're authenticated
     do_auth_login

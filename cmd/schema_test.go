@@ -256,7 +256,7 @@ func TestRunnableCommandsExposeStructuredFullDataContracts(t *testing.T) {
 				t.Fatalf("full data contract missing for %s", node.Path)
 			}
 			if variant.Data.Type == "array" || variant.Data.Type == "object" {
-				if len(variant.Data.Fields) == 0 {
+				if len(variant.Data.Fields) == 0 && !variant.Data.Open {
 					t.Fatalf("full data contract has no fields for %s", node.Path)
 				}
 			}
