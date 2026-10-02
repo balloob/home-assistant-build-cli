@@ -2,6 +2,13 @@
 # Common test library for hab CLI integration tests
 # Source this file from individual test files
 
+# The orchestrator sources several suites into one shell. Keep lifecycle state
+# (especially the owned empty-hass PID) instead of resetting it on every import.
+if [ "${HAB_TEST_COMMON_LOADED:-0}" = "1" ]; then
+    return
+fi
+HAB_TEST_COMMON_LOADED=1
+
 # Set strict mode
 set -e
 

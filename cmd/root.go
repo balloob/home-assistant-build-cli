@@ -344,6 +344,11 @@ func boolCompletions(cmd *cobra.Command, args []string, toComplete string) ([]st
 
 // checkUpdateOnStartup checks for updates once per day and prints a notice if available
 func checkUpdateOnStartup(cmd *cobra.Command) {
+	for _, name := range []string{"plan", "dry-run"} {
+		if flag := cmd.Flags().Lookup(name); flag != nil && flag.Value.String() == "true" {
+			return
+		}
+	}
 	if !isInteractiveOutput() {
 		return
 	}

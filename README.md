@@ -26,6 +26,8 @@ If you are driving `hab` from an LLM or automation, start with:
 hab guide
 hab guide list --json
 hab schema overview --json
+hab schema --index --search dashboard --limit 10 --json
+hab schema dashboard patch --compact --json
 hab capability probe --json
 ```
 
@@ -35,6 +37,11 @@ For write workflows, inspect the command contract and preview the mutation first
 hab schema area create --json
 hab area create "Kitchen" --plan --json
 ```
+
+For field-level dashboard changes, `hab dashboard patch` provides a live diff,
+revision precondition, no-op detection, and stored-config read-back verification.
+See `hab guide dashboard` or the [dashboard guide](guide/dashboard.md) for examples
+and verification limits.
 
 ## Authentication
 
