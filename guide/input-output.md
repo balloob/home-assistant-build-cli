@@ -14,9 +14,22 @@ Use this topic to keep agent workflows deterministic when reading output and sen
 
 ## Discovery Sequence
 
-1. `hab <command> --help`
-2. `hab action docs <domain.action> --json`
-3. `hab guide <topic>` for workflow-specific patterns.
+1. `hab schema --index --search '<task words>' --limit 10 --json`
+2. `hab schema <command path> --compact --json`
+3. `hab action docs <domain.action> --json` for live action inputs.
+4. `hab guide <topic>` for workflow-specific patterns.
+
+The index is bounded (25 entries by default) and returns `total`, `complete`,
+and `next_offset`; pass that offset with the same search to continue. Compact
+schemas contain invocation and payload contracts with a shared `envelope_ref`,
+`schema_version`, `cli_version`, and content-derived `schema_id`. The original
+full schema remains available without `--compact`. Unknown command paths fail.
+
+Payloads marked `open` or `type: any` are not exhaustive schemas. `preview` is
+`none`, `static`, `command_plan`, or `live_diff`. A static/command plan is not a
+server validation or observed before/after diff; `change_detection` explains
+whether `would_change` is merely assumed. Use `dashboard patch` for the verified
+dashboard edit workflow.
 
 ## Mutation Pattern
 

@@ -47,6 +47,8 @@ run_dashboard_tests() {
     # Ensure we're authenticated
     do_auth_login
 
+    run_dashboard_patch_tests
+
     # Test: dashboard list
     log_test "dashboard list"
     OUTPUT=$(run_hab dashboard list)
@@ -375,6 +377,56 @@ run_dashboard_tests() {
     else
         fail "dashboard create: $OUTPUT"
     fi
+}
+
+run_dashboard_patch_tests() {
+    log_section "Verified Dashboard Patch"
+    local path="patch-test-$RANDOM" id initial patch plan revision applied result before_bytes successes=0
+    result=$(run_hab dashboard create "$path" --title "Patch test")
+    id=$(echo "$result" | jq -r '.data.id // empty')
+    if [ -z "$id" ]; then fail "patch dashboard create: $result"; return; fi
+    initial='{"title":"Retain root","views":[{"path":"home","cards":[{"type":"tile","entity":"sun.sun","name":"Before","tap_action":{"action":"toggle","confirmation":true}},{"type":"markdown","content":"Retain sibling"}]}]}'
+    initial=$(echo "$initial" | jq '.views[0].cards += [range(200) | {type:"tile",entity:"sun.sun",name:("Retained " + tostring),tap_action:{action:"more-info"}}]')
+    patch='{"name":"After","tap_action":{"action":"more-info"}}'
+    result=$(run_hab dashboard save-config "$path" -d "$initial")
+    if echo "$result" | jq -e '.success' >/dev/null; then pass "patch fixture save"; else fail "patch fixture save: $result"; fi
+
+    plan=$(run_hab dashboard patch "$path" --target /views/0/cards/0 -d "$patch" --plan)
+    revision=$(echo "$plan" | jq -r '.data.base_revision // empty')
+    if echo "$plan" | jq -e '.success and .data.status == "planned" and .data.requests == 1 and .data.change_count == 2 and .data.saved == false and .data.changes[0].before == "Before" and .data.changes[0].after == "After"' >/dev/null; then
+        pass "patch preview returns bounded actual diff"
+    else fail "patch preview: $plan"; fi
+    result=$(run_hab dashboard get "$path")
+    before_bytes=${#result}
+    if echo "$result" | jq -e --argjson expected "$initial" '.data == $expected' >/dev/null; then pass "preview is side-effect-free"; else fail "preview changed config: $result"; fi
+
+    applied=$(run_hab dashboard patch "$path" --target /views/0/cards/0 -d "$patch" --if-match "$revision")
+    if echo "$applied" | jq -e '.success and .data.status == "verified" and .data.saved and .data.verified and .data.requests == 4 and .data.reloaded == "not_applicable"' >/dev/null; then
+        pass "patch apply verifies stored config on one session"
+    else fail "patch apply: $applied"; fi
+    result=$(run_hab dashboard get "$path")
+    if echo "$result" | jq -e '.data.title == "Retain root" and .data.views[0].cards[1].content == "Retain sibling" and .data.views[0].cards[0].entity == "sun.sun" and .data.views[0].cards[0].tap_action.confirmation == true and .data.views[0].cards[0].tap_action.action == "more-info"' >/dev/null; then
+        pass "patch retains unrelated nested fields and siblings"
+    else fail "patch retention: $result"; fi
+
+    result=$(run_hab dashboard patch "$path" --target /views/0/cards/0 -d "$patch" --if-match "$revision")
+    if echo "$result" | jq -e '.success == false and .error.code == "CONFLICT" and .error.details.result.saved == false' >/dev/null; then pass "stale revision rejected"; else fail "stale revision: $result"; fi
+    revision=$(echo "$applied" | jq -r '.data.result_revision // empty')
+    result=$(run_hab dashboard patch "$path" --target /views/0/cards/0 -d "$patch" --if-match "$revision")
+    if echo "$result" | jq -e '.success and .data.status == "noop" and .data.saved == false and .data.requests == 1 and .data.change_count == 0' >/dev/null; then pass "repeat is no-op with no save"; else fail "patch repeat: $result"; fi
+    for i in {1..10}; do
+        result=$(run_hab dashboard patch "$path" --target /views/0/cards/0 -d "$patch" --if-match "$revision")
+        if echo "$result" | jq -e '.success and .data.status == "noop" and .data.saved == false and .data.requests == 1' >/dev/null; then successes=$((successes + 1)); fi
+    done
+    if [ "$successes" = 10 ]; then pass "repeat completion reliability: 10/10, zero saves"; else fail "repeat completion reliability: $successes/10"; fi
+    echo "Patch metrics (202 cards): inspection=$before_bytes bytes, preview=${#plan} bytes, apply=${#applied} bytes; API requests: preview=1, apply=4, repeat=1."
+    result=$(run_hab dashboard patch "$path" --target /views/-1 -d "$patch" --plan)
+    if echo "$result" | jq -e '.success == false and .error.code == "INVALID_PATCH"' >/dev/null; then pass "invalid selector rejected"; else fail "invalid selector: $result"; fi
+    result=$(run_hab dashboard patch "$path" --set '/title="Unsafe"')
+    if echo "$result" | jq -e '.success == false and .error.code == "PRECONDITION_REQUIRED"' >/dev/null; then pass "apply requires inspection revision"; else fail "missing revision: $result"; fi
+
+    result=$(run_hab dashboard delete "$id" --force)
+    if echo "$result" | jq -e '.success' >/dev/null; then pass "patch fixture cleanup"; else fail "patch fixture cleanup: $result"; fi
 }
 
 # Run standalone if executed directly

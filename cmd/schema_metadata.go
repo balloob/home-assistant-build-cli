@@ -15,6 +15,7 @@ type SchemaPositionalArg struct {
 	Required bool     `json:"required"`
 	Raw      string   `json:"raw,omitempty"`
 	Choices  []string `json:"choices,omitempty"`
+	Variadic bool     `json:"variadic,omitempty"`
 }
 
 // SchemaFlagConstraint describes relationships between flags.
@@ -41,6 +42,7 @@ type SchemaObjectContract struct {
 	Type        string        `json:"type"`
 	Description string        `json:"description,omitempty"`
 	Fields      []SchemaField `json:"fields,omitempty"`
+	Open        bool          `json:"open,omitempty"`
 }
 
 // SchemaOutputVariant describes a distinct output variant for a command.
@@ -70,6 +72,7 @@ type SchemaAnnotation struct {
 	OutputContract  *SchemaOutputContract  `json:"output_contract,omitempty"`
 	Capabilities    []string               `json:"capabilities,omitempty"`
 	InputSources    []string               `json:"input_sources,omitempty"`
+	PayloadSchema   *SchemaObjectContract  `json:"payload_schema,omitempty"`
 	ResourceType    string                 `json:"resource_type,omitempty"`
 	Args            []SchemaPositionalArg  `json:"args,omitempty"`
 	FlagConstraints []SchemaFlagConstraint `json:"flag_constraints,omitempty"`
@@ -126,6 +129,9 @@ func mergeSchemaAnnotation(cmd *cobra.Command, incoming SchemaAnnotation) {
 	}
 	if incoming.OutputContract != nil {
 		current.OutputContract = incoming.OutputContract
+	}
+	if incoming.PayloadSchema != nil {
+		current.PayloadSchema = incoming.PayloadSchema
 	}
 	if len(incoming.FlagConstraints) > 0 {
 		current.FlagConstraints = append(current.FlagConstraints, incoming.FlagConstraints...)
