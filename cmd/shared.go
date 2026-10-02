@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"maps"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/input"
-	"github.com/home-assistant/hab/internal/redact"
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -77,10 +75,6 @@ func getAuthManager() *auth.Manager {
 // getWSClient creates an authenticated, connected WebSocket client.
 // Caller must defer ws.Close() after a successful return.
 func getWSClient() (client.WebSocketAPI, error) {
-	return getWSClientContext(context.Background())
-}
-
-func getWSClientContext(ctx context.Context) (*client.WebSocketClient, error) {
 	manager := getAuthManager()
 	creds, err := manager.GetCredentials()
 	if err != nil || creds == nil {
@@ -90,7 +84,7 @@ func getWSClientContext(ctx context.Context) (*client.WebSocketClient, error) {
 	noteTransport("websocket")
 
 	ws := client.NewWebSocketClient(creds.URL, creds.AccessToken)
-	if err := ws.ConnectContext(ctx); err != nil {
+	if err := ws.Connect(); err != nil {
 		return nil, err
 	}
 	return ws, nil
@@ -341,8 +335,6 @@ type MutationPlan struct {
 	Risks                []string       `json:"risks,omitempty"`
 	RequiresConfirmation bool           `json:"requires_confirmation"`
 	VerificationCommands []string       `json:"verification_commands,omitempty"`
-	ChangeDetection      string         `json:"change_detection"`
-	Validation           string         `json:"validation"`
 }
 
 func registerMutationPlanFlags(cmd *cobra.Command, planFlag, dryRunFlag *bool) {
@@ -367,15 +359,6 @@ func printMutationPlan(plan MutationPlan, textMode bool, resourceType string) {
 	if plan.Mode == "" {
 		plan.Mode = "plan"
 	}
-	if plan.ChangeDetection == "" {
-		plan.ChangeDetection = "not_performed"
-	}
-	if plan.Validation == "" {
-		plan.Validation = "command_local_only_not_server_validation"
-	}
-	plan.Inputs = redact.Map(plan.Inputs)
-	plan.Target = redact.Map(plan.Target)
-	plan.DerivedIDs = redact.Map(plan.DerivedIDs)
 	output.PrintOutputWithContext(plan, textMode, "Plan only. No changes were applied.", output.EnvelopeContext{
 		Operation:            "plan",
 		ResourceType:         resourceType,
@@ -644,8 +627,7 @@ func (f *InputFlags) Register(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.File, "file", "f", "", "Path to configuration file")
 	cmd.Flags().StringVar(&f.Format, "format", "", "Input format: json or yaml (auto-detected if not specified)")
 	mergeSchemaAnnotation(cmd, SchemaAnnotation{
-		InputSources:  []string{"flags", "data", "file"},
-		PayloadSchema: &SchemaObjectContract{Type: "object", Open: true, Description: "JSON/YAML object; resource fields are validated by the command and Home Assistant."},
+		InputSources: []string{"flags", "data", "file"},
 		FlagConstraints: []SchemaFlagConstraint{{
 			Type:        "one_of",
 			Flags:       []string{"data", "file"},

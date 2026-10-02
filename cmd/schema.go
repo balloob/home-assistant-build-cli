@@ -24,10 +24,6 @@ type schemaFlag struct {
 }
 
 type schemaCommand struct {
-	SchemaVersion   string                 `json:"schema_version"`
-	CLIVersion      string                 `json:"cli_version"`
-	Transports      []string               `json:"transports,omitempty"`
-	Preview         string                 `json:"preview"`
 	Path            string                 `json:"path"`
 	Use             string                 `json:"use"`
 	Aliases         []string               `json:"aliases,omitempty"`
@@ -42,7 +38,6 @@ type schemaCommand struct {
 	OutputVariants  []string               `json:"output_variants,omitempty"`
 	Capabilities    []string               `json:"capabilities,omitempty"`
 	InputSources    []string               `json:"input_sources,omitempty"`
-	PayloadSchema   *SchemaObjectContract  `json:"payload_schema,omitempty"`
 	ResourceType    string                 `json:"resource_type,omitempty"`
 	Args            []SchemaPositionalArg  `json:"args,omitempty"`
 	FlagConstraints []SchemaFlagConstraint `json:"flag_constraints,omitempty"`
@@ -65,11 +60,6 @@ var schemaCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(schemaCmd)
-	schemaCmd.Flags().Bool("compact", false, "Return a targeted schema with shared envelope references")
-	schemaCmd.Flags().Bool("index", false, "Return a bounded searchable index of executable commands")
-	schemaCmd.Flags().String("search", "", "Filter index paths and summaries (case-insensitive words)")
-	schemaCmd.Flags().Int("limit", 25, "Maximum index entries (1-500)")
-	schemaCmd.Flags().Int("offset", 0, "Index offset")
 	mergeSchemaAnnotation(schemaCmd, SchemaAnnotation{
 		SideEffect:   "read",
 		OutputMode:   "json_envelope",
@@ -84,11 +74,8 @@ func runSchema(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	result, err := schemaResult(cmd, target)
-	if err != nil {
-		return err
-	}
-	output.PrintOutputWithContext(result, getTextMode(), "", output.EnvelopeContext{
+	schema := buildSchemaTree(target)
+	output.PrintOutputWithContext(schema, getTextMode(), "", output.EnvelopeContext{
 		Operation:    "schema",
 		ResourceType: "command",
 	})
@@ -108,8 +95,8 @@ func resolveSchemaTarget(args []string) (*cobra.Command, error) {
 		return rootCmd, nil
 	}
 
-	target, remaining, err := rootCmd.Find(trimmed)
-	if err != nil || len(remaining) != 0 {
+	target, _, err := rootCmd.Find(trimmed)
+	if err != nil {
 		return nil, fmt.Errorf("unknown command path %q", strings.Join(args, " "))
 	}
 
@@ -117,10 +104,6 @@ func resolveSchemaTarget(args []string) (*cobra.Command, error) {
 }
 
 func buildSchemaTree(cmd *cobra.Command) schemaCommand {
-	return buildCommandSchema(cmd, true)
-}
-
-func buildCommandSchema(cmd *cobra.Command, recursive bool) schemaCommand {
 	ann := getSchemaAnnotation(cmd)
 	path := schemaPath(cmd)
 
@@ -167,17 +150,8 @@ func buildCommandSchema(cmd *cobra.Command, recursive bool) schemaCommand {
 		contract := inferOutputContract(path, cmd, ann, sideEffect, outputMode, resourceType)
 		outputContract = &contract
 	}
-	outputContract = auditedOutputContract(cmd, outputContract)
-	outputVariants := make([]string, len(outputContract.Variants))
-	for i, variant := range outputContract.Variants {
-		outputVariants[i] = variant.Name
-	}
 
 	sc := schemaCommand{
-		SchemaVersion:   commandSchemaVersion,
-		CLIVersion:      Version,
-		Transports:      commandTransports(cmd),
-		Preview:         commandPreview(cmd),
 		Path:            path,
 		Use:             cmd.Use,
 		Aliases:         slices.Clone(cmd.Aliases),
@@ -189,10 +163,9 @@ func buildCommandSchema(cmd *cobra.Command, recursive bool) schemaCommand {
 		Deprecated:      cmd.Deprecated,
 		SideEffect:      sideEffect,
 		OutputMode:      outputMode,
-		OutputVariants:  outputVariants,
+		OutputVariants:  slices.Clone(ann.OutputVariants),
 		Capabilities:    capabilities,
 		InputSources:    inputSources,
-		PayloadSchema:   ann.PayloadSchema,
 		ResourceType:    resourceType,
 		Args:            args,
 		FlagConstraints: slices.Clone(ann.FlagConstraints),
@@ -205,11 +178,7 @@ func buildCommandSchema(cmd *cobra.Command, recursive bool) schemaCommand {
 	children := visibleSubcommands(cmd)
 	sc.Subcommands = make([]schemaCommand, len(children))
 	for i, child := range children {
-		if recursive {
-			sc.Subcommands[i] = buildSchemaTree(child)
-		} else {
-			sc.Subcommands[i] = schemaCommand{Path: schemaPath(child)}
-		}
+		sc.Subcommands[i] = buildSchemaTree(child)
 	}
 
 	return sc
@@ -341,9 +310,6 @@ func inferSideEffect(cmd *cobra.Command) string {
 }
 
 func inferOutputMode(path string, cmd *cobra.Command) string {
-	if path == "hab help" {
-		return "text"
-	}
 	if strings.HasPrefix(path, "hab esphome ") {
 		switch cmd.Name() {
 		case "build", "upload", "run", "logs":
@@ -354,9 +320,6 @@ func inferOutputMode(path string, cmd *cobra.Command) string {
 }
 
 func inferCapabilities(path string) []string {
-	if capabilities, ok := auditedCapabilities[strings.TrimPrefix(path, "hab ")]; ok {
-		return slices.Clone(capabilities)
-	}
 	if path == "hab" || path == "hab guide" || path == "hab schema" || path == "hab version" || path == "hab update" || strings.HasPrefix(path, "hab capability") {
 		return []string{"local"}
 	}
@@ -379,9 +342,6 @@ func inferOutputContract(path string, cmd *cobra.Command, ann SchemaAnnotation, 
 
 	variants := make([]SchemaOutputVariant, 0)
 	variantNames := slices.Clone(ann.OutputVariants)
-	if outputMode == "ndjson_stream" {
-		variantNames = []string{"stream"}
-	}
 	if len(variantNames) == 0 {
 		variantNames = defaultVariantNames(path, cmd, sideEffect, outputMode)
 	}
@@ -464,7 +424,7 @@ func baseEnvelopeContract(resourceType, outputMode string, success bool) SchemaO
 		{Name: "success", Type: "boolean", Required: true, Description: "indicates whether the command succeeded"},
 		{Name: "operation", Type: "string", Description: "normalized operation name"},
 		{Name: "resource_type", Type: "string", Description: fmt.Sprintf("resource family for %s", resourceType)},
-		{Name: "data", Type: "any", Description: fmt.Sprintf("payload for %s responses; see variant data schema (may be null, scalar, array or object)", resourceType)},
+		{Name: "data", Type: "object", Description: fmt.Sprintf("payload for %s responses", resourceType), AdditionalProps: true},
 		{Name: "message", Type: "string", Description: "human-readable status message"},
 		{Name: "partial_result", Type: "boolean", Description: "whether the response omitted or degraded part of the requested data"},
 		{Name: "warnings", Type: "array", ItemType: "string", Description: "non-fatal warnings about the operation or payload"},

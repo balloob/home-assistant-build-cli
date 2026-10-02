@@ -99,7 +99,6 @@ var topicRegistry = []topicDef{
 			},
 			SuggestedCommands: []string{
 				"hab overview --json",
-				"hab schema --index --search dashboard --json",
 				"hab entity search temperature --json",
 				"hab search related entity light.kitchen --json",
 				"hab action docs light.turn_on --json",
@@ -301,23 +300,19 @@ var topicRegistry = []topicDef{
 			},
 			SuggestedCommands: []string{
 				"hab dashboard list --json",
-				"hab schema dashboard patch --compact --json",
-				"hab dashboard patch my-dashboard --target /views/0 --set '/title=\"Home\"' --plan --json",
 				"hab dashboard view list my-dashboard --json",
 				"hab dashboard card list my-dashboard 0 --json",
 			},
 			Prerequisites: []string{
 				"Discover relevant entities/devices before composing views.",
-				"Storage dashboard saves require administrator permission; patch apply requires a preview revision.",
 				"Decide whether to create resources incrementally or from YAML payloads.",
 			},
 			DiscoverySteps: []string{
 				"List dashboards and existing views before edits.",
 				"Inspect current card/section structure before patching.",
-				"Use dashboard patch --plan for a focused live diff and full-config base_revision.",
 			},
 			MutationPatterns: []string{
-				"Use dashboard patch with an exact JSON pointer and --if-match for field-level changes.",
+				"Use view/section/card subcommands for focused edits.",
 				"Use YAML input with files or heredocs when creating complete views.",
 			},
 			VerificationCommands: []string{
@@ -327,8 +322,6 @@ var topicRegistry = []topicDef{
 			Pitfalls: []string{
 				"Building dashboards from entity names only and missing device context.",
 				"Editing sections/cards without first confirming view indexes.",
-				"Treating save acknowledgement as verification, or retrying uncertain writes without inspection.",
-				"Assuming hash checks are atomic: HA has no conditional dashboard save.",
 			},
 		},
 		Filename: "dashboard",

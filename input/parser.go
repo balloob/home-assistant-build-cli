@@ -3,7 +3,6 @@
 package input
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,16 +14,6 @@ import (
 
 // ParseInput reads and parses input from various sources
 func ParseInput(data, file, format string) (map[string]interface{}, error) {
-	return parseInput(data, file, format, false)
-}
-
-// ParseInputExact retains JSON number precision for read-modify-write workflows.
-// The legacy ParseInput keeps its float64 behavior for existing consumers.
-func ParseInputExact(data, file, format string) (map[string]interface{}, error) {
-	return parseInput(data, file, format, true)
-}
-
-func parseInput(data, file, format string, exactNumbers bool) (map[string]interface{}, error) {
 	var inputData []byte
 	var err error
 
@@ -76,20 +65,6 @@ func parseInput(data, file, format string, exactNumbers bool) (map[string]interf
 	}
 
 	var result map[string]interface{}
-	if exactNumbers {
-		if format == "yaml" {
-			inputData, err = yaml.YAMLToJSON(inputData)
-			if err != nil {
-				return nil, fmt.Errorf("invalid YAML: %w", err)
-			}
-		} else if format != "json" {
-			return nil, fmt.Errorf("unsupported format: %s", format)
-		}
-		if err := DecodeJSONExact(inputData, &result); err != nil {
-			return nil, err
-		}
-		return result, nil
-	}
 
 	switch format {
 	case "json":
@@ -105,14 +80,4 @@ func parseInput(data, file, format string, exactNumbers bool) (map[string]interf
 	}
 
 	return result, nil
-}
-
-// DecodeJSONExact rejects trailing input and preserves number tokens.
-func DecodeJSONExact(data []byte, result any) error {
-	if !json.Valid(data) {
-		return fmt.Errorf("invalid JSON")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	return decoder.Decode(result)
 }

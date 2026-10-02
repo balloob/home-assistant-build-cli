@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/home-assistant/hab/internal/redact"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -22,7 +21,6 @@ func applySchemaAutonomyDefaults() {
 		}
 
 		path := schemaPath(cmd)
-		applyAuditedMetadata(cmd)
 		ann := getSchemaAnnotation(cmd)
 		changed := false
 
@@ -150,10 +148,6 @@ func wireGenericPlanSupport(cmd *cobra.Command) {
 	var dryRunFlag bool
 	cmd.Flags().BoolVar(&planFlag, "plan", false, "Show execution plan without applying changes")
 	cmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "Alias for --plan")
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
-	cmd.Annotations["hab/generic-plan"] = "true"
 	mergeSchemaAnnotation(cmd, SchemaAnnotation{
 		InputSources:   []string{"flags"},
 		OutputVariants: []string{"plan", "full"},
@@ -171,28 +165,16 @@ func wireGenericPlanSupport(cmd *cobra.Command) {
 
 	cmd.Run = nil
 	cmd.RunE = func(c *cobra.Command, args []string) error {
-		plan, err := c.Flags().GetBool("plan")
-		if err != nil {
-			return err
-		}
-		dryRun, err := c.Flags().GetBool("dry-run")
-		if err != nil {
-			return err
-		}
+		plan, _ := c.Flags().GetBool("plan")
+		dryRun, _ := c.Flags().GetBool("dry-run")
 		if plan || dryRun {
-			redactedArgs := make([]string, len(args))
-			for i := range redactedArgs {
-				redactedArgs[i] = redact.Hidden
-			}
 			printMutationPlan(MutationPlan{
 				WouldChange: true,
 				Target: map[string]any{
-					"command":        commandPath,
-					"argument_count": len(args),
-					"args":           redactedArgs,
+					"command": commandPath,
+					"args":    append([]string(nil), args...),
 				},
 				Inputs:               changedFlagValues(c),
-				Validation:           "not_performed",
 				Steps:                genericPlanSteps(commandPath),
 				Risks:                genericPlanRisks(sideEffect),
 				RequiresConfirmation: genericPlanRequiresConfirmation(c, sideEffect),
@@ -221,11 +203,7 @@ func changedFlagValues(cmd *cobra.Command) map[string]any {
 		case "plan", "dry-run", "json", "text", "verbose", "skip-update-check", "config":
 			return
 		}
-		if redact.Sensitive(flag.Name) || slices.Contains([]string{"data", "set", "tlv", "password", "message", "template"}, flag.Name) {
-			values[flag.Name] = redact.Hidden
-		} else {
-			values[flag.Name] = redact.Value(flag.Name, flag.Value.String())
-		}
+		values[flag.Name] = flag.Value.String()
 	})
 	if len(values) == 0 {
 		return nil
@@ -236,7 +214,7 @@ func changedFlagValues(cmd *cobra.Command) map[string]any {
 func genericPlanSteps(commandPath string) []string {
 	return []string{
 		"Validate command arguments and flags.",
-		fmt.Sprintf("Execute `%s` using its documented transport.", commandPath),
+		fmt.Sprintf("Execute `%s` against Home Assistant.", commandPath),
 		"Return a mutation response envelope.",
 	}
 }
@@ -252,8 +230,11 @@ func genericPlanRequiresConfirmation(cmd *cobra.Command, sideEffect string) bool
 	if sideEffect != "destructive" {
 		return false
 	}
-	if cmd == nil || cmd.Flags().Lookup("force") == nil {
-		return false
+	if cmd == nil {
+		return true
+	}
+	if cmd.Flags().Lookup("force") == nil {
+		return true
 	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {

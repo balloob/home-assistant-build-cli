@@ -35,6 +35,7 @@ func registryListOutputContract(resourceType, idField string) SchemaOutputContra
 		Fields: []SchemaField{
 			{Name: idField, Type: "string", Description: fmt.Sprintf("%s identifier", resourceType)},
 			{Name: "name", Type: "string", Description: fmt.Sprintf("display name for %s", resourceType)},
+			{Name: "attributes", Type: "object", Description: "resource-specific attributes", AdditionalProps: true},
 		},
 	}
 	brief := SchemaObjectContract{
@@ -69,7 +70,8 @@ func registryGetOutputContract(resourceType, idField string) SchemaOutputContrac
 		Fields: []SchemaField{
 			{Name: idField, Type: "string", Description: fmt.Sprintf("%s identifier", resourceType)},
 			{Name: "name", Type: "string", Description: fmt.Sprintf("display name for %s", resourceType)},
-			{Name: "related", Type: "object", Description: "related resource IDs by type when requested", AdditionalProps: true},
+			{Name: "related", Type: "array", ItemType: "object", Description: "related resources when requested"},
+			{Name: "attributes", Type: "object", Description: "resource-specific attributes", AdditionalProps: true},
 		},
 	}
 
@@ -193,6 +195,7 @@ func outputContractOverrides() map[string]SchemaOutputContract {
 				Fields: []SchemaField{
 					{Name: "title", Type: "string", Description: "dashboard title"},
 					{Name: "views", Type: "array", ItemType: "object", Description: "dashboard views"},
+					{Name: "config", Type: "object", Description: "full dashboard config", AdditionalProps: true},
 				},
 			}),
 		}, nil),
