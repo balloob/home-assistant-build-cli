@@ -1,14 +1,15 @@
-// Package entityrename plans and verifies entity registry ID changes.
-package entityrename
+// Package entityupdate plans and verifies entity registry changes.
+package entityupdate
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
 )
 
-// Store is the registry, state, and relationship API needed for a rename.
+// Store is the registry, state, and relationship API needed for an update.
 type Store interface {
 	EntityRegistryGet(string) (map[string]any, error)
 	EntityRegistryList() ([]any, error)
@@ -17,11 +18,24 @@ type Store interface {
 	SearchRelated(string, string) (map[string][]string, error)
 }
 
+// Options distinguishes omitted fields from explicitly cleared name/icon overrides.
+type Options struct {
+	EntityID *string
+	Name     *string
+	Icon     *string
+}
+
+type Change struct {
+	Before any `json:"before"`
+	After  any `json:"after"`
+}
+
 type Result struct {
 	Mode        string              `json:"mode"`
 	OldEntityID string              `json:"old_entity_id"`
 	NewEntityID string              `json:"new_entity_id"`
 	UniqueID    string              `json:"unique_id"`
+	Changes     map[string]Change   `json:"changes"`
 	Related     map[string][]string `json:"related"`
 	Warnings    []string            `json:"warnings"`
 	// Saved is nil when the write acknowledgement is uncertain.
@@ -31,8 +45,15 @@ type Result struct {
 
 var entityIDPattern = regexp.MustCompile(`^[a-z0-9]+(_[a-z0-9]+)*\.[a-z0-9]+(_[a-z0-9]+)*$`)
 
-// Validate rejects invalid IDs and domain changes before opening a connection.
-func Validate(oldID, newID string) error {
+// Validate rejects empty updates, invalid IDs, and domain changes before I/O.
+func Validate(oldID string, opts Options) error {
+	if opts.EntityID == nil && opts.Name == nil && opts.Icon == nil {
+		return fmt.Errorf("provide at least one of --entity-id, --name, or --icon")
+	}
+	newID := oldID
+	if opts.EntityID != nil {
+		newID = *opts.EntityID
+	}
 	if !entityIDPattern.MatchString(oldID) || !entityIDPattern.MatchString(newID) {
 		return fmt.Errorf("entity IDs must use domain.object_id with lowercase letters, numbers, and single underscores between words")
 	}
@@ -41,21 +62,28 @@ func Validate(oldID, newID string) error {
 	if oldDomain != newDomain {
 		return fmt.Errorf("the new entity ID must keep the %s domain", oldDomain)
 	}
-	if oldID == newID {
+	if oldID == newID && opts.Name == nil && opts.Icon == nil {
 		return fmt.Errorf("the new entity ID must differ from the current ID")
 	}
 	return nil
 }
 
-// Run always checks collisions and references before attempting a registry write.
+// Run checks collisions and references when an ID change is requested.
 // It never updates the integration's unique_id or rewrites references.
-func Run(store Store, oldID, newID string, plan bool) (Result, error) {
+func Run(store Store, oldID string, opts Options, plan bool) (Result, error) {
 	saved := false
-	result := Result{Mode: "plan", OldEntityID: oldID, NewEntityID: newID, Saved: &saved}
+	result := Result{
+		Mode: "plan", OldEntityID: oldID, NewEntityID: oldID, Saved: &saved,
+		Related: map[string][]string{}, Changes: map[string]Change{},
+		Warnings: []string{"unique_id and the integration link are preserved."},
+	}
+	if opts.EntityID != nil {
+		result.NewEntityID = *opts.EntityID
+	}
 	if !plan {
 		result.Mode = "apply"
 	}
-	if err := Validate(oldID, newID); err != nil {
+	if err := Validate(oldID, opts); err != nil {
 		return result, err
 	}
 	entry, err := store.EntityRegistryGet(oldID)
@@ -66,29 +94,60 @@ func Run(store Store, oldID, newID string, plan bool) (Result, error) {
 	if entry["entity_id"] != oldID || result.UniqueID == "" {
 		return result, fmt.Errorf("source registry entry is missing its entity_id or unique_id")
 	}
-	if err := checkCollision(store, newID); err != nil {
-		return result, err
+	params := updateParams(oldID, opts)
+	for key, value := range params {
+		if key == "new_entity_id" {
+			key = "entity_id"
+		}
+		result.Changes[key] = Change{Before: entry[key], After: value}
 	}
-	result.Related, err = store.SearchRelated("entity", oldID)
-	if err != nil {
-		return result, fmt.Errorf("check related items: %w", err)
-	}
-	if result.Related == nil {
-		result.Related = map[string][]string{}
-	}
-	for _, ids := range result.Related {
-		slices.Sort(ids)
-	}
-	result.Warnings = []string{
-		"References using the old entity ID may break. Related items come from search/related; hab does not rewrite them.",
-		"Relationship search is not exhaustive: dashboards, templates, and dynamically constructed references are not covered. Inspect these manually even when related is empty.",
-		"Long-term statistics use statistic_id. Home Assistant's recorder normally migrates history and statistics on registry renames, but existing target history/statistics can prevent migration. hab does not verify or repair that migration; check power/energy history afterwards.",
-		"Only entity_id is changed; unique_id and the integration link are preserved.",
+	if result.NewEntityID != oldID {
+		if err := planRename(store, &result); err != nil {
+			return result, err
+		}
 	}
 	if plan {
 		return result, nil
 	}
-	return apply(store, result)
+	return apply(store, result, params)
+}
+
+func updateParams(oldID string, opts Options) map[string]any {
+	params := map[string]any{}
+	if opts.EntityID != nil && *opts.EntityID != oldID {
+		params["new_entity_id"] = *opts.EntityID
+	}
+	for key, value := range map[string]*string{"name": opts.Name, "icon": opts.Icon} {
+		if value != nil {
+			params[key] = nil
+			if *value != "" {
+				params[key] = *value
+			}
+		}
+	}
+	return params
+}
+
+func planRename(store Store, result *Result) error {
+	if err := checkCollision(store, result.NewEntityID); err != nil {
+		return err
+	}
+	related, err := store.SearchRelated("entity", result.OldEntityID)
+	if err != nil {
+		return fmt.Errorf("check related items: %w", err)
+	}
+	if related != nil {
+		result.Related = related
+	}
+	for _, ids := range result.Related {
+		slices.Sort(ids)
+	}
+	result.Warnings = append(result.Warnings,
+		"References using the old entity ID may break. Related items come from search/related; hab does not rewrite them.",
+		"Relationship search is not exhaustive: dashboards, templates, and dynamically constructed references are not covered. Inspect these manually even when related is empty.",
+		"Long-term statistics use statistic_id. Home Assistant's recorder normally migrates history and statistics on registry renames, but existing target history/statistics can prevent migration. hab does not verify or repair that migration; check power/energy history afterwards.",
+	)
+	return nil
 }
 
 func checkCollision(store Store, newID string) error {
@@ -107,21 +166,27 @@ func checkCollision(store Store, newID string) error {
 	return nil
 }
 
-func apply(store Store, result Result) (Result, error) {
+func apply(store Store, result Result, params map[string]any) (Result, error) {
 	result.Mode = "apply"
-	_, err := store.EntityRegistryUpdate(result.OldEntityID, map[string]any{"new_entity_id": result.NewEntityID})
+	_, err := store.EntityRegistryUpdate(result.OldEntityID, params)
 	if err != nil {
 		// A transport error may occur after HA accepted the write. Do not retry.
 		result.Saved = nil
-		return result, fmt.Errorf("entity ID update was not acknowledged; inspect both IDs before retrying: %w", err)
+		return result, fmt.Errorf("entity update was not acknowledged; inspect the registry before retrying: %w", err)
 	}
 	*result.Saved = true
 	entry, err := store.EntityRegistryGet(result.NewEntityID)
 	if err != nil {
-		return result, fmt.Errorf("entity ID was saved but read-back failed: %w", err)
+		return result, fmt.Errorf("entity update was saved but read-back failed: %w", err)
 	}
 	if entry["entity_id"] != result.NewEntityID || entry["unique_id"] != result.UniqueID {
-		return result, fmt.Errorf("entity ID was saved but read-back did not confirm the new ID and unchanged unique_id")
+		return result, fmt.Errorf("entity update was saved but read-back did not confirm the expected entity_id and unchanged unique_id")
+	}
+	for key, change := range result.Changes {
+		value, exists := entry[key]
+		if !exists || !reflect.DeepEqual(value, change.After) {
+			return result, fmt.Errorf("entity update was saved but read-back did not confirm %s", key)
+		}
 	}
 	result.Verified = true
 	return result, nil

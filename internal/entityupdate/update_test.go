@@ -1,4 +1,4 @@
-package entityrename
+package entityupdate
 
 import (
 	"errors"
@@ -26,10 +26,16 @@ func (s *fakeStore) call(name string) error {
 
 func (s *fakeStore) EntityRegistryGet(id string) (map[string]any, error) {
 	err := s.call("get:" + id)
-	if id == "switch.new" && s.readBack != nil {
+	if s.update != nil && s.readBack != nil {
 		return s.readBack, err
 	}
-	return map[string]any{"entity_id": id, "unique_id": "integration-id"}, err
+	entry := map[string]any{"entity_id": id, "unique_id": "integration-id", "name": "Old name", "icon": "mdi:old"}
+	for key, value := range s.update {
+		if key != "new_entity_id" {
+			entry[key] = value
+		}
+	}
+	return entry, err
 }
 
 func (s *fakeStore) EntityRegistryList() ([]any, error) {
@@ -53,7 +59,7 @@ func TestRenamePlanAndApply(t *testing.T) {
 	for _, plan := range []bool{true, false} {
 		t.Run(map[bool]string{true: "plan", false: "apply"}[plan], func(t *testing.T) {
 			store := &fakeStore{}
-			result, err := Run(store, "switch.old", "switch.new", plan)
+			result, err := Run(store, "switch.old", Options{EntityID: stringPtr("switch.new")}, plan)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +97,7 @@ func TestRenamePreflightFailuresDoNotWrite(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, plan := range []bool{true, false} {
-				result, err := Run(&tc.store, "switch.old", "switch.new", plan)
+				result, err := Run(&tc.store, "switch.old", Options{EntityID: stringPtr("switch.new")}, plan)
 				if err == nil || tc.store.update != nil || result.Saved == nil || *result.Saved || result.Verified {
 					t.Fatalf("preflight failure allowed write: result=%+v update=%v err=%v", result, tc.store.update, err)
 				}
@@ -113,7 +119,7 @@ func TestRenameReportsSaveAndVerificationSeparately(t *testing.T) {
 		{"missing unique ID", fakeStore{readBack: map[string]any{"entity_id": "switch.new"}}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := Run(&tc.store, "switch.old", "switch.new", false)
+			result, err := Run(&tc.store, "switch.old", Options{EntityID: stringPtr("switch.new")}, false)
 			if err == nil || result.Verified || (result.Saved == nil) != tc.uncertain {
 				t.Fatalf("incorrect failure status: %+v err=%v", result, err)
 			}
@@ -132,9 +138,99 @@ func TestRenameRejectsInvalidIDsBeforeIO(t *testing.T) {
 	} {
 		t.Run(strings.Join(ids[:], "->"), func(t *testing.T) {
 			store := &fakeStore{}
-			if _, err := Run(store, ids[0], ids[1], false); err == nil || len(store.calls) != 0 {
+			if _, err := Run(store, ids[0], Options{EntityID: &ids[1]}, false); err == nil || len(store.calls) != 0 {
 				t.Fatalf("invalid IDs accepted: %v, calls=%v", err, store.calls)
 			}
 		})
+	}
+}
+
+func stringPtr(value string) *string { return &value }
+
+func TestUpdateNameAndIcon(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		opts   Options
+		params map[string]any
+	}{
+		{"name only", Options{Name: stringPtr("Kitchen")}, map[string]any{"name": "Kitchen"}},
+		{"icon only", Options{Icon: stringPtr("mdi:power")}, map[string]any{"icon": "mdi:power"}},
+		{"clear name", Options{Name: stringPtr("")}, map[string]any{"name": nil}},
+		{"clear icon", Options{Icon: stringPtr("")}, map[string]any{"icon": nil}},
+		{"clear both", Options{Name: stringPtr(""), Icon: stringPtr("")}, map[string]any{"name": nil, "icon": nil}},
+		{"same ID with name", Options{EntityID: stringPtr("switch.old"), Name: stringPtr("Kitchen")}, map[string]any{"name": "Kitchen"}},
+		{"all fields", Options{EntityID: stringPtr("switch.new"), Name: stringPtr("Kitchen"), Icon: stringPtr("mdi:power")}, map[string]any{"new_entity_id": "switch.new", "name": "Kitchen", "icon": "mdi:power"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, plan := range []bool{true, false} {
+				store := &fakeStore{}
+				result, err := Run(store, "switch.old", tc.opts, plan)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if result.Saved == nil || *result.Saved != !plan || result.Verified != !plan {
+					t.Fatalf("incorrect result: %+v", result)
+				}
+				if plan {
+					if store.update != nil {
+						t.Fatal("preview wrote changes")
+					}
+				} else if !reflect.DeepEqual(store.update, tc.params) {
+					t.Fatalf("update = %#v, want %#v", store.update, tc.params)
+				}
+				for key, want := range tc.params {
+					if key == "new_entity_id" {
+						key = "entity_id"
+					}
+					change, exists := result.Changes[key]
+					if !exists || !reflect.DeepEqual(change.After, want) {
+						t.Fatalf("incorrect preview: %+v", result.Changes)
+					}
+					before := map[string]any{"entity_id": "switch.old", "name": "Old name", "icon": "mdi:old"}[key]
+					if !reflect.DeepEqual(change.Before, before) {
+						t.Fatalf("incorrect before: %+v", change)
+					}
+				}
+				if result.NewEntityID == result.OldEntityID {
+					wantCalls := []string{"get:switch.old"}
+					if !plan {
+						wantCalls = append(wantCalls, "update:switch.old", "get:switch.old")
+					}
+					if !reflect.DeepEqual(store.calls, wantCalls) || len(result.Related) != 0 {
+						t.Fatalf("name/icon-only update performed rename checks: %v", store.calls)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestUpdateVerifiesEachRequestedField(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		opts     Options
+		readBack map[string]any
+	}{
+		{"name mismatch", Options{Name: stringPtr("Kitchen")}, map[string]any{"name": "Old name"}},
+		{"icon mismatch", Options{Icon: stringPtr("mdi:power")}, map[string]any{"icon": "mdi:old"}},
+		{"clear not applied", Options{Name: stringPtr("")}, map[string]any{"name": "Old name"}},
+		{"missing field is not cleared", Options{Icon: stringPtr("")}, map[string]any{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.readBack["entity_id"] = "switch.old"
+			tc.readBack["unique_id"] = "integration-id"
+			store := &fakeStore{readBack: tc.readBack}
+			result, err := Run(store, "switch.old", tc.opts, false)
+			if err == nil || result.Saved == nil || !*result.Saved || result.Verified {
+				t.Fatalf("unverified fields reported as applied: %+v err=%v", result, err)
+			}
+		})
+	}
+}
+
+func TestUpdateRequiresFieldsBeforeIO(t *testing.T) {
+	store := &fakeStore{}
+	if _, err := Run(store, "switch.old", Options{}, false); err == nil || len(store.calls) != 0 {
+		t.Fatalf("empty update accepted: err=%v calls=%v", err, store.calls)
 	}
 }

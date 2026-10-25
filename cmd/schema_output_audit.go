@@ -63,15 +63,16 @@ func auditedOutputContract(cmd *cobra.Command, original *SchemaOutputContract) *
 }
 
 func entityUpdateDataContract() *SchemaObjectContract {
-	return &SchemaObjectContract{Type: "object", Description: "Entity ID change plan or result; failures include the result at error.details.result.", Fields: []SchemaField{
+	return &SchemaObjectContract{Type: "object", Description: "Entity registry update plan or result; failures include the result at error.details.result.", Fields: []SchemaField{
 		{Name: "mode", Type: "string", Required: true, Enum: []string{"plan", "apply"}},
 		{Name: "old_entity_id", Type: "string", Required: true},
 		{Name: "new_entity_id", Type: "string", Required: true},
 		{Name: "unique_id", Type: "string", Required: true, Description: "Preserved integration identifier"},
+		{Name: "changes", Type: "object", Required: true, AdditionalProps: true, Description: "Requested registry fields with before/after values; null clears an override"},
 		{Name: "related", Type: "object", Required: true, AdditionalProps: true, Description: "search/related results; not an exhaustive reference scan"},
 		{Name: "warnings", Type: "array", ItemType: "string", Required: true},
 		{Name: "saved", Type: "boolean|null", Required: true, Description: "true: write acknowledged; false: not attempted; null: acknowledgement uncertain"},
-		{Name: "verified", Type: "boolean", Required: true, Description: "Read-back confirmed new entity_id and unchanged unique_id"},
+		{Name: "verified", Type: "boolean", Required: true, Description: "Read-back confirmed requested fields and unchanged unique_id"},
 	}}
 }
 

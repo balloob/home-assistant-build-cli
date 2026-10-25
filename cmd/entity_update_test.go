@@ -14,30 +14,39 @@ func TestEntityUpdateSchema(t *testing.T) {
 		t.Fatalf("incorrect positional arguments: %+v", schema.Args)
 	}
 	for _, flag := range schema.Flags {
-		if flag.Name == "entity-id" && !flag.Required {
-			t.Fatal("new entity ID flag must be required")
+		if flag.Required {
+			t.Fatal("individual update flags must be optional")
 		}
+	}
+	foundConstraint := false
+	for _, constraint := range schema.FlagConstraints {
+		if constraint.Type == "at_least_one" && len(constraint.Flags) == 3 {
+			foundConstraint = true
+		}
+	}
+	if !foundConstraint {
+		t.Fatal("missing update field requirement")
 	}
 	for _, variant := range schema.OutputContract.Variants {
 		fields := map[string]bool{}
 		for _, field := range variant.Data.Fields {
 			fields[field.Name] = true
 		}
-		if !fields["old_entity_id"] || !fields["new_entity_id"] || !fields["saved"] || !fields["verified"] || fields["would_change"] {
+		if !fields["old_entity_id"] || !fields["new_entity_id"] || !fields["saved"] || !fields["verified"] || !fields["changes"] || fields["would_change"] {
 			t.Fatalf("incorrect %s result contract: %+v", variant.Name, variant.Data.Fields)
 		}
 	}
 }
 
-func TestEntityUpdateRequiresNewID(t *testing.T) {
-	cmd := newEntityUpdateCommand()
-	if err := cmd.ValidateRequiredFlags(); err == nil {
-		t.Fatal("missing new entity ID accepted")
-	}
-	if err := cmd.ParseFlags([]string{"--entity-id", "switch.new", "--dry-run"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := cmd.ValidateRequiredFlags(); err != nil {
-		t.Fatal(err)
+func TestEntityUpdateRequiresAField(t *testing.T) {
+	for _, flags := range [][]string{nil, {"--name", "Kitchen"}, {"--icon", ""}, {"--entity-id", "switch.new", "--dry-run"}, {"--name", "", "--icon", "mdi:power"}} {
+		cmd := newEntityUpdateCommand()
+		if err := cmd.ParseFlags(flags); err != nil {
+			t.Fatal(err)
+		}
+		err := cmd.ValidateFlagGroups()
+		if (err != nil) != (flags == nil) {
+			t.Fatalf("flags=%v error=%v", flags, err)
+		}
 	}
 }

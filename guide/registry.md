@@ -53,18 +53,29 @@ hab person get <person_id> --json
 hab zone list --json
 ```
 
-## Changing an Entity ID
+## Updating Entities
 
-`entity rename` changes the friendly name. To change the registry ID instead:
+`entity update` changes the registry ID, friendly name, or icon. Provide at least
+one of `--entity-id`, `--name`, or `--icon`; they can be used independently or
+combined in a single verified update. `entity rename` remains available for
+friendly-name changes.
 
 ```bash
 hab entity update switch.plug_2 --entity-id switch.kitchen_plug --plan --json
 hab entity update switch.plug_2 --entity-id switch.kitchen_plug --json
 hab entity get switch.kitchen_plug --json
+hab entity update switch.kitchen_plug --name "Kitchen plug" --icon mdi:power-socket-eu --plan --json
+hab entity update switch.kitchen_plug --name "Kitchen plug" --icon mdi:power-socket-eu --json
+hab entity update switch.kitchen_plug --name "" --icon "" --json
 ```
 
-The new ID must keep the same domain. Both preview (`--plan`, also `--dry-run`)
-and apply check the registry and live states for collisions before writing.
+Omitted fields are preserved. Empty `--name ""` and `--icon ""` values clear the
+registry overrides, restoring the default name or icon. The preview's `changes`
+object shows before/after values for each requested field; `null` clears an
+override. Name/icon-only changes do not need collision or relationship searches.
+
+For ID changes, the new ID must keep the same domain. Both preview (`--plan`, also
+`--dry-run`) and apply check the registry and live states for collisions before writing.
 `unique_id` stays untouched, preserving the integration link.
 
 The preview includes old/new IDs, related items from `hab search related`, and
@@ -79,9 +90,10 @@ or repair this migration. Check power/energy history after renaming.
 
 The result reports `saved` and `verified` separately. `saved: true` means Home
 Assistant acknowledged the registry write; `verified: true` means a separate
-read-back confirmed the new ID and unchanged `unique_id`. Errors include the
-result under `error.details.result`; `saved: null` means acknowledgement was
-uncertain. Inspect both IDs before retrying an uncertain or unverified write.
+read-back confirmed every requested field and unchanged `unique_id`. Errors
+include the result under `error.details.result`; `saved: null` means
+acknowledgement was uncertain. Inspect the registry (both IDs for an ID change)
+before retrying an uncertain or unverified write.
 
 ## Pitfalls
 

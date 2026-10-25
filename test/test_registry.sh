@@ -86,9 +86,39 @@ run_registry_tests() {
             fail "entity update --plan changed source: $OUTPUT"
         fi
 
-        log_test "entity update apply and verify unique_id"
-        OUTPUT=$(run_hab entity update "$RENAME_OLD_ID" --entity-id "$RENAME_NEW_ID")
-        if echo "$OUTPUT" | jq -e --arg unique "$RENAME_UNIQUE_ID" '.success == true and .data.saved == true and .data.verified == true and .data.unique_id == $unique' > /dev/null; then
+        log_test "entity update name/icon preview"
+        OUTPUT=$(run_hab entity update "$RENAME_OLD_ID" --name "Kitchen plug" --icon mdi:power-socket-eu --dry-run)
+        if echo "$OUTPUT" | jq -e '.success == true and .data.saved == false and .data.changes.name.after == "Kitchen plug" and .data.changes.icon.after == "mdi:power-socket-eu" and .data.old_entity_id == .data.new_entity_id' > /dev/null; then
+            pass "entity update previews name/icon without ID change"
+        else
+            fail "entity update name/icon preview: $OUTPUT"
+        fi
+        OUTPUT=$(run_hab entity get "$RENAME_OLD_ID")
+        if echo "$OUTPUT" | jq -e '.data.registry.name == null and .data.registry.icon == null' > /dev/null; then
+            pass "entity update name/icon preview leaves overrides unchanged"
+        else
+            fail "entity update name/icon preview changed overrides: $OUTPUT"
+        fi
+
+        log_test "entity update name/icon only"
+        OUTPUT=$(run_hab entity update "$RENAME_OLD_ID" --name "Kitchen plug" --icon mdi:power-socket-eu)
+        if echo "$OUTPUT" | jq -e '.success == true and .data.saved == true and .data.verified == true and .data.old_entity_id == .data.new_entity_id' > /dev/null; then
+            pass "entity update name/icon only saved and verified"
+        else
+            fail "entity update name/icon only: $OUTPUT"
+        fi
+
+        log_test "entity update clear name/icon overrides"
+        OUTPUT=$(run_hab entity update "$RENAME_OLD_ID" --name "" --icon "")
+        if echo "$OUTPUT" | jq -e '.success == true and .data.saved == true and .data.verified == true and .data.changes.name.before == "Kitchen plug" and .data.changes.icon.before == "mdi:power-socket-eu" and .data.changes.name.after == null and .data.changes.icon.after == null' > /dev/null; then
+            pass "entity update clears name/icon overrides"
+        else
+            fail "entity update clear name/icon: $OUTPUT"
+        fi
+
+        log_test "entity update apply all fields and verify unique_id"
+        OUTPUT=$(run_hab entity update "$RENAME_OLD_ID" --entity-id "$RENAME_NEW_ID" --name "Renamed plug" --icon mdi:power)
+        if echo "$OUTPUT" | jq -e --arg unique "$RENAME_UNIQUE_ID" '.success == true and .data.saved == true and .data.verified == true and .data.unique_id == $unique and .data.changes.name.after == "Renamed plug" and .data.changes.icon.after == "mdi:power"' > /dev/null; then
             pass "entity update saved and verified"
         else
             fail "entity update: $OUTPUT"
