@@ -65,6 +65,61 @@ run_registry_tests() {
 		pass "entity get (text mode) (skipped - no entities)"
 	fi
 
+    log_test "entity update setup"
+    RENAME_HELPER_ID=$(run_hab helper input-boolean create "Rename Test $(date +%s)" | jq -r '.data.id // empty')
+    if [ -n "$RENAME_HELPER_ID" ]; then
+        RENAME_OLD_ID="input_boolean.$RENAME_HELPER_ID"
+        RENAME_NEW_ID="${RENAME_OLD_ID}_renamed"
+        RENAME_UNIQUE_ID=$(run_hab entity get "$RENAME_OLD_ID" | jq -r '.data.registry.unique_id')
+
+        log_test "entity update --plan"
+        OUTPUT=$(run_hab entity update "$RENAME_OLD_ID" --entity-id "$RENAME_NEW_ID" --plan)
+        if echo "$OUTPUT" | jq -e --arg old "$RENAME_OLD_ID" --arg new "$RENAME_NEW_ID" '.success == true and .data.mode == "plan" and .data.old_entity_id == $old and .data.new_entity_id == $new and .data.saved == false and .data.verified == false and (.data.warnings | length) > 0' > /dev/null; then
+            pass "entity update --plan"
+        else
+            fail "entity update --plan: $OUTPUT"
+        fi
+        OUTPUT=$(run_hab entity get "$RENAME_OLD_ID")
+        if echo "$OUTPUT" | jq -e --arg id "$RENAME_OLD_ID" '.data.registry.entity_id == $id' > /dev/null; then
+            pass "entity update --plan leaves source unchanged"
+        else
+            fail "entity update --plan changed source: $OUTPUT"
+        fi
+
+        log_test "entity update apply and verify unique_id"
+        OUTPUT=$(run_hab entity update "$RENAME_OLD_ID" --entity-id "$RENAME_NEW_ID")
+        if echo "$OUTPUT" | jq -e --arg unique "$RENAME_UNIQUE_ID" '.success == true and .data.saved == true and .data.verified == true and .data.unique_id == $unique' > /dev/null; then
+            pass "entity update saved and verified"
+        else
+            fail "entity update: $OUTPUT"
+        fi
+
+        log_test "entity update collision"
+        COLLISION_HELPER_ID=$(run_hab helper input-boolean create "Rename Collision $(date +%s)" | jq -r '.data.id // empty')
+        if [ -n "$COLLISION_HELPER_ID" ]; then
+            OUTPUT=$(run_hab entity update "$RENAME_NEW_ID" --entity-id "input_boolean.$COLLISION_HELPER_ID")
+            if echo "$OUTPUT" | jq -e '.success == false and .error.details.result.saved == false' > /dev/null; then
+                pass "entity update rejects collision before writing"
+            else
+                fail "entity update collision: $OUTPUT"
+            fi
+            run_hab helper input-boolean delete "$COLLISION_HELPER_ID" > /dev/null
+        else
+            fail "entity update collision setup"
+        fi
+
+        log_test "entity update rename back"
+        OUTPUT=$(run_hab entity update "$RENAME_NEW_ID" --entity-id "$RENAME_OLD_ID")
+        if echo "$OUTPUT" | jq -e '.success == true and .data.saved == true and .data.verified == true' > /dev/null; then
+            pass "entity update rename back"
+        else
+            fail "entity update rename back: $OUTPUT"
+        fi
+        run_hab helper input-boolean delete "$RENAME_HELPER_ID" > /dev/null
+    else
+        fail "entity update setup"
+    fi
+
     # Test: entity search (search for any entity)
     log_test "entity search"
     OUTPUT=$(run_hab entity search ".")

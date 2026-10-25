@@ -98,6 +98,7 @@ entity disable
 entity enable
 entity get
 entity rename
+entity update
 esphome catalog show
 esphome config-patch
 esphome config-read
