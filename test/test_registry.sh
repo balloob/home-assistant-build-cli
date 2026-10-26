@@ -271,6 +271,19 @@ run_registry_tests() {
             fail "area update: $OUTPUT"
         fi
 
+        log_test "area live preview and clear"
+        OUTPUT=$(run_hab area update "$AREA_ID" --icon mdi:home)
+        PLAN=$(run_hab area update "$AREA_ID" --icon "" --plan)
+        CURRENT=$(run_hab area get "$AREA_ID")
+        OUTPUT=$(run_hab area update "$AREA_ID" --icon "" --floor "")
+        if echo "$PLAN" | jq -e '.data.mode == "plan" and .data.changes.icon.before == "mdi:home" and .data.changes.icon.after == null and .data.would_change and (.data.saved | not)' >/dev/null &&
+            echo "$CURRENT" | jq -e '.data.icon == "mdi:home"' >/dev/null &&
+            echo "$OUTPUT" | jq -e '.data.saved and .data.verified and .data.icon == null and .data.floor_id == null' >/dev/null; then
+            pass "area live preview and clear"
+        else
+            fail "area live preview and clear: $OUTPUT $PLAN $CURRENT"
+        fi
+
         log_test "area delete"
         OUTPUT=$(run_hab area delete "$AREA_ID" --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
@@ -388,6 +401,16 @@ run_registry_tests() {
         else
             fail "floor update: $OUTPUT"
         fi
+        OUTPUT=$(run_hab floor update "$UPDATE_FLOOR_ID" --level 0)
+        CLEARED=$(run_hab floor update "$UPDATE_FLOOR_ID" --level "")
+        NOOP=$(run_hab floor update "$UPDATE_FLOOR_ID" --level "")
+        if echo "$OUTPUT" | jq -e '.data.level == 0 and .data.verified' >/dev/null &&
+            echo "$CLEARED" | jq -e '.data.level == null and .data.saved and .data.verified' >/dev/null &&
+            echo "$NOOP" | jq -e '(.data.saved | not) and (.data.would_change | not) and .data.verified' >/dev/null; then
+            pass "floor zero, clear, and no-op"
+        else
+            fail "floor zero, clear, and no-op: $OUTPUT $CLEARED $NOOP"
+        fi
         # Cleanup
         run_hab floor delete "$UPDATE_FLOOR_ID" --force > /dev/null 2>&1
     else
@@ -433,6 +456,13 @@ run_registry_tests() {
             pass "label update"
         else
             fail "label update: $OUTPUT"
+        fi
+        OUTPUT=$(run_hab label update "$UPDATE_LABEL_ID" --icon mdi:tag --description "Description")
+        OUTPUT=$(run_hab label update "$UPDATE_LABEL_ID" --color "" --icon "" --description "")
+        if echo "$OUTPUT" | jq -e '.data.color == null and .data.icon == null and .data.description == null and .data.saved and .data.verified' >/dev/null; then
+            pass "label clear metadata"
+        else
+            fail "label clear metadata: $OUTPUT"
         fi
         # Cleanup
         run_hab label delete "$UPDATE_LABEL_ID" --force > /dev/null 2>&1

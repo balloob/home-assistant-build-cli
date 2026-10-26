@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/home-assistant/hab/client"
+	"github.com/home-assistant/hab/internal/registryupdate"
 	"github.com/spf13/cobra"
 )
 
@@ -33,6 +34,12 @@ func init() {
 		UpdateFlags: []RegistryFlagDef{
 			{Name: "floor", ParamKey: "floor_id", Usage: "Floor ID to assign", Type: FlagString},
 			{Name: "icon", ParamKey: "icon", Usage: "Icon for the area", Type: FlagString},
+		},
+		ValidateUpdate: func(ws client.WebSocketAPI, params map[string]any) error {
+			if id, ok := params["floor_id"].(string); ok {
+				return registryupdate.RequireIDs(ws.FloorRegistryList, "floor_id", []string{id})
+			}
+			return nil
 		},
 		ListFunc: func(ws client.WebSocketAPI) ([]interface{}, error) {
 			return ws.AreaRegistryList()

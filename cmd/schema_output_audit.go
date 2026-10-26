@@ -59,6 +59,11 @@ func auditedOutputContract(cmd *cobra.Command, original *SchemaOutputContract) *
 			contract.Variants[i].Data = entityUpdateDataContract()
 		}
 	}
+	if cmd.Name() == "update" && cmd.Parent() != nil && slices.Contains([]string{"area", "floor", "label", "device"}, cmd.Parent().Name()) {
+		for i := range contract.Variants {
+			contract.Variants[i].Data = registryUpdateDataContract()
+		}
+	}
 	return &contract
 }
 
@@ -99,5 +104,15 @@ func dashboardPatchDataContract() *SchemaObjectContract {
 		{Name: "requests", Type: "number", Required: true},
 		{Name: "validation", Type: "string", Required: true},
 		{Name: "limits", Type: "array", ItemType: "string", Required: true},
+	}}
+}
+
+func registryUpdateDataContract() *SchemaObjectContract {
+	return &SchemaObjectContract{Type: "object", Open: true, Description: "Registry fields plus update status. Plans contain current fields; apply contains read-back fields. Errors include this result at error.details.result.", Fields: []SchemaField{
+		{Name: "mode", Type: "string", Required: true, Enum: []string{"plan", "apply"}},
+		{Name: "changes", Type: "object", Required: true, AdditionalProps: true, Description: "Requested fields with before/after values"},
+		{Name: "would_change", Type: "boolean", Required: true, Description: "Requested fields differ from the initial registry read"},
+		{Name: "saved", Type: "boolean|null", Required: true, Description: "true: write acknowledged; false: no write; null: acknowledgement uncertain"},
+		{Name: "verified", Type: "boolean", Required: true, Description: "Requested registry values confirmed; runtime availability is not checked"},
 	}}
 }
