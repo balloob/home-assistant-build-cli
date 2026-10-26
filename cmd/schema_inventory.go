@@ -94,6 +94,7 @@ dashboard guide
 dashboard patch
 dashboard update
 device get
+device update
 entity disable
 entity enable
 entity get

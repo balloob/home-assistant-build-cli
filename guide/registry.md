@@ -157,3 +157,22 @@ A no-op returns `saved: false, verified: true` without writing. A preview return
 Errors include these fields under `error.details.result`. `saved: null` means
 the write acknowledgement is uncertain; inspect the registry before retrying.
 Verification confirms registry metadata, not runtime entity availability.
+
+## Updating Devices
+
+`device update` supports `--name` (the user name override), `--area`, `--labels`,
+and `--disabled`. Empty name/area values clear the override or assignment.
+Labels accept comma-separated or repeated values and replace the entire set;
+`--labels ""` removes all labels. Area and label IDs are checked before writing.
+
+```bash
+hab device update <device_id> --name "Kitchen plug" --area kitchen --plan --json
+hab device update <device_id> --labels lighting,downstairs --json
+hab device update <device_id> --name "" --area "" --labels "" --disabled=false --json
+```
+
+`--disabled` sets the user disable reason; `--disabled=false` clears it. Disabling
+a device affects its entities. Read-back verifies registry metadata, not whether
+those entities have finished unloading or reloading. Preview, no-op, `saved`,
+and `verified` behavior matches area/floor/label updates. Integration-specific
+options are not supported.
