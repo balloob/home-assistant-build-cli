@@ -251,6 +251,7 @@ run_registry_tests() {
     UPDATE_DEVICE_ID=$(run_hab device list | jq -r '[.data[] | select(.disabled_by == null)][0].id // empty')
     if [ -n "$UPDATE_DEVICE_ID" ]; then
         ORIGINAL_DEVICE=$(run_hab device get "$UPDATE_DEVICE_ID" | jq '.data')
+        ORIGINAL_DEVICE_ENTITIES=$(run_hab entity list --device "$UPDATE_DEVICE_ID" | jq '[.data[].entity_id]')
         DEVICE_AREA=$(run_hab area create "Device update test area" | jq -r '.data.area_id')
         DEVICE_LABEL=$(run_hab label create "Device update test label" | jq -r '.data.label_id')
         DEVICE_PLAN=$(run_hab device update "$UPDATE_DEVICE_ID" --name "Device update test" --area "$DEVICE_AREA" --labels "$DEVICE_LABEL" --disabled --plan)
@@ -279,6 +280,22 @@ run_registry_tests() {
         run_hab device update "$UPDATE_DEVICE_ID" --name "$(echo "$ORIGINAL_DEVICE" | jq -r '.name_by_user // ""')" --area "$(echo "$ORIGINAL_DEVICE" | jq -r '.area_id // ""')" --labels "$(echo "$ORIGINAL_DEVICE" | jq -r '.labels | join(",")')" >/dev/null
         run_hab area delete "$DEVICE_AREA" --force >/dev/null
         run_hab label delete "$DEVICE_LABEL" --force >/dev/null
+        # Registry verification does not wait for runtime entities. HA delays
+        # reloading a re-enabled device; restore the fixture before later tests.
+        DEVICE_ENTITIES_RESTORED=0
+        for ((attempt = 0; attempt < 60; attempt++)); do
+            CURRENT=$(run_hab entity list --device "$UPDATE_DEVICE_ID")
+            if echo "$CURRENT" | jq -e --argjson expected "$ORIGINAL_DEVICE_ENTITIES" '.success == true and (($expected - [.data[].entity_id]) | length == 0)' >/dev/null; then
+                DEVICE_ENTITIES_RESTORED=1
+                break
+            fi
+            sleep 1
+        done
+        if [ "$DEVICE_ENTITIES_RESTORED" = 1 ]; then
+            pass "device update restores live entity fixtures"
+        else
+            fail "device entities did not return after re-enabling: $CURRENT"
+        fi
     else
         fail "device update requires a device fixture"
     fi
