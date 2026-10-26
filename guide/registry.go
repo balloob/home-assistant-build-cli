@@ -230,6 +230,7 @@ var topicRegistry = []topicDef{
 				"hab entity list --domain light --json",
 				"hab entity update switch.plug_2 --entity-id switch.kitchen_plug --plan --json",
 				"hab entity update switch.kitchen_plug --name 'Kitchen plug' --icon mdi:power-socket-eu --plan --json",
+				"hab entity update switch.kitchen_plug --area kitchen --labels lighting --hidden=false --plan --json",
 			},
 			Prerequisites: []string{
 				"Use discovery commands to collect valid IDs first.",
@@ -245,7 +246,8 @@ var topicRegistry = []topicDef{
 				"Use device update for name overrides, area, labels, and disabled status; empty overrides clear and labels replace the set.",
 				"Area, floor, and label updates support live --plan previews, empty optional values to clear, and saved/verified read-back status.",
 				"Preview entity ID changes with entity update --plan; unique_id is preserved and references are not rewritten.",
-				"Use entity update --name and --icon independently or with --entity-id; empty name/icon values clear overrides. Inspect saved and verified in the result.",
+				"Use entity update for name, icon, area, labels, aliases, scoped categories, device class, and hidden/disabled status. Omitted fields are preserved; inspect saved and verified in the result.",
+				"Labels and aliases replace their full lists; categories only change specified scopes. Empty scalar overrides and lists clear them; --hidden=false and --disabled=false reverse status overrides.",
 			},
 			VerificationCommands: []string{
 				"hab area get <area_id> --json",
@@ -255,6 +257,7 @@ var topicRegistry = []topicDef{
 			Pitfalls: []string{
 				"Passing an entity ID where a registry device ID is required.",
 				"Deleting by name without confirming unique IDs.",
+				"Enabling an entity may require a reload or restart; registry verification does not prove runtime availability. Integration-specific entity options are not supported.",
 				"Entity ID relationship previews omit dashboards, templates, and dynamic references; inspect them manually and check recorder history/statistics after renaming.",
 			},
 		},

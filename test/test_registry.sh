@@ -5,6 +5,89 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
+test_entity_registry_fields() {
+    local entity_id="$1" stamp area_id label_id category_id other_category_id output
+    stamp=$(date +%s)
+    area_id=$(run_hab area create "Entity Update Area $stamp" | jq -r '.data.area_id // empty')
+    label_id=$(run_hab label create "Entity Update Label $stamp" | jq -r '.data.label_id // empty')
+    category_id=$(run_hab category create "Entity Update Category $stamp" --scope helpers | jq -r '.data.category_id // empty')
+    other_category_id=$(run_hab category create "Entity Update Other $stamp" --scope script | jq -r '.data.category_id // empty')
+    if [ -n "$area_id" ] && [ -n "$label_id" ] && [ -n "$category_id" ] && [ -n "$other_category_id" ]; then
+        log_test "entity update registry fields preview"
+        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_id" --hidden --disabled --plan)
+        if echo "$output" | jq -e --arg area "$area_id" --arg label "$label_id" --arg category "$category_id" '.success == true and .data.saved == false and .data.changes.area_id.after == $area and .data.changes.labels.after == [$label] and .data.changes.aliases.after == ["Primary alias", "Secondary alias"] and .data.changes.categories.after.helpers == $category and .data.changes.hidden_by.after == "user" and .data.changes.disabled_by.after == "user"' > /dev/null; then
+            pass "entity update previews registry fields"
+        else
+            fail "entity update registry fields preview: $output"
+        fi
+
+        log_test "entity update registry fields apply"
+        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_id" --category "script=$other_category_id" --hidden --disabled)
+        if echo "$output" | jq -e '.success == true and .data.saved == true and .data.verified == true and .data.changes.area_id.before == null and .data.changes.labels.before == [] and .data.changes.hidden_by.before == null and .data.changes.disabled_by.before == null' > /dev/null; then
+            pass "entity update saves all registry fields; preview made no changes"
+        else
+            fail "entity update registry fields apply: $output"
+        fi
+
+        log_test "entity update clears fields and preserves unrelated category scopes"
+        output=$(run_hab entity update "$entity_id" --area "" --labels "" --aliases "" --category helpers= --hidden=false --disabled=false)
+        if echo "$output" | jq -e --arg category "$other_category_id" '.success == true and .data.verified == true and .data.changes.area_id.after == null and .data.changes.labels.after == [] and .data.changes.aliases.after == [] and .data.changes.hidden_by.after == null and .data.changes.disabled_by.after == null and .data.changes.categories.after == {script: $category}' > /dev/null; then
+            pass "entity update clears fields and preserves other scopes"
+        else
+            fail "entity update clearing registry fields: $output"
+        fi
+
+        log_test "entity update rejects unknown labels before writing"
+        output=$(run_hab entity update "$entity_id" --name "Must not be saved" --labels "missing_label_$stamp")
+        if echo "$output" | jq -e '.success == false and .error.details.result.saved == false' > /dev/null; then
+            pass "entity update rejects unknown label before writing"
+        else
+            fail "entity update unknown label: $output"
+        fi
+    else
+        fail "entity update registry fields setup"
+    fi
+    [ -z "$category_id" ] || run_hab category delete "$category_id" --scope helpers --force > /dev/null
+    [ -z "$other_category_id" ] || run_hab category delete "$other_category_id" --scope script --force > /dev/null
+    [ -z "$label_id" ] || run_hab label delete "$label_id" --force > /dev/null
+    [ -z "$area_id" ] || run_hab area delete "$area_id" --force > /dev/null
+}
+
+test_entity_device_class() {
+    local name entry_id entity_id output attempt
+    name="Registry Device Class $(date +%s)"
+    entry_id=$(run_hab helper template create "$name" --type binary_sensor --state "{{ true }}" | jq -r '.data.entry_id // empty')
+    if [ -z "$entry_id" ]; then
+        fail "entity update device class setup"
+        return
+    fi
+    # Config-entry setup is asynchronous; resolve the newly registered entity
+    # through its config entry instead of fields omitted by entity list.
+    for attempt in {1..20}; do
+        entity_id=$(run_hab search related config_entry "$entry_id" | jq -r '.data.related.entity[]? | select(startswith("binary_sensor."))' | head -1)
+        [ -z "$entity_id" ] || break
+        sleep 0.25
+    done
+    if [ -n "$entity_id" ]; then
+        log_test "entity update device class"
+        output=$(run_hab entity update "$entity_id" --device-class door)
+        if echo "$output" | jq -e '.success == true and .data.verified == true and .data.changes.device_class.after == "door"' > /dev/null; then
+            pass "entity update device class"
+        else
+            fail "entity update device class: $output"
+        fi
+        output=$(run_hab entity update "$entity_id" --device-class "")
+        if echo "$output" | jq -e '.success == true and .data.verified == true and .data.changes.device_class.before == "door" and .data.changes.device_class.after == null' > /dev/null; then
+            pass "entity update clears device class"
+        else
+            fail "entity update clears device class: $output"
+        fi
+    else
+        fail "entity update device class entity discovery"
+    fi
+    run_hab helper template delete "$entry_id" > /dev/null
+}
+
 run_registry_tests() {
     log_section "Registry Tests (Entity/Device/Area/Floor/Label)"
 
@@ -145,10 +228,12 @@ run_registry_tests() {
         else
             fail "entity update rename back: $OUTPUT"
         fi
+        test_entity_registry_fields "$RENAME_OLD_ID"
         run_hab helper input-boolean delete "$RENAME_HELPER_ID" > /dev/null
     else
         fail "entity update setup"
     fi
+    test_entity_device_class
 
     # Test: entity search (search for any entity)
     log_test "entity search"
