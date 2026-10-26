@@ -223,6 +223,8 @@ var topicRegistry = []topicDef{
 				"hab area list --json",
 				"hab device list --json",
 				"hab entity list --domain light --json",
+				"hab entity update switch.plug_2 --entity-id switch.kitchen_plug --plan --json",
+				"hab entity update switch.kitchen_plug --name 'Kitchen plug' --icon mdi:power-socket-eu --plan --json",
 			},
 			Prerequisites: []string{
 				"Use discovery commands to collect valid IDs first.",
@@ -235,6 +237,8 @@ var topicRegistry = []topicDef{
 			MutationPatterns: []string{
 				"Create resources with explicit names and verify generated IDs.",
 				"Use update/delete only after a get/list confirmation step.",
+				"Preview entity ID changes with entity update --plan; unique_id is preserved and references are not rewritten.",
+				"Use entity update --name and --icon independently or with --entity-id; empty name/icon values clear overrides. Inspect saved and verified in the result.",
 			},
 			VerificationCommands: []string{
 				"hab area get <area_id> --json",
@@ -243,6 +247,7 @@ var topicRegistry = []topicDef{
 			Pitfalls: []string{
 				"Passing an entity ID where a registry device ID is required.",
 				"Deleting by name without confirming unique IDs.",
+				"Entity ID relationship previews omit dashboards, templates, and dynamic references; inspect them manually and check recorder history/statistics after renaming.",
 			},
 		},
 		Filename: "registry",
