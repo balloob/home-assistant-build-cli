@@ -39,6 +39,7 @@ func runRepairsList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	issues = annotateIDs(issues, "issue_id")
 	// Filter by severity if requested
 	if repairsListSeverity != "" {
 		sev := strings.ToLower(repairsListSeverity)

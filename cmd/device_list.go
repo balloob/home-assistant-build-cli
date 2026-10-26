@@ -53,6 +53,7 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	devices = annotateIDs(devices, "id")
 	result := make([]map[string]interface{}, 0, len(devices))
 	for _, d := range devices {
 		device, ok := d.(map[string]interface{})
@@ -88,6 +89,7 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 
 		result = append(result, map[string]interface{}{
 			"id":           device["id"],
+			"short_id":     device["short_id"],
 			"name":         device["name"],
 			"manufacturer": device["manufacturer"],
 			"model":        device["model"],
@@ -111,7 +113,7 @@ func runDeviceList(cmd *cobra.Command, args []string) error {
 		}
 		for _, item := range result {
 			name, _ := item["name"].(string)
-			id, _ := item["id"].(string)
+			id := displayID(item, "id")
 			manufacturer, _ := item["manufacturer"].(string)
 			model, _ := item["model"].(string)
 			areaID, _ := item["area_id"].(string)

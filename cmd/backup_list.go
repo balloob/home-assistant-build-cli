@@ -43,6 +43,7 @@ func runBackupList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	backups = annotateIDs(backups, "backup_id")
 	if backupListFlags.RenderCount(len(backups), textMode) {
 		return nil
 	}

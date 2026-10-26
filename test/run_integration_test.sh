@@ -25,8 +25,8 @@ get_test_function() {
     local group="$1"
     case "$group" in
         core)         echo "run_core_tests" ;;
-        registry)     echo "run_registry_tests run_person_tests run_entity_logbook_tests" ;;
-        automation)   echo "run_automation_tests run_scene_tests" ;;
+        registry)     echo "run_registry_tests run_person_tests run_entity_logbook_tests run_short_id_tests" ;;
+        automation)   echo "run_automation_tests run_scene_tests run_short_config_id_tests" ;;
         script)       echo "run_script_tests" ;;
         dashboard)    echo "run_dashboard_tests" ;;
         helpers)      echo "run_helpers_tests" ;;

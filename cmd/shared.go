@@ -524,17 +524,16 @@ func (f *ListFlags) RenderBrief(items []interface{}, textMode bool, idField, nam
 		func(item interface{}) (string, string) {
 			if m, ok := item.(map[string]interface{}); ok {
 				name, _ := m[nameField].(string)
-				id, _ := m[idField].(string)
+				id := displayID(m, idField)
 				return name, id
 			}
 			return "", ""
 		},
 		func(item interface{}) map[string]interface{} {
 			if m, ok := item.(map[string]interface{}); ok {
-				return map[string]interface{}{
-					idField:   m[idField],
-					nameField: m[nameField],
-				}
+				return copyShortID(map[string]interface{}{
+					idField: m[idField], nameField: m[nameField],
+				}, m)
 			}
 			return nil
 		},
@@ -550,14 +549,11 @@ func (f *ListFlags) RenderBriefMap(items []map[string]interface{}, textMode bool
 	renderBriefCore(items, textMode, idField, nameField,
 		func(item map[string]interface{}) (string, string) {
 			name, _ := item[nameField].(string)
-			id, _ := item[idField].(string)
+			id := displayID(item, idField)
 			return name, id
 		},
 		func(item map[string]interface{}) map[string]interface{} {
-			return map[string]interface{}{
-				idField:   item[idField],
-				nameField: item[nameField],
-			}
+			return copyShortID(map[string]interface{}{idField: item[idField], nameField: item[nameField]}, item)
 		},
 	)
 	return true
@@ -575,7 +571,7 @@ func (f *ListFlags) RenderBriefFields(items []interface{}, textMode bool, idFiel
 		func(item interface{}) (string, string) {
 			if m, ok := item.(map[string]interface{}); ok {
 				name, _ := m[nameField].(string)
-				id, _ := m[idField].(string)
+				id := displayID(m, idField)
 				return name, id
 			}
 			return "", ""
@@ -586,7 +582,7 @@ func (f *ListFlags) RenderBriefFields(items []interface{}, textMode bool, idFiel
 				for _, field := range jsonFields {
 					b[field] = m[field]
 				}
-				return b
+				return copyShortID(b, m)
 			}
 			return nil
 		},
@@ -656,5 +652,12 @@ func (f *InputFlags) Register(cmd *cobra.Command) {
 
 // Parse parses the input data from the flag values, returning a map.
 func (f *InputFlags) Parse() (map[string]interface{}, error) {
-	return input.ParseInput(f.Data, f.File, f.Format)
+	data, err := input.ParseInput(f.Data, f.File, f.Format)
+	if err != nil {
+		return nil, err
+	}
+	if err := resolveIDReferences(data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }

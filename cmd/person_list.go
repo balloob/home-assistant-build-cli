@@ -35,6 +35,7 @@ func runPersonList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	persons = annotateIDs(persons, "id")
 	if personListFlags.RenderCount(len(persons), textMode) {
 		return nil
 	}
@@ -51,7 +52,7 @@ func runPersonList(cmd *cobra.Command, args []string) error {
 		for _, p := range persons {
 			if m, ok := p.(map[string]interface{}); ok {
 				name, _ := m["name"].(string)
-				id, _ := m["id"].(string)
+				id := displayID(m, "id")
 				fmt.Printf("%s (%s)\n", name, id)
 			}
 		}

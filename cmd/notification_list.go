@@ -32,6 +32,7 @@ func runNotificationList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	notifications = annotateIDs(notifications, "notification_id")
 	if len(notifications) == 0 {
 		output.PrintOutput([]interface{}{}, textMode, "No notifications.")
 		return nil

@@ -101,6 +101,8 @@ var topicRegistry = []topicDef{
 				"hab overview --json",
 				"hab schema --index --search dashboard --json",
 				"hab entity search temperature --json",
+				"hab id list device --json",
+				"hab id list user --json",
 				"hab search related entity light.kitchen --json",
 				"hab action docs light.turn_on --json",
 			},
@@ -115,7 +117,7 @@ var topicRegistry = []topicDef{
 			},
 			MutationPatterns: []string{
 				"Do not mutate during discovery unless explicitly requested.",
-				"Capture IDs from output and reuse them exactly.",
+				"Copy canonical IDs or short_id values from discovery; prefixes are resolved against current scoped data before writes.",
 			},
 			VerificationCommands: []string{
 				"hab entity get <entity_id> --json",
@@ -123,6 +125,7 @@ var topicRegistry = []topicDef{
 			},
 			Pitfalls: []string{
 				"Choosing entities by name similarity without checking relationships.",
+				"Guessing prefixes instead of copying short_id; collisions require a longer prefix or full ID.",
 				"Calling actions without inspecting required data fields.",
 			},
 		},

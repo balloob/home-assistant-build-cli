@@ -183,6 +183,7 @@ func runWSList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf *ListFla
 		return err
 	}
 
+	helpers = annotateIDs(helpers, "id")
 	if lf.RenderCount(len(helpers), textMode) {
 		return nil
 	}
@@ -202,11 +203,12 @@ func runWSList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf *ListFla
 
 // runConfigFlowList handles the list command for config-flow-based helpers.
 func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf *ListFlags) error {
-	entries, err := ws.ConfigEntriesList(def.TypeName)
+	entries, err := ws.ConfigEntriesList("")
 	if err != nil {
 		return err
 	}
 
+	entries = filterConfigEntries(annotateIDs(entries, "entry_id"), def.TypeName)
 	result := make([]map[string]interface{}, 0, len(entries))
 	for _, e := range entries {
 		entry, ok := e.(map[string]interface{})
@@ -215,6 +217,7 @@ func runConfigFlowList(ws client.WebSocketAPI, def HelperDef, textMode bool, lf 
 		}
 		item := map[string]interface{}{
 			"entry_id": entry["entry_id"],
+			"short_id": entry["short_id"],
 			"title":    entry["title"],
 		}
 		if domain, ok := entry["domain"].(string); ok {
@@ -298,6 +301,14 @@ func registerHelperDelete(parentCmd *cobra.Command, def HelperDef) {
 		ResourceType: def.TypeName,
 		InputSources: []string{"args"},
 	})
+	if deleteCmd.Annotations == nil {
+		deleteCmd.Annotations = map[string]string{}
+	}
+	kind := "config_entry"
+	if def.Category == HelperCategoryWS {
+		kind = "helper:" + def.TypeName
+	}
+	deleteCmd.Annotations["hab.short_id_kind"] = kind
 	registerMutationPlanFlags(deleteCmd, &plan, &dryRun)
 	parentCmd.AddCommand(deleteCmd)
 }

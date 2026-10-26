@@ -79,6 +79,9 @@ func runActionCall(cmd *cobra.Command, args []string) error {
 		serviceData["area_id"] = actionCallArea
 	}
 
+	if err := resolveIDReferences(serviceData); err != nil {
+		return err
+	}
 	restClient, err := getRESTClient()
 	if err != nil {
 		return err

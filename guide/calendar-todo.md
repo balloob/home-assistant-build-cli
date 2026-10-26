@@ -44,3 +44,18 @@ hab todo items todo.shopping_list --json
 
 - Using a to-do entity ID for calendar commands.
 - Mixing all-day and timestamp event formats unintentionally.
+
+## Short Item IDs
+
+`todo items` includes `short_id` for opaque UIDs. Use it with complete, uncomplete,
+update, or remove; resolution is limited to the selected to-do list.
+
+Calendar event UIDs can also be shortened. Discover them with an explicit time
+window, then supply the same `--start` and `--end` to `calendar delete`. Matching
+is limited to events returned in that window. Full event UIDs remain usable
+without a window. Integration-specific readable UIDs remain exact.
+
+```bash
+hab calendar list calendar.personal --start "2026-04-01T00:00:00Z" --end "2026-05-01T00:00:00Z" --json
+hab calendar delete calendar.personal <uid> --start "2026-04-01T00:00:00Z" --end "2026-05-01T00:00:00Z" --plan
+```

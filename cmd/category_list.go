@@ -43,6 +43,7 @@ func runCategoryList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	categories = annotateIDs(categories, "category_id")
 	if categoryListFlags.RenderCount(len(categories), textMode) {
 		return nil
 	}
@@ -59,7 +60,7 @@ func runCategoryList(cmd *cobra.Command, args []string) error {
 		for _, c := range categories {
 			if m, ok := c.(map[string]interface{}); ok {
 				name, _ := m["name"].(string)
-				id, _ := m["category_id"].(string)
+				id := displayID(m, "category_id")
 				fmt.Printf("%s (%s)\n", name, id)
 			}
 		}

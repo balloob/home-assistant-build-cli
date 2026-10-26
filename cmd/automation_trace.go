@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +41,14 @@ func runAutomationTrace(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	itemID := strings.TrimPrefix(automationID, "automation.")
+	rest, err := getRESTClient()
+	if err != nil {
+		return err
+	}
+	itemID, err := resolveAutomationConfigID(rest, automationID)
+	if err != nil {
+		return err
+	}
 
 	var result interface{}
 	if automationTraceRunID != "" {
@@ -62,6 +67,9 @@ func runAutomationTrace(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if automationTraceRunID == "" {
+		result = annotateIDResult(result, "", "run_id")
+	}
 	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "trace", ResourceType: "automation"})
 	return nil
 }

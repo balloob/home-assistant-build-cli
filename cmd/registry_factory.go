@@ -110,6 +110,7 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 				return err
 			}
 
+			items = annotateIDs(items, cfg.IDField)
 			// Apply filters
 			for _, f := range cfg.ListFilters {
 				val := *filterValues[f.FlagName]
@@ -149,7 +150,7 @@ func registerRegistryList(cfg RegistryCRUDConfig) {
 				for _, item := range items {
 					if m, ok := item.(map[string]interface{}); ok {
 						name, _ := m["name"].(string)
-						id, _ := m[cfg.IDField].(string)
+						id := displayID(m, cfg.IDField)
 						fmt.Printf("%s (%s)\n", name, id)
 					}
 				}

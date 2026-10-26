@@ -42,6 +42,7 @@ func runTodoItems(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	items = annotateIDs(items, "uid")
 	if len(items) == 0 {
 		output.PrintOutputWithContext([]interface{}{}, textMode, "No items found.", output.EnvelopeContext{
 			Operation:    "items",

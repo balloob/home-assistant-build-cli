@@ -47,6 +47,7 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 	if dashboardListFlags.RenderCount(len(dashboards), textMode) {
 		return nil
 	}
+	dashboards = annotateIDs(dashboards, "id")
 	dashboards = dashboardListFlags.ApplyLimit(dashboards)
 
 	// Handle brief mode — custom text rendering for title=="" fallback
@@ -67,10 +68,11 @@ func runDashboardList(cmd *cobra.Command, args []string) error {
 			brief := make([]map[string]interface{}, 0, len(dashboards))
 			for _, d := range dashboards {
 				if dashboard, ok := d.(map[string]interface{}); ok {
-					brief = append(brief, map[string]interface{}{
+					brief = append(brief, copyShortID(map[string]interface{}{
+						"id":       dashboard["id"],
 						"url_path": dashboard["url_path"],
 						"title":    dashboard["title"],
-					})
+					}, dashboard))
 				}
 			}
 			output.PrintOutput(brief, false, "")
@@ -108,6 +110,9 @@ func printDashboardText(d map[string]interface{}) {
 
 	if urlPath != "" {
 		fmt.Printf("  path: %s\n", urlPath)
+	}
+	if id := displayID(d, "id"); id != "" {
+		fmt.Printf("  id: %s\n", id)
 	}
 	if mode := getStr(d, "mode"); mode != "" {
 		fmt.Printf("  mode: %s\n", mode)

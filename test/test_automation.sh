@@ -371,11 +371,50 @@ run_scene_tests() {
     fi
 }
 
+run_short_config_id_tests() {
+    log_section "Short Automation and Trace ID Tests"
+    local id="fedcba98111111111111111111111111" output short run_id
+    output=$(run_hab automation create "$id" --data '{"alias":"Short Config ID Test","triggers":[],"actions":[]}')
+    short=$(run_hab automation list --brief | jq -r --arg id "$id" '.data[] | select(.config_id == $id) | .short_id')
+    output=$(run_hab automation get "$short")
+    if echo "$output" | jq -e '.success and .data.alias == "Short Config ID Test"' >/dev/null; then
+        pass "automation get accepts config ID prefix"
+    else
+        fail "automation prefix get: $output"
+    fi
+    output=$(run_hab automation run "$short")
+    if echo "$output" | jq -e '.success' >/dev/null; then
+        pass "automation run maps config ID prefix to entity"
+    else
+        fail "automation prefix run: $output"
+    fi
+    # Service completion records a trace asynchronously.
+    for attempt in $(seq 1 10); do
+        output=$(run_hab automation trace "$short")
+        run_id=$(echo "$output" | jq -r '.data[0].short_id // empty')
+        [ -n "$run_id" ] && break
+        sleep 1
+    done
+    output=$(run_hab automation trace "$short" --run-id "$run_id")
+    if echo "$output" | jq -e '.success and (.data | type == "object")' >/dev/null; then
+        pass "trace accepts both config ID and scoped run ID prefixes"
+    else
+        fail "trace prefix lookup: $output"
+    fi
+    output=$(run_hab automation delete "$short" --force)
+    if echo "$output" | jq -e '.success' >/dev/null; then
+        pass "automation delete accepts config ID prefix"
+    else
+        fail "automation prefix delete: $output"
+    fi
+}
+
 # Run standalone if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     init_standalone_test "Automation Tests"
     run_automation_tests
     run_scene_tests
+    run_short_config_id_tests
     print_summary "Automation Tests"
     exit $?
 fi

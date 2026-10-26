@@ -41,6 +41,9 @@ to build and manage Home Assistant configurations.
 
 Interactive sessions default to human-readable text. Non-interactive sessions default to JSON.
 
+Long resource IDs accept unique prefixes from discovery's short_id field.
+Use 'hab id list <resource>' to discover full IDs and abbreviations.
+
 Start with 'hab guide' for workflow-level guidance optimized for LLM and agent usage.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		resetExecutionMetadata()
@@ -70,7 +73,7 @@ Start with 'hab guide' for workflow-level guidance optimized for LLM and agent u
 
 		// Check for updates (skip for update and version commands)
 		checkUpdateOnStartup(cmd)
-		return nil
+		return prepareShortIDs(cmd, args)
 	},
 }
 
