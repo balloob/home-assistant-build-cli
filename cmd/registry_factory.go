@@ -23,6 +23,10 @@ const (
 	FlagString RegistryFlagType = iota
 	// FlagInt is an integer flag (uses cmd.Flags().Changed to detect zero values).
 	FlagInt
+	// FlagStringSet replaces a registry string set on update.
+	FlagStringSet
+	// FlagUserBool maps a user-controlled status to "user" or null.
+	FlagUserBool
 )
 
 // RegistryFlagDef defines a flag for create or update subcommands.
@@ -57,6 +61,10 @@ type RegistryCRUDConfig struct {
 	// Create/Update flags
 	CreateFlags []RegistryFlagDef
 	UpdateFlags []RegistryFlagDef // --name is always added automatically
+
+	NameField      string // defaults to name; devices use name_by_user
+	NullableName   bool
+	ValidateUpdate func(client.WebSocketAPI, map[string]any) error
 
 	// WS API functions
 	ListFunc   func(ws client.WebSocketAPI) ([]interface{}, error)
@@ -342,91 +350,6 @@ func registerRegistryCreate(cfg RegistryCRUDConfig) {
 // ---------------------------------------------------------------------------
 // update
 // ---------------------------------------------------------------------------
-
-func registerRegistryUpdate(cfg RegistryCRUDConfig) {
-	// Allocate flag storage — includes --name plus custom flags
-	stringFlags := make(map[string]*string)
-	intFlags := make(map[string]*int)
-	var plan bool
-	var dryRun bool
-
-	updateCmd := &cobra.Command{
-		Use:   fmt.Sprintf("update <%s>", cfg.IDField),
-		Short: fmt.Sprintf("Update a %s", cfg.ResourceName),
-		Long:  fmt.Sprintf("Update an existing %s.", cfg.ResourceName),
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			id := args[0]
-			textMode := getTextMode()
-
-			params := buildRegistryParams(cmd, cfg.UpdateFlags, stringFlags, intFlags)
-
-			// Check --name flag
-			if nameVal := *stringFlags["name"]; nameVal != "" {
-				params["name"] = nameVal
-			}
-
-			if len(params) == 0 {
-				return fmt.Errorf("no update parameters provided")
-			}
-
-			if planRequested(plan, dryRun) {
-				printMutationPlan(MutationPlan{
-					WouldChange: true,
-					Target: map[string]any{
-						"resource": cfg.ResourceName,
-						"id":       id,
-					},
-					Inputs: map[string]any{"params": params},
-					Steps: []string{
-						"Connect to Home Assistant WebSocket API.",
-						fmt.Sprintf("Send %s command with provided update payload.", registryCommandName(cfg.ResourceName, "update")),
-						"Return updated resource metadata.",
-					},
-					VerificationCommands: []string{
-						fmt.Sprintf("hab %s get %s --json", cfg.ResourceName, id),
-					},
-					RequiresConfirmation: false,
-				}, textMode, cfg.ResourceName)
-				return nil
-			}
-
-			ws, err := getWSClient()
-			if err != nil {
-				return err
-			}
-			defer ws.Close()
-
-			result, err := cfg.UpdateFunc(ws, id, params)
-			if err != nil {
-				return err
-			}
-
-			output.PrintSuccessWithContext(result, textMode, fmt.Sprintf("%s '%s' updated.", capitalize(cfg.ResourceName), id), output.EnvelopeContext{
-				Operation:    "update",
-				ResourceType: cfg.ResourceName,
-			})
-			return nil
-		},
-	}
-	mergeSchemaAnnotation(updateCmd, SchemaAnnotation{
-		SideEffect:   "write",
-		OutputMode:   "json_envelope",
-		Capabilities: []string{"auth", "ws"},
-		ResourceType: cfg.ResourceName,
-		InputSources: []string{"args", "flags"},
-		GuideTopic:   "registry",
-	})
-
-	// Always add --name for update
-	nameVal := new(string)
-	stringFlags["name"] = nameVal
-	updateCmd.Flags().StringVar(nameVal, "name", "", fmt.Sprintf("New name for the %s", cfg.ResourceName))
-
-	registerRegistryFlags(updateCmd, cfg.UpdateFlags, stringFlags, intFlags)
-	registerMutationPlanFlags(updateCmd, &plan, &dryRun)
-	cfg.ParentCmd.AddCommand(updateCmd)
-}
 
 // ---------------------------------------------------------------------------
 // delete

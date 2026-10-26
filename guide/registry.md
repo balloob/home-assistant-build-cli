@@ -99,3 +99,28 @@ before retrying an uncertain or unverified write.
 
 - Passing a device ID where an entity ID is required.
 - Deleting resources by name assumptions instead of confirmed IDs.
+
+## Updating Areas, Floors, and Labels
+
+Update commands read current registry values for `--plan` / `--dry-run` and
+report `changes` with before/after values and an observed `would_change`.
+Planning requires a connection to Home Assistant. Apply verifies each requested
+field using a separate registry read. Existing resource fields remain in `data`,
+alongside `mode`, `changes`, `would_change`, `saved`, and `verified`.
+
+Omitted flags preserve fields. Empty optional values clear them: area `--floor`
+and `--icon`; floor `--icon` and `--level`; label `--icon`, `--color`, and
+`--description`. Names are required and cannot be cleared. Floor `--level 0`
+sets ground level; `--level ""` removes the level.
+
+```bash
+hab area update <area_id> --floor "" --plan --json
+hab floor update <floor_id> --level "" --json
+hab label update <label_id> --icon "" --color "" --description "" --json
+```
+
+A no-op returns `saved: false, verified: true` without writing. A preview returns
+`saved: false, verified: false`. A successful write returns both as true.
+Errors include these fields under `error.details.result`. `saved: null` means
+the write acknowledgement is uncertain; inspect the registry before retrying.
+Verification confirms registry metadata, not runtime entity availability.
