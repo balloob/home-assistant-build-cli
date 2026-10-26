@@ -124,3 +124,17 @@ A no-op returns `saved: false, verified: true` without writing. A preview return
 Errors include these fields under `error.details.result`. `saved: null` means
 the write acknowledgement is uncertain; inspect the registry before retrying.
 Verification confirms registry metadata, not runtime entity availability.
+
+## Floor Aliases
+
+Use `floor update --aliases` to replace the floor's alias set. Accepts
+comma-separated or repeated flags; whitespace is trimmed, duplicates and empty
+aliases are removed. `--aliases ""` clears all aliases, while omitting the flag
+preserves existing aliases. Previews and read-back compare aliases as a set,
+so a different server ordering does not produce a false mismatch.
+
+```bash
+hab floor update <floor_id> --aliases "Ground floor,Downstairs" --plan --json
+hab floor update <floor_id> --aliases "Ground floor" --aliases Downstairs --json
+hab floor update <floor_id> --aliases "" --json
+```

@@ -411,6 +411,24 @@ run_registry_tests() {
         else
             fail "floor zero, clear, and no-op: $OUTPUT $CLEARED $NOOP"
         fi
+        PLAN=$(run_hab floor update "$UPDATE_FLOOR_ID" --aliases ' Downstairs,Ground floor,Downstairs' --plan)
+        CURRENT=$(run_hab floor get "$UPDATE_FLOOR_ID")
+        OUTPUT=$(run_hab floor update "$UPDATE_FLOOR_ID" --aliases ' Downstairs,Ground floor,Downstairs')
+        if echo "$PLAN" | jq -e '.data.mode == "plan" and .data.changes.aliases.before == [] and .data.changes.aliases.after == ["Downstairs","Ground floor"] and (.data.saved | not)' >/dev/null &&
+            echo "$CURRENT" | jq -e '.data.aliases == []' >/dev/null &&
+            echo "$OUTPUT" | jq -e '(.data.aliases | sort) == ["Downstairs","Ground floor"] and .data.saved and .data.verified' >/dev/null; then
+            pass "floor aliases and live preview"
+        else
+            fail "floor aliases and live preview: $OUTPUT $PLAN"
+        fi
+        NOOP=$(run_hab floor update "$UPDATE_FLOOR_ID" --aliases 'Ground floor,Downstairs')
+        OUTPUT=$(run_hab floor update "$UPDATE_FLOOR_ID" --aliases "")
+        if echo "$NOOP" | jq -e '(.data.saved | not) and (.data.would_change | not) and .data.verified' >/dev/null &&
+            echo "$OUTPUT" | jq -e '.data.aliases == [] and .data.saved and .data.verified' >/dev/null; then
+            pass "floor alias order, no-op, and clear"
+        else
+            fail "floor alias order, no-op, and clear: $OUTPUT $NOOP"
+        fi
         # Cleanup
         run_hab floor delete "$UPDATE_FLOOR_ID" --force > /dev/null 2>&1
     else
