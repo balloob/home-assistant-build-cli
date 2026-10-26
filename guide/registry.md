@@ -55,10 +55,25 @@ hab zone list --json
 
 ## Updating Entities
 
-`entity update` changes the registry ID, friendly name, or icon. Provide at least
-one of `--entity-id`, `--name`, or `--icon`; they can be used independently or
-combined in a single verified update. `entity rename` remains available for
-friendly-name changes.
+`entity update` changes entity registry settings. Provide at least one field flag;
+they can be used independently or combined in a single verified update.
+`entity rename` remains available for friendly-name changes.
+
+| Flag | Behavior |
+| --- | --- |
+| `--entity-id` | Change the ID within the same domain. |
+| `--name`, `--icon`, `--device-class` | Set an override; an empty string clears it. Use a device class supported by the entity's domain. |
+| `--area` | Set an area ID; an empty string restores area inheritance from the device. |
+| `--labels` | Replace all label IDs with a comma-separated or repeated list; `--labels ""` clears them. |
+| `--aliases` | Replace the ordered alias list (CSV or repeated); `--aliases ""` clears it. Whitespace is trimmed and blank aliases are removed. |
+| `--category scope=id` | Set a category in a scope; repeat for multiple scopes. `--category helpers=` removes only that scope. |
+| `--hidden`, `--disabled` | Set the user override; `--hidden=false` unhides and `--disabled=false` enables. |
+
+Category scopes are `automation`, `script`, `scene`, and `helpers`. Other scopes
+are preserved. Discover IDs with `area list`, `label list`, and
+`category list --scope helpers`. Supplied area, label, and category IDs are
+checked before writing, including during preview. Integration-specific options
+are not supported.
 
 ```bash
 hab entity update switch.plug_2 --entity-id switch.kitchen_plug --plan --json
@@ -67,12 +82,22 @@ hab entity get switch.kitchen_plug --json
 hab entity update switch.kitchen_plug --name "Kitchen plug" --icon mdi:power-socket-eu --plan --json
 hab entity update switch.kitchen_plug --name "Kitchen plug" --icon mdi:power-socket-eu --json
 hab entity update switch.kitchen_plug --name "" --icon "" --json
+hab entity update switch.kitchen_plug --area kitchen --labels lighting,downstairs --aliases "Kitchen plug,Counter socket" --plan --json
+hab entity update input_boolean.guest_mode --category helpers=guest_settings --json
+hab entity update switch.kitchen_plug --hidden=false --disabled=false --json
 ```
 
-Omitted fields are preserved. Empty `--name ""` and `--icon ""` values clear the
-registry overrides, restoring the default name or icon. The preview's `changes`
+Omitted fields are preserved. Empty string overrides restore defaults. The preview's `changes`
 object shows before/after values for each requested field; `null` clears an
-override. Name/icon-only changes do not need collision or relationship searches.
+override. Labels and aliases use empty arrays to clear the list. Category changes
+show the resulting map with unrelated scopes preserved. Only ID changes need
+entity collision or relationship searches. Alias order is preserved; on Home
+Assistant versions that use the first alias as the primary name, it matters.
+
+Disabling removes an entity from active use. Enabling may require a reload or
+restart; the result includes Home Assistant's activation warnings. An entity
+whose device or integration is disabled may remain unavailable. Verification
+checks registry fields, not whether the entity is running or visible in a dashboard.
 
 For ID changes, the new ID must keep the same domain. Both preview (`--plan`, also
 `--dry-run`) and apply check the registry and live states for collisions before writing.

@@ -14,6 +14,7 @@ type fakeStore struct {
 	states   []any
 	readBack map[string]any
 	update   map[string]any
+	ack      map[string]any
 }
 
 func (s *fakeStore) call(name string) error {
@@ -29,8 +30,23 @@ func (s *fakeStore) EntityRegistryGet(id string) (map[string]any, error) {
 	if s.update != nil && s.readBack != nil {
 		return s.readBack, err
 	}
-	entry := map[string]any{"entity_id": id, "unique_id": "integration-id", "name": "Old name", "icon": "mdi:old"}
+	entry := map[string]any{
+		"entity_id": id, "unique_id": "integration-id", "name": "Old name", "icon": "mdi:old",
+		"area_id": nil, "device_class": nil, "hidden_by": nil, "disabled_by": nil,
+		"labels": []any{"old_label"}, "aliases": []any{"Old alias"},
+		"categories": map[string]any{"script": "keep", "helpers": "old_category"},
+	}
 	for key, value := range s.update {
+		if key == "categories" {
+			for scope, category := range value.(map[string]any) {
+				if category == nil {
+					delete(entry[key].(map[string]any), scope)
+				} else {
+					entry[key].(map[string]any)[scope] = category
+				}
+			}
+			continue
+		}
 		if key != "new_entity_id" {
 			entry[key] = value
 		}
@@ -52,7 +68,19 @@ func (s *fakeStore) SearchRelated(kind, id string) (map[string][]string, error) 
 
 func (s *fakeStore) EntityRegistryUpdate(id string, params map[string]any) (map[string]any, error) {
 	s.update = params
-	return nil, s.call("update:" + id)
+	return s.ack, s.call("update:" + id)
+}
+
+func (s *fakeStore) AreaRegistryList() ([]any, error) {
+	return []any{map[string]any{"area_id": "kitchen"}}, s.call("areas")
+}
+
+func (s *fakeStore) LabelRegistryList() ([]any, error) {
+	return []any{map[string]any{"label_id": "lighting"}, map[string]any{"label_id": "downstairs"}}, s.call("labels")
+}
+
+func (s *fakeStore) CategoryRegistryList(scope string) ([]any, error) {
+	return []any{map[string]any{"category_id": scope + "_category"}}, s.call("categories:" + scope)
 }
 
 func TestRenamePlanAndApply(t *testing.T) {
