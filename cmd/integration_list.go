@@ -31,11 +31,12 @@ func runIntegrationList(cmd *cobra.Command, args []string) error {
 	}
 	defer ws.Close()
 
-	entries, err := ws.ConfigEntriesList(integrationListDomain)
+	entries, err := ws.ConfigEntriesList("")
 	if err != nil {
 		return err
 	}
 
+	entries = filterConfigEntries(annotateIDs(entries, "entry_id"), integrationListDomain)
 	if len(entries) == 0 {
 		output.PrintOutput([]interface{}{}, textMode, "No integrations found.")
 		return nil

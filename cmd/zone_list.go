@@ -33,6 +33,7 @@ func runZoneList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	zones = annotateIDs(zones, "id")
 	if zoneListFlags.RenderCount(len(zones), textMode) {
 		return nil
 	}

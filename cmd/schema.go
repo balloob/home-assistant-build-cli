@@ -24,6 +24,7 @@ type schemaFlag struct {
 }
 
 type schemaCommand struct {
+	ShortIDInputs   []schemaIDInput        `json:"short_id_inputs,omitempty"`
 	SchemaVersion   string                 `json:"schema_version"`
 	CLIVersion      string                 `json:"cli_version"`
 	Transports      []string               `json:"transports,omitempty"`
@@ -175,6 +176,7 @@ func buildCommandSchema(cmd *cobra.Command, recursive bool) schemaCommand {
 
 	sc := schemaCommand{
 		SchemaVersion:   commandSchemaVersion,
+		ShortIDInputs:   shortIDSchemaInputs(cmd),
 		CLIVersion:      Version,
 		Transports:      commandTransports(cmd),
 		Preview:         commandPreview(cmd),
@@ -521,4 +523,40 @@ func dataContractForVariant(variant, resourceType, sideEffect, commandName strin
 			{Name: "result", Type: "object", Description: "resource-specific mutation response payload", AdditionalProps: true},
 		}}
 	}
+}
+
+type schemaIDInput struct {
+	Argument           *int   `json:"argument,omitempty"`
+	Flag               string `json:"flag,omitempty"`
+	Resource           string `json:"resource"`
+	MinimumLength      int    `json:"minimum_length"`
+	Scope              string `json:"scope,omitempty"`
+	DiscoveryTransport string `json:"discovery_transport"`
+	LiveResolution     bool   `json:"live_resolution"`
+}
+
+func shortIDSchemaInputs(cmd *cobra.Command) []schemaIDInput {
+	result := []schemaIDInput{}
+	for _, selector := range shortIDSelectors(cmd, nil) {
+		item := schemaIDInput{Flag: selector.Flag, Resource: selector.Namespace.Kind, MinimumLength: 8, DiscoveryTransport: "ws", LiveResolution: true}
+		if item.Flag == "" {
+			index := selector.Argument
+			item.Argument = &index
+		}
+		switch item.Resource {
+		case "category":
+			item.Scope = "--scope, scope=ID for entity update, or inferred from entity ID for assign"
+		case "todo_item":
+			item.Scope = "to-do entity ID"
+		case "calendar_event":
+			item.DiscoveryTransport = "rest"
+			item.Scope = "calendar entity ID and --start/--end window"
+		case "trace":
+			item.Scope = "automation config ID"
+		case "repair":
+			item.Scope = "integration domain"
+		}
+		result = append(result, item)
+	}
+	return result
 }

@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/home-assistant/hab/output"
 	"github.com/home-assistant/hab/input"
+	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +17,7 @@ var (
 var automationCreateFromBlueprintCmd = &cobra.Command{
 	Use:   "create-from-blueprint <id> <blueprint-path>",
 	Short: "Create an automation from a blueprint",
-	Long: `Create a new automation from a blueprint. Provide the automation ID, blueprint path, and blueprint inputs.`,
+	Long:  `Create a new automation from a blueprint. Provide the automation ID, blueprint path, and blueprint inputs.`,
 	Example: `  hab automation create-from-blueprint my_motion_light homeassistant/motion_light \
     -d '{"alias":"Kitchen Motion Light","motion_entity":"binary_sensor.kitchen_motion","light_target":{"entity_id":"light.kitchen"}}'`,
 	GroupID: automationGroupCommands,
@@ -39,6 +39,9 @@ func runAutomationCreateFromBlueprint(cmd *cobra.Command, args []string) error {
 
 	inputs, err := input.ParseInput(automationFromBlueprintData, automationFromBlueprintFile, automationFromBlueprintFormat)
 	if err != nil {
+		return err
+	}
+	if err := resolveIDReferences(inputs); err != nil {
 		return err
 	}
 

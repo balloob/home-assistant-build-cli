@@ -30,7 +30,7 @@ var auditedCapabilities = map[string][]string{
 	"auth discover":                            {"mdns"},
 	"auth login":                               {"local", "http", "mdns"},
 	"auth refresh":                             {"local", "http"},
-	"automation trace":                         {"auth", "ws"},
+	"automation trace":                         {"auth", "ws", "rest"},
 	"blueprint get":                            {"auth", "ws"},
 	"blueprint import":                         {"auth", "ws"},
 	"blueprint list":                           {"auth", "ws"},

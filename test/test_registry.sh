@@ -6,15 +6,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
 test_entity_registry_fields() {
-    local entity_id="$1" stamp area_id label_id category_id other_category_id output
+    local entity_id="$1" stamp area_id label_id category_id category_short other_category_id output
     stamp=$(date +%s)
     area_id=$(run_hab area create "Entity Update Area $stamp" | jq -r '.data.area_id // empty')
     label_id=$(run_hab label create "Entity Update Label $stamp" | jq -r '.data.label_id // empty')
     category_id=$(run_hab category create "Entity Update Category $stamp" --scope helpers | jq -r '.data.category_id // empty')
     other_category_id=$(run_hab category create "Entity Update Other $stamp" --scope script | jq -r '.data.category_id // empty')
     if [ -n "$area_id" ] && [ -n "$label_id" ] && [ -n "$category_id" ] && [ -n "$other_category_id" ]; then
+        category_short=$(run_hab id list category --scope helpers | jq -r --arg id "$category_id" '.data[] | select(.id == $id) | .short_id')
         log_test "entity update registry fields preview"
-        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_id" --hidden --disabled --plan)
+        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_short" --hidden --disabled --plan)
         if echo "$output" | jq -e --arg area "$area_id" --arg label "$label_id" --arg category "$category_id" '.success == true and .data.saved == false and .data.changes.area_id.after == $area and .data.changes.labels.after == [$label] and .data.changes.aliases.after == ["Primary alias", "Secondary alias"] and .data.changes.categories.after.helpers == $category and .data.changes.hidden_by.after == "user" and .data.changes.disabled_by.after == "user"' > /dev/null; then
             pass "entity update previews registry fields"
         else
@@ -22,7 +23,7 @@ test_entity_registry_fields() {
         fi
 
         log_test "entity update registry fields apply"
-        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_id" --category "script=$other_category_id" --hidden --disabled)
+        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_short" --category "script=$other_category_id" --hidden --disabled)
         if echo "$output" | jq -e '.success == true and .data.saved == true and .data.verified == true and .data.changes.area_id.before == null and .data.changes.labels.before == [] and .data.changes.hidden_by.before == null and .data.changes.disabled_by.before == null' > /dev/null; then
             pass "entity update saves all registry fields; preview made no changes"
         else
@@ -995,12 +996,108 @@ run_entity_logbook_tests() {
     fi
 }
 
+run_short_id_tests() {
+    log_section "Short Resource ID Tests"
+    do_auth_login
+    local output device_id device_short label_one label_two category_id category_short
+    label_one="abcdef00111111111111111111111111"
+    label_two="abcdef00222222222222222222222222"
+
+    output=$(run_hab device list --brief --limit 1)
+    device_id=$(echo "$output" | jq -r '.data[0].id // empty')
+    device_short=$(echo "$output" | jq -r '.data[0].short_id // empty')
+    if [ -n "$device_id" ] && [ -n "$device_short" ] && [ "$device_id" != "$device_short" ]; then
+        output=$(run_hab device get --device "$device_short")
+        if echo "$output" | jq -e --arg id "$device_id" '.success and .data.id == $id and .metadata.resolved_ids[0].id == $id' >/dev/null; then
+            pass "device get expands discovered short ID flag"
+        else
+            fail "device get short ID: $output"
+        fi
+        output=$(run_hab device delete "$device_short" --plan)
+        if echo "$output" | jq -e --arg id "$device_id" '.success and .data.target.device_id == $id' >/dev/null; then
+            pass "destructive preview uses full device ID"
+        else
+            fail "device delete short ID plan: $output"
+        fi
+        output=$(run_hab entity list --device "$device_short")
+        if echo "$output" | jq -e '.success and (.data | length > 0)' >/dev/null; then
+            pass "entity filter accepts short device ID"
+        else
+            fail "entity filter short ID: $output"
+        fi
+        output=$(run_hab automation create short_id_payload_test --data "{\"alias\":\"Short ID Payload Test\",\"triggers\":[],\"actions\":[{\"action\":\"light.turn_off\",\"target\":{\"device_id\":\"$device_short\"}}]}")
+        output=$(run_hab automation get short_id_payload_test)
+        if echo "$output" | jq -e --arg id "$device_id" '.success and .data.actions[0].target.device_id == $id' >/dev/null; then
+            pass "configuration payload stores canonical device ID"
+        else
+            fail "configuration short ID: $output"
+        fi
+        run_hab automation delete short_id_payload_test --force >/dev/null
+    else
+        fail "device discovery did not provide full and shortened IDs: $output"
+    fi
+
+    run_hab label create "$label_one" >/dev/null
+    run_hab label create "$label_two" >/dev/null
+    output=$(run_hab label delete abcdef00 --force)
+    if echo "$output" | jq -e '.success == false and .error.code == "ID_RESOLUTION_FAILED" and (.error.details.candidates | length == 2)' >/dev/null; then
+        pass "ambiguous destructive selector fails with both candidates"
+    else
+        fail "ambiguous label delete: $output"
+    fi
+    output=$(run_hab label list --label-id "$label_one" --brief --limit 1)
+    if echo "$output" | jq -e --arg id "$label_one" '.success and .data[0].label_id == $id and .data[0].short_id == "abcdef001"' >/dev/null; then
+        pass "abbreviations remain unique before filtering and limiting"
+    else
+        fail "filtered label discovery: $output"
+    fi
+    output=$(run_hab label update abcdef001 --name "Short ID First Label")
+    if echo "$output" | jq -e '.success' >/dev/null; then
+        pass "unique prefix updates selected label"
+    else
+        fail "label update prefix: $output"
+    fi
+    run_hab label create abcdef00 >/dev/null
+    output=$(run_hab label get abcdef00)
+    if echo "$output" | jq -e '.success and .data.label_id == "abcdef00"' >/dev/null; then
+        pass "exact short ID wins over longer matching IDs"
+    else
+        fail "exact ID precedence: $output"
+    fi
+    output=$(run_hab label get ffffffff)
+    if echo "$output" | jq -e '.success == false and .error.code == "ID_RESOLUTION_FAILED"' >/dev/null; then
+        pass "unknown prefix fails without guessing"
+    else
+        fail "unknown prefix: $output"
+    fi
+    for id in "$label_one" "$label_two" abcdef00; do
+        run_hab label delete "$id" --force >/dev/null
+    done
+
+    category_id=$(run_hab category create "Short ID Category" --scope automation | jq -r '.data.category_id // empty')
+    category_short=$(run_hab id list category --scope automation | jq -r --arg id "$category_id" '.data[] | select(.id == $id) | .short_id')
+    output=$(run_hab category update "$category_short" --scope automation --name "Renamed Short ID Category")
+    if echo "$output" | jq -e '.success' >/dev/null; then
+        pass "category prefix resolves in selected scope"
+    else
+        fail "scoped category ID: $output"
+    fi
+    run_hab category delete "$category_id" --scope automation --force >/dev/null
+    output=$(run_hab id list user)
+    if echo "$output" | jq -e '.success and (.data | length > 0) and (.data[0].id | length > 8) and (.data[0].short_id | length >= 8)' >/dev/null; then
+        pass "user ID discovery provides abbreviations"
+    else
+        fail "user ID discovery: $output"
+    fi
+}
+
 # Run standalone if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     init_standalone_test "Registry Tests"
     run_registry_tests
     run_person_tests
     run_entity_logbook_tests
+    run_short_id_tests
     print_summary "Registry Tests"
     exit $?
 fi

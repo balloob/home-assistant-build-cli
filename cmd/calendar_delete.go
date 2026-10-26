@@ -28,6 +28,8 @@ var calendarDeleteCmd = &cobra.Command{
 
 func init() {
 	calendarCmd.AddCommand(calendarDeleteCmd)
+	calendarDeleteCmd.Flags().String("start", "", "Start of discovery window for shortened event UIDs (ISO format)")
+	calendarDeleteCmd.Flags().String("end", "", "End of discovery window for shortened event UIDs (ISO format)")
 	calendarDeleteCmd.Flags().StringVar(&calendarDeleteRecurrenceID, "recurrence-id", "", "For recurring events: the recurrence_id of the instance to delete")
 	calendarDeleteCmd.Flags().StringVar(&calendarDeleteRecurrenceRange, "recurrence-range", "", "For recurring events: THISEVENT or THISANDFUTURE")
 	calendarDeleteCmd.Flags().BoolVarP(&calendarDeleteForce, "force", "f", false, "Skip confirmation")

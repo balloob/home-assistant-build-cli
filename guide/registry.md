@@ -201,3 +201,11 @@ a device affects its entities. Read-back verifies registry metadata, not whether
 those entities have finished unloading or reloading. Preview, no-op, `saved`,
 and `verified` behavior matches area/floor/label updates. Integration-specific
 options are not supported.
+
+## Short IDs
+
+Registry lists include `short_id` alongside opaque full IDs. Use these unique
+prefixes in get/update/delete commands, relationship filters, and assignments.
+`--labels` accepts shortened label IDs too. Human-readable entity IDs and registry
+slugs stay exact. `hab id list user --json` discovers user IDs for person commands.
+See `hab guide discovery` for collision handling and scope rules.

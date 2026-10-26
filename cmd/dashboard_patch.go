@@ -91,6 +91,26 @@ func runDashboardPatch(cmd *cobra.Command, urlPath string, f *dashboardPatchFlag
 	if err != nil {
 		return err
 	}
+	if err := resolveIDReferences(opts.Spec.Merge); err != nil {
+		return err
+	}
+	catalog := &idCatalog{}
+	defer catalog.close()
+	for i, edit := range opts.Spec.Edits {
+		if edit.Remove {
+			continue
+		}
+		key := edit.Path[strings.LastIndex(edit.Path, "/")+1:]
+		if kind := idReferenceKinds[key]; kind != "" {
+			resolved, err := resolveIDReferenceValue(edit.Value, idNamespace{Kind: kind}, catalog.list)
+			if err != nil {
+				return err
+			}
+			opts.Spec.Edits[i].Value = resolved
+		} else if err := walkIDReferences(edit.Value, catalog.list); err != nil {
+			return err
+		}
+	}
 	signalCtx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
 	defer stop()
 	ctx, cancel := context.WithTimeout(signalCtx, f.timeout)

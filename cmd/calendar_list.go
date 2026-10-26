@@ -78,6 +78,7 @@ func runCalendarList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	result = annotateIDResult(result, "events", "uid")
 	// The REST API returns a plain array of events, but the original WebSocket API
 	// returned {"events": [...]}.  Wrap the result to preserve the expected structure.
 	wrapped := map[string]interface{}{

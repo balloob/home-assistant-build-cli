@@ -69,6 +69,11 @@ func listDomainEntities(cfg stateListConfig) error {
 		})
 	}
 
+	configs, err := allConfigIDEntries(ws, states, cfg.domain)
+	if err != nil {
+		return err
+	}
+	addConfigShortIDs(items, configs)
 	// Optional enrichment (e.g. fetch descriptions/blueprints).
 	if cfg.enrichItems != nil {
 		if err := cfg.enrichItems(items); err != nil {

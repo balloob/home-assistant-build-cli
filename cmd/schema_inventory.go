@@ -53,6 +53,7 @@ category list
 dashboard list
 device entities
 device list
+id list
 diagnostics list
 entity history
 entity list

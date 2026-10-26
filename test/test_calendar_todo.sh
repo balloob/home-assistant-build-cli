@@ -158,7 +158,7 @@ run_calendar_todo_tests() {
             log_test "todo items (after adds)"
             OUTPUT=$(run_hab todo items "$TODO_ENTITY")
             if echo "$OUTPUT" | jq -e '.success == true and (.data | length) >= 1' > /dev/null 2>&1; then
-                ITEM_UID=$(echo "$OUTPUT" | jq -r '.data[0].uid // empty')
+                ITEM_UID=$(echo "$OUTPUT" | jq -r '.data[0].short_id // empty')
                 pass "todo items (found items, first uid: $ITEM_UID)"
 
                 if [ -n "$ITEM_UID" ]; then
@@ -268,10 +268,11 @@ run_calendar_create_delete_tests() {
         log_test "calendar delete event"
         EVENT_UID=$(run_hab calendar list "$CAL_ENTITY" --start "2099-06-01T00:00:00" --end "2099-06-02T00:00:00" | jq -r '.data.events[]? | select(.summary == "Integration Test Event") | .uid' | head -1)
         if [ -n "$EVENT_UID" ]; then
-            OUTPUT=$(run_hab calendar delete "$CAL_ENTITY" "$EVENT_UID" --force)
+            EVENT_SHORT=$(run_hab id list calendar_event --scope "$CAL_ENTITY" --start "2099-06-01T00:00:00" --end "2099-06-02T00:00:00" | jq -r --arg uid "$EVENT_UID" '.data[] | select(.id == $uid) | .short_id')
+            OUTPUT=$(run_hab calendar delete "$CAL_ENTITY" "$EVENT_SHORT" --start "2099-06-01T00:00:00" --end "2099-06-02T00:00:00" --force)
             REMAINING=$(run_hab calendar list "$CAL_ENTITY" --start "2099-06-01T00:00:00" --end "2099-06-02T00:00:00" | jq -r '[.data.events[]? | select(.uid == "'"$EVENT_UID"'")] | length')
             if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1 && [ "$REMAINING" = "0" ]; then
-                pass "calendar delete event"
+                pass "calendar delete event using short UID and discovery window"
             else
                 fail "calendar delete event: $OUTPUT (remaining: $REMAINING)"
             fi

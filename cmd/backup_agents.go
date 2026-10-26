@@ -31,6 +31,7 @@ func runBackupAgents(cmd *cobra.Command, args []string) error {
 	}
 
 	if agents, ok := result["agents"].([]interface{}); ok {
+		agents = annotateIDs(agents, "agent_id")
 		output.PrintOutput(agents, textMode, "")
 		return nil
 	}

@@ -30,6 +30,7 @@ func runThreadList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	result = annotateIDResult(result, "datasets", "dataset_id")
 	output.PrintOutput(result, textMode, "")
 	return nil
 }
