@@ -237,13 +237,13 @@ var topicRegistry = []topicDef{
 			MutationPatterns: []string{
 				"Create resources with explicit names and verify generated IDs.",
 				"Use update/delete only after a get/list confirmation step.",
-				"Use floor update --aliases to replace the alias set; an empty value clears it and --plan previews it.",
 				"Area, floor, and label updates support live --plan previews, empty optional values to clear, and saved/verified read-back status.",
 				"Preview entity ID changes with entity update --plan; unique_id is preserved and references are not rewritten.",
 				"Use entity update --name and --icon independently or with --entity-id; empty name/icon values clear overrides. Inspect saved and verified in the result.",
 			},
 			VerificationCommands: []string{
 				"hab area get <area_id> --json",
+				"hab floor get <floor_id> --json",
 				"hab entity get <entity_id> --json",
 			},
 			Pitfalls: []string{
