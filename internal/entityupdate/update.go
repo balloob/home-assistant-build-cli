@@ -16,13 +16,23 @@ type Store interface {
 	EntityRegistryUpdate(string, map[string]any) (map[string]any, error)
 	GetStates() ([]any, error)
 	SearchRelated(string, string) (map[string][]string, error)
+	AreaRegistryList() ([]any, error)
+	LabelRegistryList() ([]any, error)
+	CategoryRegistryList(string) ([]any, error)
 }
 
-// Options distinguishes omitted fields from explicitly cleared name/icon overrides.
+// Options distinguishes omitted fields from explicit empty values or false.
 type Options struct {
-	EntityID *string
-	Name     *string
-	Icon     *string
+	EntityID    *string
+	Name        *string
+	Icon        *string
+	AreaID      *string
+	DeviceClass *string
+	Labels      *[]string
+	Aliases     *[]string
+	Categories  map[string]string // Only these scopes are changed; empty IDs remove assignments.
+	Hidden      *bool
+	Disabled    *bool
 }
 
 type Change struct {
@@ -47,8 +57,8 @@ var entityIDPattern = regexp.MustCompile(`^[a-z0-9]+(_[a-z0-9]+)*\.[a-z0-9]+(_[a
 
 // Validate rejects empty updates, invalid IDs, and domain changes before I/O.
 func Validate(oldID string, opts Options) error {
-	if opts.EntityID == nil && opts.Name == nil && opts.Icon == nil {
-		return fmt.Errorf("provide at least one of --entity-id, --name, or --icon")
+	if opts.EntityID == nil && len(updateParams(oldID, opts)) == 0 {
+		return fmt.Errorf("provide at least one registry field to update")
 	}
 	newID := oldID
 	if opts.EntityID != nil {
@@ -62,7 +72,7 @@ func Validate(oldID string, opts Options) error {
 	if oldDomain != newDomain {
 		return fmt.Errorf("the new entity ID must keep the %s domain", oldDomain)
 	}
-	if oldID == newID && opts.Name == nil && opts.Icon == nil {
+	if oldID == newID && len(updateParams(oldID, opts)) == 0 {
 		return fmt.Errorf("the new entity ID must differ from the current ID")
 	}
 	return nil
@@ -95,16 +105,20 @@ func Run(store Store, oldID string, opts Options, plan bool) (Result, error) {
 		return result, fmt.Errorf("source registry entry is missing its entity_id or unique_id")
 	}
 	params := updateParams(oldID, opts)
-	for key, value := range params {
-		if key == "new_entity_id" {
-			key = "entity_id"
-		}
-		result.Changes[key] = Change{Before: entry[key], After: value}
+	result.Changes, err = plannedChanges(entry, params)
+	if err != nil {
+		return result, err
 	}
 	if result.NewEntityID != oldID {
 		if err := planRename(store, &result); err != nil {
 			return result, err
 		}
+	}
+	if err := checkReferences(store, opts); err != nil {
+		return result, err
+	}
+	if opts.Disabled != nil {
+		result.Warnings = append(result.Warnings, "Disabling removes the entity from active use; enabling may require a reload or restart. Verification checks registry settings, not runtime availability.")
 	}
 	if plan {
 		return result, nil
@@ -117,13 +131,37 @@ func updateParams(oldID string, opts Options) map[string]any {
 	if opts.EntityID != nil && *opts.EntityID != oldID {
 		params["new_entity_id"] = *opts.EntityID
 	}
-	for key, value := range map[string]*string{"name": opts.Name, "icon": opts.Icon} {
+	for key, value := range map[string]*string{"name": opts.Name, "icon": opts.Icon, "area_id": opts.AreaID, "device_class": opts.DeviceClass} {
 		if value != nil {
 			params[key] = nil
 			if *value != "" {
 				params[key] = *value
 			}
 		}
+	}
+	for key, value := range map[string]*bool{"hidden_by": opts.Hidden, "disabled_by": opts.Disabled} {
+		if value != nil {
+			params[key] = nil
+			if *value {
+				params[key] = "user"
+			}
+		}
+	}
+	if opts.Labels != nil {
+		params["labels"] = stringList(*opts.Labels, false)
+	}
+	if opts.Aliases != nil {
+		params["aliases"] = stringList(*opts.Aliases, true)
+	}
+	if len(opts.Categories) > 0 {
+		categories := map[string]any{}
+		for scope, id := range opts.Categories {
+			categories[scope] = nil
+			if id != "" {
+				categories[scope] = id
+			}
+		}
+		params["categories"] = categories
 	}
 	return params
 }
@@ -168,13 +206,18 @@ func checkCollision(store Store, newID string) error {
 
 func apply(store Store, result Result, params map[string]any) (Result, error) {
 	result.Mode = "apply"
-	_, err := store.EntityRegistryUpdate(result.OldEntityID, params)
+	ack, err := store.EntityRegistryUpdate(result.OldEntityID, params)
 	if err != nil {
 		// A transport error may occur after HA accepted the write. Do not retry.
 		result.Saved = nil
 		return result, fmt.Errorf("entity update was not acknowledged; inspect the registry before retrying: %w", err)
 	}
 	*result.Saved = true
+	if ack["require_restart"] == true {
+		result.Warnings = append(result.Warnings, "Home Assistant reports that a restart is required to activate the entity.")
+	} else if delay, ok := ack["reload_delay"].(float64); ok {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("Home Assistant reports a configuration entry reload delay of %g seconds; runtime availability is not verified.", delay))
+	}
 	entry, err := store.EntityRegistryGet(result.NewEntityID)
 	if err != nil {
 		return result, fmt.Errorf("entity update was saved but read-back failed: %w", err)
@@ -184,6 +227,9 @@ func apply(store Store, result Result, params map[string]any) (Result, error) {
 	}
 	for key, change := range result.Changes {
 		value, exists := entry[key]
+		if key == "labels" {
+			value = normalizeLabels(value)
+		}
 		if !exists || !reflect.DeepEqual(value, change.After) {
 			return result, fmt.Errorf("entity update was saved but read-back did not confirm %s", key)
 		}
