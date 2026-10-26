@@ -25,6 +25,20 @@ Use this topic for registry resources: areas, floors, labels, devices, entities,
 2. List devices and map to entities.
 3. Confirm IDs with `get` before mutation commands.
 
+## Floor Aliases
+
+Use `floor update --aliases` to replace the floor's alias set. Accepts
+comma-separated or repeated flags; whitespace is trimmed, duplicates and empty
+aliases are removed. `--aliases ""` clears all aliases, while omitting the flag
+preserves existing aliases. Previews and read-back compare aliases as a set,
+so a different server ordering does not produce a false mismatch.
+
+```bash
+hab floor update <floor_id> --aliases "Ground floor,Downstairs" --plan --json
+hab floor update <floor_id> --aliases "Ground floor" --aliases Downstairs --json
+hab floor update <floor_id> --aliases "" --json
+```
+
 ## Mutation Pattern
 
 - Create resources first, then assign relationships.

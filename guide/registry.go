@@ -243,6 +243,7 @@ var topicRegistry = []topicDef{
 			},
 			VerificationCommands: []string{
 				"hab area get <area_id> --json",
+				"hab floor get <floor_id> --json",
 				"hab entity get <entity_id> --json",
 			},
 			Pitfalls: []string{
