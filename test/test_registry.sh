@@ -284,6 +284,50 @@ run_registry_tests() {
             fail "area live preview and clear: $OUTPUT $PLAN $CURRENT"
         fi
 
+        log_test "area metadata fields"
+        AREA_LABEL=$(run_hab label create "Area metadata test label" | jq -r '.data.label_id')
+        TEMP_ENTRY=$(run_hab helper template create "Area metadata temperature" --type sensor --state '{{ 21 }}' --unit '°C' --device-class temperature | jq -r '.data.entry_id')
+        HUMIDITY_ENTRY=$(run_hab helper template create "Area metadata humidity" --type sensor --state '{{ 45 }}' --unit '%' --device-class humidity | jq -r '.data.entry_id')
+        for attempt in 1 2 3 4 5; do
+            TEMP_ENTITY=$(run_hab search related config_entry "$TEMP_ENTRY" | jq -r '.data.related.entity[0] // empty')
+            HUMIDITY_ENTITY=$(run_hab search related config_entry "$HUMIDITY_ENTRY" | jq -r '.data.related.entity[0] // empty')
+            if [ -n "$TEMP_ENTITY" ] && [ -n "$HUMIDITY_ENTITY" ]; then break; fi
+            sleep 1
+        done
+        PLAN=$(run_hab area update "$AREA_ID" --aliases ' Cooking area,Kitchen,Kitchen' --labels "$AREA_LABEL" --picture /local/kitchen.jpg --temperature-entity "$TEMP_ENTITY" --humidity-entity "$HUMIDITY_ENTITY" --plan)
+        CURRENT=$(run_hab area get "$AREA_ID")
+        OUTPUT=$(run_hab area update "$AREA_ID" --aliases ' Cooking area,Kitchen,Kitchen' --labels "$AREA_LABEL" --picture /local/kitchen.jpg --temperature-entity "$TEMP_ENTITY" --humidity-entity "$HUMIDITY_ENTITY")
+        if [ -n "$TEMP_ENTITY" ] && [ -n "$HUMIDITY_ENTITY" ] &&
+            echo "$PLAN" | jq -e '.data.mode == "plan" and .data.changes.picture.before == null and .data.changes.picture.after == "/local/kitchen.jpg" and (.data.saved | not)' >/dev/null &&
+            echo "$CURRENT" | jq -e '.data.picture == null and .data.aliases == []' >/dev/null &&
+            echo "$OUTPUT" | jq -e --arg label "$AREA_LABEL" --arg temp "$TEMP_ENTITY" --arg humidity "$HUMIDITY_ENTITY" '.data.saved and .data.verified and (.data.aliases | sort) == ["Cooking area","Kitchen"] and .data.labels == [$label] and .data.picture == "/local/kitchen.jpg" and .data.temperature_entity_id == $temp and .data.humidity_entity_id == $humidity' >/dev/null; then
+            pass "area metadata fields and preview"
+        else
+            fail "area metadata fields and preview: $OUTPUT $PLAN"
+        fi
+        OUTPUT=$(run_hab area update "$AREA_ID" --picture /local/should-not-apply.jpg --labels hab_missing_test_label)
+        CURRENT=$(run_hab area get "$AREA_ID")
+        if echo "$OUTPUT" | jq -e '.success == false' >/dev/null && echo "$CURRENT" | jq -e '.data.picture == "/local/kitchen.jpg"' >/dev/null; then
+            pass "area rejects unknown labels before writing"
+        else
+            fail "area unknown labels: $OUTPUT"
+        fi
+        OUTPUT=$(run_hab area update "$AREA_ID" --temperature-entity "$HUMIDITY_ENTITY" --plan)
+        if echo "$OUTPUT" | jq -e '.success == false' >/dev/null; then
+            pass "area rejects wrong sensor class in preview"
+        else
+            fail "area wrong sensor class: $OUTPUT"
+        fi
+        OUTPUT=$(run_hab area update "$AREA_ID" --aliases "" --labels "" --picture "" --temperature-entity "" --humidity-entity "")
+        if echo "$OUTPUT" | jq -e '.data.saved and .data.verified and .data.aliases == [] and .data.labels == [] and .data.picture == null and .data.temperature_entity_id == null and .data.humidity_entity_id == null' >/dev/null; then
+            pass "area clear metadata fields"
+        else
+            fail "area clear metadata fields: $OUTPUT"
+        fi
+        run_hab helper template delete "$TEMP_ENTRY" >/dev/null
+        run_hab helper template delete "$HUMIDITY_ENTRY" >/dev/null
+        run_hab label delete "$AREA_LABEL" --force >/dev/null
+
         log_test "area delete"
         OUTPUT=$(run_hab area delete "$AREA_ID" --force)
         if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then

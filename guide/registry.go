@@ -221,6 +221,7 @@ var topicRegistry = []topicDef{
 			},
 			SuggestedCommands: []string{
 				"hab area list --json",
+				"hab area update <area_id> --aliases 'Kitchen,Cooking area' --plan --json",
 				"hab device list --json",
 				"hab entity list --domain light --json",
 				"hab entity update switch.plug_2 --entity-id switch.kitchen_plug --plan --json",
