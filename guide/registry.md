@@ -19,11 +19,44 @@ Use this topic for registry resources: areas, floors, labels, devices, entities,
 - `area`, `floor`, `label`, `person`, and `zone` commands use their own IDs.
 - Use list/get commands to discover IDs before update/delete commands.
 
+## Area Metadata
+
+`area update` also supports `--aliases`, `--labels`, `--picture`,
+`--temperature-entity`, and `--humidity-entity`. Aliases and labels accept
+comma-separated or repeated values and replace the entire set. Aliases are
+trimmed and deduplicated. Empty values clear each field; omitted flags preserve
+existing values. Pictures are stored as a URL/path, not uploaded by the command.
+
+```bash
+hab area update <area_id> --aliases "Kitchen,Cooking area" --labels downstairs --plan --json
+hab area update <area_id> --picture /local/kitchen.jpg --json
+hab area update <area_id> --temperature-entity sensor.kitchen_temperature --humidity-entity sensor.kitchen_humidity --json
+hab area update <area_id> --aliases "" --labels "" --picture "" --temperature-entity "" --humidity-entity "" --json
+```
+
+Floor and label IDs are validated before writing. Temperature/humidity assignments
+must reference existing sensor states with the matching device class. Preview
+performs the same checks; an invalid reference prevents the entire update.
+
 ## Discovery Sequence
 
 1. List top-level resources (`area`, `floor`, `label`).
 2. List devices and map to entities.
 3. Confirm IDs with `get` before mutation commands.
+
+## Floor Aliases
+
+Use `floor update --aliases` to replace the floor's alias set. Accepts
+comma-separated or repeated flags; whitespace is trimmed, duplicates and empty
+aliases are removed. `--aliases ""` clears all aliases, while omitting the flag
+preserves existing aliases. Previews and read-back compare aliases as a set,
+so a different server ordering does not produce a false mismatch.
+
+```bash
+hab floor update <floor_id> --aliases "Ground floor,Downstairs" --plan --json
+hab floor update <floor_id> --aliases "Ground floor" --aliases Downstairs --json
+hab floor update <floor_id> --aliases "" --json
+```
 
 ## Mutation Pattern
 

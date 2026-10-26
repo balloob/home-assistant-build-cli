@@ -32,6 +32,7 @@ func init() {
 		UpdateFlags: []RegistryFlagDef{
 			{Name: "icon", ParamKey: "icon", Usage: "Icon for the floor", Type: FlagString},
 			{Name: "level", ParamKey: "level", Usage: "Floor level", Type: FlagInt},
+			{Name: "aliases", ParamKey: "aliases", Usage: "Floor aliases (comma-separated or repeated)", Type: FlagStringSet},
 		},
 		ListFunc: func(ws client.WebSocketAPI) ([]interface{}, error) {
 			return ws.FloorRegistryList()

@@ -221,6 +221,7 @@ var topicRegistry = []topicDef{
 			},
 			SuggestedCommands: []string{
 				"hab area list --json",
+				"hab area update <area_id> --aliases 'Kitchen,Cooking area' --plan --json",
 				"hab device list --json",
 				"hab device update <device_id> --name 'Kitchen plug' --plan --json",
 				"hab entity list --domain light --json",
@@ -245,6 +246,7 @@ var topicRegistry = []topicDef{
 			},
 			VerificationCommands: []string{
 				"hab area get <area_id> --json",
+				"hab floor get <floor_id> --json",
 				"hab entity get <entity_id> --json",
 			},
 			Pitfalls: []string{
