@@ -247,6 +247,42 @@ run_registry_tests() {
         pass "device entities (skipped - no devices)"
     fi
 
+    log_test "device update metadata, preview, and reset"
+    UPDATE_DEVICE_ID=$(run_hab device list | jq -r '[.data[] | select(.disabled_by == null)][0].id // empty')
+    if [ -n "$UPDATE_DEVICE_ID" ]; then
+        ORIGINAL_DEVICE=$(run_hab device get "$UPDATE_DEVICE_ID" | jq '.data')
+        DEVICE_AREA=$(run_hab area create "Device update test area" | jq -r '.data.area_id')
+        DEVICE_LABEL=$(run_hab label create "Device update test label" | jq -r '.data.label_id')
+        DEVICE_PLAN=$(run_hab device update "$UPDATE_DEVICE_ID" --name "Device update test" --area "$DEVICE_AREA" --labels "$DEVICE_LABEL" --disabled --plan)
+        DEVICE_UNCHANGED=$(run_hab device get "$UPDATE_DEVICE_ID" | jq '.data')
+        OUTPUT=$(run_hab device update "$UPDATE_DEVICE_ID" --name "Device update test" --area "$DEVICE_AREA" --labels "$DEVICE_LABEL" --disabled)
+        if echo "$DEVICE_PLAN" | jq -e '.data.mode == "plan" and .data.changes.disabled_by.after == "user" and (.data.saved | not)' >/dev/null &&
+            [ "$ORIGINAL_DEVICE" = "$DEVICE_UNCHANGED" ] &&
+            echo "$OUTPUT" | jq -e --arg area "$DEVICE_AREA" --arg label "$DEVICE_LABEL" '.data.name_by_user == "Device update test" and .data.area_id == $area and .data.labels == [$label] and .data.disabled_by == "user" and .data.saved and .data.verified' >/dev/null; then
+            pass "device update metadata and preview"
+        else
+            fail "device update metadata and preview: $OUTPUT $DEVICE_PLAN"
+        fi
+        OUTPUT=$(run_hab device update "$UPDATE_DEVICE_ID" --name "" --area "" --labels "" --disabled=false)
+        if echo "$OUTPUT" | jq -e '.data.name_by_user == null and .data.area_id == null and .data.labels == [] and .data.disabled_by == null and .data.saved and .data.verified' >/dev/null; then
+            pass "device update reset"
+        else
+            fail "device update reset: $OUTPUT"
+        fi
+        OUTPUT=$(run_hab device update "$UPDATE_DEVICE_ID" --name "Should not apply" --labels hab_missing_test_label)
+        CURRENT=$(run_hab device get "$UPDATE_DEVICE_ID")
+        if echo "$OUTPUT" | jq -e '.success == false' >/dev/null && echo "$CURRENT" | jq -e '.data.name_by_user == null' >/dev/null; then
+            pass "device update rejects unknown labels before writing"
+        else
+            fail "device update unknown labels: $OUTPUT"
+        fi
+        run_hab device update "$UPDATE_DEVICE_ID" --name "$(echo "$ORIGINAL_DEVICE" | jq -r '.name_by_user // ""')" --area "$(echo "$ORIGINAL_DEVICE" | jq -r '.area_id // ""')" --labels "$(echo "$ORIGINAL_DEVICE" | jq -r '.labels | join(",")')" >/dev/null
+        run_hab area delete "$DEVICE_AREA" --force >/dev/null
+        run_hab label delete "$DEVICE_LABEL" --force >/dev/null
+    else
+        fail "device update requires a device fixture"
+    fi
+
     # Test: area CRUD
     log_test "area create"
     AREA_NAME="Test Area $(date +%s)"
