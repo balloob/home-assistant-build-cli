@@ -545,7 +545,7 @@ func shortIDSchemaInputs(cmd *cobra.Command) []schemaIDInput {
 		}
 		switch item.Resource {
 		case "category":
-			item.Scope = "--scope, or inferred from entity ID for assign"
+			item.Scope = "--scope, scope=ID for entity update, or inferred from entity ID for assign"
 		case "todo_item":
 			item.Scope = "to-do entity ID"
 		case "calendar_event":

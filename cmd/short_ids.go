@@ -59,7 +59,7 @@ func resolveShortIDSelectors(cmd *cobra.Command, args []string, list func(idName
 				values := slice.GetSlice()
 				resolved := make([]string, len(values))
 				for i, value := range values {
-					full, err := resolveShortSelector(selector.Namespace, value, list)
+					full, err := resolveShortFlagValue(selector, value, list)
 					if err != nil {
 						return err
 					}
@@ -86,6 +86,23 @@ func resolveShortIDSelectors(cmd *cobra.Command, args []string, list func(idName
 		}
 	}
 	return nil
+}
+
+// Entity updates carry the category scope in each repeated flag value.
+func resolveShortFlagValue(selector idSelector, raw string, list func(idNamespace) ([]shortid.Candidate, error)) (string, error) {
+	if selector.Namespace.Kind == "category" {
+		if scope, id, ok := strings.Cut(raw, "="); ok {
+			if !validCategoryScopes[scope] {
+				return raw, nil // The command's parser reports the invalid scope.
+			}
+			full, err := resolveShortSelector(idNamespace{Kind: "category", Scope: scope}, id, list)
+			if err != nil {
+				return "", err
+			}
+			return scope + "=" + full, nil
+		}
+	}
+	return resolveShortSelector(selector.Namespace, raw, list)
 }
 
 func resolveShortSelector(ns idNamespace, raw string, list func(idNamespace) ([]shortid.Candidate, error)) (string, error) {

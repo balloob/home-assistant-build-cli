@@ -6,15 +6,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
 test_entity_registry_fields() {
-    local entity_id="$1" stamp area_id label_id category_id other_category_id output
+    local entity_id="$1" stamp area_id label_id category_id category_short other_category_id output
     stamp=$(date +%s)
     area_id=$(run_hab area create "Entity Update Area $stamp" | jq -r '.data.area_id // empty')
     label_id=$(run_hab label create "Entity Update Label $stamp" | jq -r '.data.label_id // empty')
     category_id=$(run_hab category create "Entity Update Category $stamp" --scope helpers | jq -r '.data.category_id // empty')
     other_category_id=$(run_hab category create "Entity Update Other $stamp" --scope script | jq -r '.data.category_id // empty')
     if [ -n "$area_id" ] && [ -n "$label_id" ] && [ -n "$category_id" ] && [ -n "$other_category_id" ]; then
+        category_short=$(run_hab id list category --scope helpers | jq -r --arg id "$category_id" '.data[] | select(.id == $id) | .short_id')
         log_test "entity update registry fields preview"
-        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_id" --hidden --disabled --plan)
+        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_short" --hidden --disabled --plan)
         if echo "$output" | jq -e --arg area "$area_id" --arg label "$label_id" --arg category "$category_id" '.success == true and .data.saved == false and .data.changes.area_id.after == $area and .data.changes.labels.after == [$label] and .data.changes.aliases.after == ["Primary alias", "Secondary alias"] and .data.changes.categories.after.helpers == $category and .data.changes.hidden_by.after == "user" and .data.changes.disabled_by.after == "user"' > /dev/null; then
             pass "entity update previews registry fields"
         else
@@ -22,7 +23,7 @@ test_entity_registry_fields() {
         fi
 
         log_test "entity update registry fields apply"
-        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_id" --category "script=$other_category_id" --hidden --disabled)
+        output=$(run_hab entity update "$entity_id" --area "$area_id" --labels "$label_id" --aliases "Primary alias,Secondary alias" --category "helpers=$category_short" --category "script=$other_category_id" --hidden --disabled)
         if echo "$output" | jq -e '.success == true and .data.saved == true and .data.verified == true and .data.changes.area_id.before == null and .data.changes.labels.before == [] and .data.changes.hidden_by.before == null and .data.changes.disabled_by.before == null' > /dev/null; then
             pass "entity update saves all registry fields; preview made no changes"
         else

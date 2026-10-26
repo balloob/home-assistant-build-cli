@@ -73,6 +73,8 @@ func freshIDCommand(t *testing.T, path string) *cobra.Command {
 		switch f.Value.Type() {
 		case "string":
 			current.Flags().String(f.Name, f.DefValue, f.Usage)
+		case "stringArray":
+			current.Flags().StringArray(f.Name, nil, f.Usage)
 		case "stringSlice":
 			current.Flags().StringSlice(f.Name, nil, f.Usage)
 		case "bool":
@@ -241,5 +243,28 @@ func TestDisabledConfigIDsParticipateInCollisions(t *testing.T) {
 	addConfigShortIDs(items, configs)
 	if items[0]["short_id"] != "abcdef001" {
 		t.Fatalf("unsafe discovery: %v", items)
+	}
+}
+
+func TestEntityUpdateScopedCategoryPrefixes(t *testing.T) {
+	cmd := freshIDCommand(t, "entity update")
+	if err := cmd.ParseFlags([]string{"--category", "helpers=abcdef00", "--category", "script="}); err != nil {
+		t.Fatal(err)
+	}
+	full := "abcdef00111111111111111111111111"
+	calls := 0
+	err := resolveShortIDSelectors(cmd, []string{"input_boolean.test"}, func(ns idNamespace) ([]shortid.Candidate, error) {
+		calls++
+		if ns != (idNamespace{Kind: "category", Scope: "helpers"}) {
+			t.Fatal(ns)
+		}
+		return []shortid.Candidate{{ID: full}}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	values, err := cmd.Flags().GetStringArray("category")
+	if err != nil || calls != 1 || !reflect.DeepEqual(values, []string{"helpers=" + full, "script="}) {
+		t.Fatalf("values=%v calls=%d err=%v", values, calls, err)
 	}
 }
