@@ -661,6 +661,31 @@ hab backup delete <backup_id> --force
 
 `hab backup restore` also supports `--password`, `--restore-addon`, `--restore-folder`, `--restore-database`, and `--restore-homeassistant`.
 
+### Apps
+
+Manage Supervisor apps (formerly add-ons). Requires Supervisor and administrator access.
+
+```bash
+hab app list
+hab app list --available --search mqtt
+hab app get core_mosquitto --available
+hab app install core_mosquitto --plan
+hab app install core_mosquitto
+hab app get core_mosquitto
+hab app configure core_mosquitto --data '{"boot":"auto","watchdog":true}'
+hab app start core_mosquitto
+hab app restart core_mosquitto --force
+hab app stop core_mosquitto --force
+hab app update core_mosquitto
+hab app uninstall core_mosquitto --force
+```
+
+All app changes support `--plan` and `--dry-run`. Stop, restart, and uninstall require confirmation; use `--force` in scripts. Uninstall preserves the app configuration directory unless you add `--remove-config`.
+
+Use `--file` for JSON or YAML configuration, or pipe it through stdin. Read `hab app get <slug>` before replacing the `options` or `network` object. App details can contain credentials. Changes do not automatically restart an app.
+
+Create a backup before updates or removal. App changes wait up to ten minutes; use `--timeout 20m` for slow installs. If a request times out, inspect the app state before retrying. See `hab guide apps` for the full workflow.
+
 ### Marketplace
 
 Requires Home Assistant 2026.11 or later. Commands that take a repository accept its Marketplace ID or its GitHub full name.

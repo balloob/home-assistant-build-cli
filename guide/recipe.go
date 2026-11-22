@@ -187,6 +187,19 @@ func recipesForTopic(id string) []Recipe {
 			},
 			VerificationSteps: []string{"validate", "info"},
 		}}
+	case "apps":
+		return []Recipe{{
+			ID: "install-app", Summary: "Inspect an app, preview installation, install it, and check its state.",
+			RequiredCapabilities: []string{"auth", "ws", "supervisor"},
+			Inputs:               []RecipeInput{{Name: "slug", Description: "App slug from the store", Required: true, Source: "discovery"}},
+			Steps: []RecipeStep{
+				{ID: "inspect", Type: "discovery", Summary: "Inspect the store entry", CommandTemplate: "hab app get {{slug}} --available --json"},
+				{ID: "plan", Type: "discovery", Summary: "Preview installation", CommandTemplate: "hab app install {{slug}} --plan --json"},
+				{ID: "install", Type: "mutation", Summary: "Install the selected app", CommandTemplate: "hab app install {{slug}} --json"},
+				{ID: "verify", Type: "verification", Summary: "Read the installed app state", CommandTemplate: "hab app get {{slug}} --json"},
+			},
+			VerificationSteps: []string{"verify"},
+		}}
 	case "operations":
 		return []Recipe{{
 			ID:                   "operations-health-loop",

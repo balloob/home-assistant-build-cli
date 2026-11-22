@@ -53,6 +53,7 @@ var topicRegistry = []topicDef{
 				"helpers",
 				"calendar-todo",
 				"esphome",
+				"apps",
 				"operations",
 			},
 			SuggestedCommands: []string{
@@ -466,6 +467,19 @@ var topicRegistry = []topicDef{
 			},
 		},
 		Filename: "esphome",
+	},
+	{
+		Topic: Topic{
+			ID: "apps", Title: "App Management", Summary: "Install, configure, and operate Supervisor apps.",
+			Aliases: []string{"app", "addons"}, RelatedTopics: []string{"auth", "operations"},
+			SuggestedCommands:    []string{"hab app list --json", "hab app list --available --json", "hab app get <slug> --json"},
+			Prerequisites:        []string{"Home Assistant with Supervisor and administrator access."},
+			DiscoverySteps:       []string{"Find the exact slug with hab app list or hab app list --available.", "Inspect settings and the options schema with hab app get <slug>."},
+			MutationPatterns:     []string{"Preview changes with --plan or --dry-run.", "Create a backup before updating or removing apps.", "Configure an app, then start or restart it if needed."},
+			VerificationCommands: []string{"hab app get <slug> --json", "hab app list --json"},
+			Pitfalls:             []string{"Supplying a partial options object can discard existing options.", "A timed-out operation may still complete; inspect app state before retrying.", "App details can contain credentials."},
+		},
+		Filename: "apps",
 	},
 	{
 		Topic: Topic{

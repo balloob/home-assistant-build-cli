@@ -8,7 +8,14 @@ import "strings"
 func auditedDataShapes() map[string]string {
 	result := map[string]string{}
 	groups := map[string]string{
-		"null": `auth logout
+		"null": `app configure
+app install
+app update
+app start
+app stop
+app restart
+app uninstall
+auth logout
 automation run
 backup delete
 calendar create
@@ -46,7 +53,8 @@ todo remove
 todo uncomplete
 todo update
 zone delete`,
-		"array": `action data
+		"array": `app list
+action data
 action list
 automation list
 category list
@@ -78,7 +86,8 @@ system updates
 todo items
 todo lists
 zone list`,
-		"object": `action docs
+		"object": `app get
+action docs
 auth login
 auth refresh
 auth status

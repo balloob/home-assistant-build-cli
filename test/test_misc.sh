@@ -837,6 +837,46 @@ run_marketplace_tests() {
     fi
 }
 
+run_app_tests() {
+    log_section "App Tests"
+    do_auth_login
+
+    local operation
+    for operation in install update start stop restart uninstall; do
+        log_test "app $operation --plan"
+        OUTPUT=$(run_hab app "$operation" core_mosquitto --plan)
+        if echo "$OUTPUT" | jq -e '.success == true and .data.mode == "plan" and .data.target.slug == "core_mosquitto"' > /dev/null 2>&1; then
+            pass "app $operation --plan"
+        else
+            fail "app $operation --plan: $OUTPUT"
+        fi
+    done
+
+    log_test "app configure --dry-run"
+    OUTPUT=$(run_hab app configure core_mosquitto --data '{"boot":"auto","watchdog":false}' --dry-run)
+    if echo "$OUTPUT" | jq -e '.success == true and .data.mode == "plan"' > /dev/null 2>&1; then
+        pass "app configure --dry-run"
+    else
+        fail "app configure --dry-run: $OUTPUT"
+    fi
+
+    log_test "app list without Supervisor"
+    OUTPUT=$(run_hab_optional app list)
+    if echo "$OUTPUT" | jq -es 'first | .success == false and (.error.code | ascii_downcase) == "unknown_command"' > /dev/null 2>&1; then
+        pass "app list reports that Supervisor is unavailable"
+    else
+        fail "app list without Supervisor: $OUTPUT"
+    fi
+
+    log_test "app get without Supervisor"
+    OUTPUT=$(run_hab_optional app get core_mosquitto)
+    if echo "$OUTPUT" | jq -es 'first | .success == false and (.error.code | ascii_downcase) == "unknown_command"' > /dev/null 2>&1; then
+        pass "app get reports that Supervisor is unavailable"
+    else
+        fail "app get without Supervisor: $OUTPUT"
+    fi
+}
+
 # Run standalone if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     init_standalone_test "Miscellaneous Tests"
@@ -848,6 +888,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     run_event_tests
     run_repairs_tests
     run_marketplace_tests
+    run_app_tests
     print_summary "Miscellaneous Tests"
     exit $?
 fi

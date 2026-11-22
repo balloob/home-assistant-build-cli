@@ -56,3 +56,5 @@ hab guide list --json
 hab guide discovery --json
 hab entity list --domain light --json
 ```
+
+For Supervisor apps, use `hab guide apps`.
