@@ -48,6 +48,17 @@ type Recipe struct {
 
 func recipesForTopic(id string) []Recipe {
 	switch id {
+	case "management":
+		return []Recipe{{
+			ID: "configure-integration", Summary: "Start an integration flow, submit its form, and inspect the resulting entry.", RequiredCapabilities: []string{"auth", "rest"},
+			Inputs: []RecipeInput{{Name: "domain", Required: true, Source: "prompt"}, {Name: "answers_file", Required: true, Source: "file"}},
+			Steps: []RecipeStep{
+				{ID: "start", Type: "mutation", Summary: "Start setup", CommandTemplate: "hab integration flow start {{domain}} --json", Captures: []RecipeCapture{{Field: "data.flow_id", As: "flow_id"}}},
+				{ID: "inspect", Type: "discovery", Summary: "Inspect the current form", CommandTemplate: "hab integration flow get {{flow_id}} --json"},
+				{ID: "submit", Type: "mutation", Summary: "Submit fields for the current form", CommandTemplate: "hab integration flow step {{flow_id}} --file {{answers_file}} --json", Notes: []string{"Repeat inspect and submit until create_entry or abort. Complete external authentication in the browser when requested."}},
+				{ID: "verify", Type: "verification", Summary: "Verify the configured entry", CommandTemplate: "hab integration list --json"},
+			}, VerificationSteps: []string{"verify"},
+		}}
 	case "index":
 		return []Recipe{{
 			ID:                   "bootstrap-discovery",

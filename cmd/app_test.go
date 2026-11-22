@@ -54,6 +54,7 @@ func appTestServer(t *testing.T, result any, failure map[string]any) (<-chan map
 			t.Error(err)
 			return
 		}
+		message = nil
 		decoder := json.NewDecoder(strings.NewReader(string(raw)))
 		decoder.UseNumber()
 		if err := decoder.Decode(&message); err != nil {

@@ -58,3 +58,5 @@ hab entity list --domain light --json
 ```
 
 For Supervisor apps, use `hab guide apps`.
+
+Use `hab guide management` for integration and repair flows, Assist, statistics, app administration, host and network settings, mounts, credentials, archive transfers, core settings, and media.

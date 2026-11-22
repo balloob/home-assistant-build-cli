@@ -21,6 +21,14 @@ type idSelector struct {
 // prepareShortIDs runs before command-specific plans and confirmation prompts.
 // Only audited ID selectors are rewritten, never arbitrary names or text.
 func prepareShortIDs(cmd *cobra.Command, args []string) error {
+	// Local previews describe the supplied IDs without resolving them on the server.
+	if cmd.Annotations["hab.local_preview"] == "true" {
+		for _, name := range []string{"plan", "dry-run"} {
+			if flag := cmd.Flags().Lookup(name); flag != nil && flag.Value.String() == "true" {
+				return nil
+			}
+		}
+	}
 	catalog := &idCatalog{}
 	defer catalog.close()
 	if err := resolveShortIDSelectors(cmd, args, catalog.list); err != nil {

@@ -875,6 +875,141 @@ run_app_tests() {
     else
         fail "app get without Supervisor: $OUTPUT"
     fi
+
+    log_test "app logs without Supervisor"
+    OUTPUT=$(run_hab app logs core_mosquitto)
+    if echo "$OUTPUT" | jq -e '.success == false and .error.code == "NOT_FOUND"' >/dev/null; then
+        pass "app logs reports that Supervisor is unavailable"
+    else fail "app logs without Supervisor: $OUTPUT"; fi
+
+    for operation in stats validate; do
+        local extra=()
+        if [ "$operation" = validate ]; then extra=(--data '{}'); fi
+        OUTPUT=$(run_hab app "$operation" core_mosquitto "${extra[@]}")
+        if echo "$OUTPUT" | jq -e '.success == false and (.error.code | ascii_downcase) == "unknown_command"' >/dev/null; then
+            pass "app $operation reports that Supervisor is unavailable"
+        else fail "app $operation without Supervisor: $OUTPUT"; fi
+    done
+
+}
+
+run_management_tests() {
+    log_section "Instance Management"
+    do_auth_login
+    local result flow entry user pipeline original_name payload media_id
+    local test_dir
+    test_dir=$(mktemp -d)
+
+    for entry in 0123456789abcdef0123456789abcdef 01K8G6A1B2C3D4E5F6G7H8J9KM; do
+        for preview in plan dry-run; do
+            result=$(HAB_URL=http://127.0.0.1:1 HAB_TOKEN=preview-test-token "$HAB" --config "$test_dir/offline-config" --json integration update "$entry" --data '{"title":"Preview"}' "--$preview" || true)
+            if echo "$result" | jq -e '.success and .data.mode == "plan" and (.metadata.transports_used | length) == 0' >/dev/null; then
+                pass "integration update --$preview with a full ID stays offline"
+            else fail "offline update preview: $result"; fi
+            result=$(HAB_URL=http://127.0.0.1:1 HAB_TOKEN=preview-test-token "$HAB" --config "$test_dir/offline-config" --json integration delete "$entry" "--$preview" || true)
+            if echo "$result" | jq -e '.success and .data.mode == "plan" and (.metadata.transports_used | length) == 0' >/dev/null; then
+                pass "integration delete --$preview with a full ID stays offline"
+            else fail "offline delete preview: $result"; fi
+        done
+    done
+
+    for command in "integration types" "integration flow list" "assist pipeline list" "assist exposure list" "assist exposure defaults get conversation" "statistics metadata list" "statistics validate" "user list" "application-credential config" "application-credential list" "system config get" "media browse"; do
+        result=$(run_hab $command)
+        if echo "$result" | jq -e '.success' >/dev/null; then pass "$command"; else fail "$command: $result"; fi
+    done
+
+    result=$(run_hab integration flow start min_max)
+    flow=$(echo "$result" | jq -r '.data.flow_id // empty')
+    if [ -n "$flow" ]; then
+        result=$(run_hab integration flow get "$flow")
+        if echo "$result" | jq -e '.success and .data.type == "form"' >/dev/null; then pass "integration flow get"; else fail "flow get: $result"; fi
+        result=$(run_hab integration flow step "$flow" --data '{"name":"Management test","entity_ids":["sensor.test"],"type":"min","round_digits":2}')
+        entry=$(echo "$result" | jq -r '.data.result.entry_id // empty')
+        if [ -n "$entry" ]; then
+            pass "integration flow creates an entry"
+            result=$(run_hab integration update "$entry" --data '{"title":"Management renamed"}')
+            if echo "$result" | jq -e '.success and .data.config_entry.title == "Management renamed"' >/dev/null; then pass "integration update"; else fail "integration update: $result"; fi
+            result=$(run_hab integration options start "$entry")
+            flow=$(echo "$result" | jq -r '.data.flow_id // empty')
+            if [ -n "$flow" ]; then
+                pass "integration options start"
+                result=$(run_hab integration options abort "$flow")
+                if echo "$result" | jq -e '.success' >/dev/null; then pass "integration options abort"; else fail "options abort: $result"; fi
+            else fail "options start: $result"; fi
+            result=$(run_hab integration subentry list "$entry")
+            if echo "$result" | jq -e '.success and (.data | type) == "array"' >/dev/null; then pass "subentry list"; else fail "subentry list: $result"; fi
+            result=$(run_hab integration delete "$entry" --force)
+            if echo "$result" | jq -e '.success' >/dev/null; then pass "integration delete"; else fail "integration delete: $result"; fi
+        else fail "integration flow step: $result"; fi
+    else fail "integration flow start: $result"; fi
+
+    result=$(run_hab user create --data '{"name":"Management test user","group_ids":["system-users"],"local_only":true}')
+    user=$(echo "$result" | jq -r '.data.user.id // empty')
+    if [ -n "$user" ]; then
+        pass "user create"
+        result=$(run_hab user credentials create "$user" --data '{"username":"hab_management_test","password":"test-only-password"}')
+        if echo "$result" | jq -e '.success' >/dev/null; then pass "user credentials create"; else fail "credentials: $result"; fi
+        result=$(run_hab user password "$user" --data '{"password":"test-only-replacement"}' --force)
+        if echo "$result" | jq -e '.success' >/dev/null; then pass "user password"; else fail "password: $result"; fi
+        result=$(run_hab user update "$user" --data '{"name":"Renamed test user"}')
+        if echo "$result" | jq -e '.success and .data.user.name == "Renamed test user"' >/dev/null; then pass "user update"; else fail "user update: $result"; fi
+        result=$(run_hab user delete "$user" --force)
+        if echo "$result" | jq -e '.success' >/dev/null; then pass "user delete"; else fail "user delete: $result"; fi
+    else fail "user create: $result"; fi
+
+    payload='{"name":"Management pipeline","language":"en","conversation_engine":"homeassistant","conversation_language":"en","stt_engine":null,"stt_language":null,"tts_engine":null,"tts_language":null,"tts_voice":null,"wake_word_entity":null,"wake_word_id":null}'
+    result=$(run_hab assist pipeline create --data "$payload")
+    pipeline=$(echo "$result" | jq -r '.data.id // empty')
+    if [ -n "$pipeline" ]; then
+        pass "assist pipeline create"
+        payload=$(echo "$payload" | jq '.name = "Updated pipeline"')
+        result=$(run_hab assist pipeline update "$pipeline" --data "$payload")
+        if echo "$result" | jq -e '.success and .data.name == "Updated pipeline"' >/dev/null; then pass "assist pipeline update"; else fail "pipeline update: $result"; fi
+        result=$(run_hab assist runs list "$pipeline")
+        if echo "$result" | jq -e '.success and (.data.pipeline_runs | type) == "array"' >/dev/null; then pass "assist runs list"; else fail "runs list: $result"; fi
+        result=$(run_hab assist pipeline delete "$pipeline" --force)
+        if echo "$result" | jq -e '.success' >/dev/null; then pass "assist pipeline delete"; else fail "pipeline delete: $result"; fi
+    else fail "pipeline create: $result"; fi
+
+    result=$(run_hab statistics query --data '{"start_time":"2026-01-01T00:00:00Z","period":"day","statistic_ids":["sensor.hab_test_missing"]}')
+    if echo "$result" | jq -e '.success and (.data | type) == "object"' >/dev/null; then pass "statistics query"; else fail "statistics query: $result"; fi
+    result=$(run_hab statistics summary sensor.hab_test_missing --data '{"fixed_period":{"start_time":"2026-01-01T00:00:00Z"}}')
+    if echo "$result" | jq -e '.success' >/dev/null; then pass "statistics summary"; else fail "statistics summary: $result"; fi
+    result=$(run_hab statistics refresh-issues)
+    if echo "$result" | jq -e '.success' >/dev/null; then pass "statistics refresh-issues"; else fail "refresh issues: $result"; fi
+
+    result=$(run_hab system config get)
+    original_name=$(echo "$result" | jq -r '.data.location_name')
+    result=$(run_hab system config update --data '{"location_name":"Management test"}')
+    if echo "$result" | jq -e '.success' >/dev/null; then pass "system config update"; else fail "config update: $result"; fi
+    result=$(run_hab system config get)
+    if echo "$result" | jq -e '.data.location_name == "Management test"' >/dev/null; then pass "system config readback"; else fail "config readback: $result"; fi
+    payload=$(jq -n --arg name "$original_name" '{location_name:$name}')
+    result=$(run_hab system config update --data "$payload")
+    if ! echo "$result" | jq -e '.success' >/dev/null; then fail "restore instance name: $result"; fi
+
+    printf 'test media' > "$test_dir/hab-management.mp3"
+    result=$(run_hab media upload "$test_dir/hab-management.mp3" --media-content-id media-source://media_source/local)
+    media_id=$(echo "$result" | jq -r '.data.media_content_id // empty')
+    if [ -n "$media_id" ]; then
+        pass "media upload"
+        result=$(run_hab media resolve "$media_id")
+        if echo "$result" | jq -e '.success and .data.url != null' >/dev/null; then pass "media resolve"; else fail "media resolve: $result"; fi
+        result=$(run_hab media delete "$media_id" --force)
+        if echo "$result" | jq -e '.success' >/dev/null; then pass "media delete"; else fail "media delete: $result"; fi
+    else fail "media upload: $result"; fi
+
+    for command in "host reboot" "host shutdown" "host os update" "host os sync" "app rebuild demo" "app repository remove demo" "mount delete demo" "repairs flow start domain issue"; do
+        result=$(run_hab $command --plan)
+        if echo "$result" | jq -e '.success and .data.mode == "plan"' >/dev/null; then pass "$command preview"; else fail "$command preview: $result"; fi
+    done
+    result=$(run_hab network interfaces update eth0 --data '{"ipv4":{"method":"auto"}}' --plan)
+    if echo "$result" | jq -e '.success and .data.mode == "plan"' >/dev/null; then pass "network interface preview"; else fail "network preview: $result"; fi
+    result=$(run_hab backup upload "$test_dir/hab-management.mp3" --agent backup.local --plan)
+    if echo "$result" | jq -e '.success and .data.mode == "plan"' >/dev/null; then pass "backup upload preview"; else fail "backup preview: $result"; fi
+    result=$(run_hab diagnostics download missing-entry --output "$test_dir/diagnostics.json")
+    if echo "$result" | jq -e '.success == false' >/dev/null && [ ! -e "$test_dir/diagnostics.json" ]; then pass "failed diagnostics leaves no file"; else fail "diagnostics failure: $result"; fi
+    rm -rf "$test_dir"
 }
 
 # Run standalone if executed directly
@@ -889,6 +1024,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     run_repairs_tests
     run_marketplace_tests
     run_app_tests
+    run_management_tests
     print_summary "Miscellaneous Tests"
     exit $?
 fi
