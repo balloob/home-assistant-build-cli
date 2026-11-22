@@ -80,7 +80,18 @@ func appRequest(cmd *cobra.Command, method, endpoint string, data map[string]any
 	result, err := ws.SendCommandContext(ctx, "supervisor/api", params)
 	if err != nil {
 		if method != "get" {
-			return nil, fmt.Errorf("app request failed; check 'hab app list' and 'hab app get' before retrying because the operation may still complete: %w", err)
+			code, message, _ := classifyError(err)
+			if code == client.ErrCodeTimeout || code == client.ErrCodeCancelled || code == client.ErrCodeConnectionError {
+				return nil, &client.APIError{
+					Code:              code,
+					Message:           "App operation outcome is unknown. Supervisor may still complete it. Inspect the app state before retrying.",
+					Category:          "unknown_outcome",
+					Details:           map[string]any{"retryable": false, "cause": message},
+					SuggestedFix:      "Inspect 'hab app list' and 'hab app get <slug>' before retrying.",
+					SuggestedCommands: []string{"hab app list --json"},
+					Transport:         "websocket",
+				}
+			}
 		}
 		return nil, err
 	}

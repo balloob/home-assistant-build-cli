@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/home-assistant/hab/auth"
+	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -222,6 +223,25 @@ func TestAppErrors(t *testing.T) {
 			out, err := executeAppTest(t, newAppActionCommand("install"), "core_mosquitto")
 			if err == nil || strings.Contains(out, `"success": true`) || !strings.Contains(err.Error(), "Supervisor refused") {
 				t.Fatalf("failure reported as success: %s, %v", out, err)
+			}
+		})
+	}
+}
+
+func TestAppUnknownOutcomeSurvivesErrorFormatting(t *testing.T) {
+	for _, code := range []string{client.ErrCodeTimeout, client.ErrCodeConnectionError, client.ErrCodeCancelled} {
+		t.Run(code, func(t *testing.T) {
+			appTestServer(t, nil, map[string]any{"code": code, "message": "Operation interrupted"})
+			out, err := executeAppTest(t, newAppActionCommand("install"), "core_mosquitto")
+			if err == nil || strings.Contains(out, `"success": true`) {
+				t.Fatalf("interrupted operation reported success: %s, %v", out, err)
+			}
+			gotCode, message, details := classifyError(err)
+			if gotCode != code || !strings.Contains(message, "may still complete") || details["retryable"] != false || details["category"] != "unknown_outcome" {
+				t.Fatalf("unsafe final error: %s, %s, %#v", gotCode, message, details)
+			}
+			if !reflect.DeepEqual(details["suggested_commands"], []string{"hab app list --json"}) {
+				t.Fatalf("missing inspection command: %#v", details)
 			}
 		})
 	}
