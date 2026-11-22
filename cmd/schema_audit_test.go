@@ -68,7 +68,7 @@ func TestEveryExecutableCommandHasReviewedContract(t *testing.T) {
 
 func reviewedEffect(t *testing.T, path, name string) string {
 	t.Helper()
-	if slices.Contains([]string{"hab network configure", "hab esphome serial erase-flash", "hab esphome context clear"}, path) {
+	if slices.Contains([]string{"hab app stop", "hab network configure", "hab esphome serial erase-flash", "hab esphome context clear"}, path) {
 		return "destructive"
 	}
 	if path == "hab marketplace custom remove" {
@@ -76,7 +76,7 @@ func reviewedEffect(t *testing.T, path, name string) string {
 	}
 	groups := map[string]string{
 		"read":        "agents analyze boards config-check config-read data detect discover docs entities get guide health help history info items list lists logbook logs ports related releases removed render schema search show solar-forecast status trace types updates url validate version",
-		"write":       "accept-warning acknowledge activate add assign build call clear-new complete config-patch config-write configure create create-from-blueprint disable dismiss enable fire github-connect ignore import install login patch probe refresh reload rename run save-config set set-beta set-preferred set-version uncomplete unignore update upload use",
+		"write":       "accept-warning acknowledge activate add assign build call clear-new complete config-patch config-write configure create create-from-blueprint disable dismiss enable fire github-connect ignore import install login patch probe refresh reload rename run save-config set set-beta set-preferred set-version start uncomplete unignore update upload use",
 		"destructive": "delete erase-flash logout remove restart restore uninstall",
 	}
 	if path == "hab capability probe" {

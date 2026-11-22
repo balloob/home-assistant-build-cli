@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-22
+
+### App management
+
+Manage Supervisor apps with `hab app`. List installed apps or browse the app store, inspect details, install, configure, update, start, stop, restart, and uninstall apps. Configuration accepts JSON or YAML from inline data, files, or stdin.
+
+Preview changes with `--plan` or `--dry-run`. Stop, restart, and uninstall require confirmation. Uninstall preserves the app configuration directory unless `--remove-config` is set. Use `--timeout` for long operations and `hab guide apps` for workflow guidance.
+
 ## [1.8.0] - 2026-10-26
 
 ### Short resource IDs
