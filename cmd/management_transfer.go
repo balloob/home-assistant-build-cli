@@ -32,7 +32,7 @@ func newTransferCommand(kind string, upload bool) *cobra.Command {
 	if upload {
 		use, short = "upload <file>", "Upload a local file"
 	}
-	cmd := &cobra.Command{Use: use, Short: short, Args: cobra.ExactArgs(1)}
+	cmd := &cobra.Command{Use: use, Short: short, Args: cobra.ExactArgs(1), Annotations: map[string]string{"hab.local_preview": "true"}}
 	cmd.Flags().DurationVar(&f.timeout, "timeout", 10*time.Minute, "Maximum transfer duration")
 	if upload {
 		registerMutationPlanFlags(cmd, &f.plan, &f.dryRun)

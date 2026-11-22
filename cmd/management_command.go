@@ -38,7 +38,7 @@ type managementFlags struct {
 
 func newManagementCommand(s managementSpec) *cobra.Command {
 	f := &managementFlags{}
-	cmd := &cobra.Command{Use: s.Use, Short: s.Short}
+	cmd := &cobra.Command{Use: s.Use, Short: s.Short, Annotations: map[string]string{"hab.local_preview": "true"}}
 	cmd.Args = cobra.ExactArgs(len(s.Args))
 	if s.OptionalArg {
 		cmd.Args = cobra.RangeArgs(len(s.Args)-1, len(s.Args))

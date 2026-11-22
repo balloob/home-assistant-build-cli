@@ -875,6 +875,22 @@ run_app_tests() {
     else
         fail "app get without Supervisor: $OUTPUT"
     fi
+
+    log_test "app logs without Supervisor"
+    OUTPUT=$(run_hab app logs core_mosquitto)
+    if echo "$OUTPUT" | jq -e '.success == false and .error.code == "NOT_FOUND"' >/dev/null; then
+        pass "app logs reports that Supervisor is unavailable"
+    else fail "app logs without Supervisor: $OUTPUT"; fi
+
+    for operation in stats validate; do
+        local extra=()
+        if [ "$operation" = validate ]; then extra=(--data '{}'); fi
+        OUTPUT=$(run_hab app "$operation" core_mosquitto "${extra[@]}")
+        if echo "$OUTPUT" | jq -e '.success == false and (.error.code | ascii_downcase) == "unknown_command"' >/dev/null; then
+            pass "app $operation reports that Supervisor is unavailable"
+        else fail "app $operation without Supervisor: $OUTPUT"; fi
+    done
+
 }
 
 run_management_tests() {
@@ -883,6 +899,19 @@ run_management_tests() {
     local result flow entry user pipeline original_name payload media_id
     local test_dir
     test_dir=$(mktemp -d)
+
+    for entry in 0123456789abcdef0123456789abcdef 01K8G6A1B2C3D4E5F6G7H8J9KM; do
+        for preview in plan dry-run; do
+            result=$(HAB_URL=http://127.0.0.1:1 HAB_TOKEN=preview-test-token "$HAB" --config "$test_dir/offline-config" --json integration update "$entry" --data '{"title":"Preview"}' "--$preview" || true)
+            if echo "$result" | jq -e '.success and .data.mode == "plan" and (.metadata.transports_used | length) == 0' >/dev/null; then
+                pass "integration update --$preview with a full ID stays offline"
+            else fail "offline update preview: $result"; fi
+            result=$(HAB_URL=http://127.0.0.1:1 HAB_TOKEN=preview-test-token "$HAB" --config "$test_dir/offline-config" --json integration delete "$entry" "--$preview" || true)
+            if echo "$result" | jq -e '.success and .data.mode == "plan" and (.metadata.transports_used | length) == 0' >/dev/null; then
+                pass "integration delete --$preview with a full ID stays offline"
+            else fail "offline delete preview: $result"; fi
+        done
+    done
 
     for command in "integration types" "integration flow list" "assist pipeline list" "assist exposure list" "assist exposure defaults get conversation" "statistics metadata list" "statistics validate" "user list" "application-credential config" "application-credential list" "system config get" "media browse"; do
         result=$(run_hab $command)
