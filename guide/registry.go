@@ -54,6 +54,7 @@ var topicRegistry = []topicDef{
 				"calendar-todo",
 				"esphome",
 				"apps",
+				"management",
 				"operations",
 			},
 			SuggestedCommands: []string{
@@ -521,6 +522,16 @@ var topicRegistry = []topicDef{
 		},
 		Filename: "operations",
 	},
+	{Topic: Topic{
+		ID: "management", Title: "Instance Management", Summary: "Manage integration flows, Assist, statistics, repairs, host settings, credentials, archives, and media.",
+		RelatedTopics:        []string{"operations", "apps", "auth", "input-output"},
+		SuggestedCommands:    []string{"hab integration flow list --json", "hab assist pipeline list --json", "hab statistics validate --json", "hab system config get --json", "hab media browse --json"},
+		Prerequisites:        []string{"Authenticate as an administrator. Host and app commands require Supervisor."},
+		DiscoverySteps:       []string{"Read the relevant list or get command before editing."},
+		MutationPatterns:     []string{"Submit exact API fields with --data or --file. Use --plan before mutations."},
+		VerificationCommands: []string{"hab integration list --json", "hab statistics validate --json", "hab system config get --json"},
+		Pitfalls:             []string{"Flow forms can require more than one step or browser authentication.", "Inspect resources after a mutation timeout before retrying.", "Keep credential inputs and outputs private."},
+	}, Filename: "management"},
 }
 
 // List returns all guide topics in deterministic display order.

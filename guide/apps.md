@@ -48,3 +48,5 @@ Stop, restart, and uninstall require confirmation. `--force` skips it. Uninstall
 All mutations support `--plan` and its alias `--dry-run`. Plans perform local checks without connecting to Home Assistant. They do not check the app state or validate its options against the server schema. Configuration values are hidden in plans.
 
 Mutations wait up to ten minutes by default. Use `--timeout` to change the limit. A timeout or interrupted connection does not cancel an operation on Supervisor. Check the app state before retrying. Create a backup before updates or removal.
+
+Use `hab guide management` for integration and repair flows, Assist, statistics, app administration, host and network settings, mounts, credentials, archive transfers, core settings, and media.

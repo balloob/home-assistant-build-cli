@@ -49,3 +49,5 @@ hab diagnostics list --json
 
 - Running restart/restore without a recent backup.
 - Ignoring repairs without understanding their impact.
+
+Use `hab guide management` for integration and repair flows, Assist, statistics, app administration, host and network settings, mounts, credentials, archive transfers, core settings, and media.

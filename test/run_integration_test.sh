@@ -18,7 +18,7 @@ source "$ORCHESTRATOR_DIR/lib/common.sh"
 trap cleanup EXIT
 
 # Order of test execution (matters for dependencies)
-TEST_ORDER=(core registry automation script dashboard helpers template calendar esphome misc notification integration event repairs marketplace apps)
+TEST_ORDER=(core registry automation script dashboard helpers template calendar esphome misc notification integration event repairs marketplace apps management)
 
 # Get the test function for a given group (Bash 3.x compatible - no associative arrays)
 get_test_function() {
@@ -40,6 +40,7 @@ get_test_function() {
         repairs)      echo "run_repairs_tests" ;;
         marketplace)  echo "run_marketplace_tests" ;;
         apps)         echo "run_app_tests" ;;
+        management)   echo "run_management_tests" ;;
         *)          echo "" ;;
     esac
 }
@@ -79,6 +80,7 @@ print_usage() {
     echo "  repairs       - Repairs/issues tests"
     echo "  marketplace   - Marketplace tests (Home Assistant 2026.11+)"
     echo "  apps          - App previews and Supervisor availability"
+    echo "  management    - Integration flows, Assist, statistics, users, files, and host settings"
     echo ""
     echo "Examples:"
     echo "  $0              # Run all tests"

@@ -7,7 +7,7 @@ import (
 
 func TestTopicIDsDeterministicOrder(t *testing.T) {
 	got := TopicIDs()
-	want := []string{"index", "discovery", "auth", "input-output", "registry", "automation", "dashboard", "helpers", "calendar-todo", "esphome", "apps", "operations"}
+	want := []string{"index", "discovery", "auth", "input-output", "registry", "automation", "dashboard", "helpers", "calendar-todo", "esphome", "apps", "operations", "management"}
 
 	if len(got) != len(want) {
 		t.Fatalf("TopicIDs length = %d, want %d", len(got), len(want))
