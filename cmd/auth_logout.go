@@ -10,8 +10,13 @@ import (
 var authLogoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Remove stored credentials",
-	Long:  `Remove stored credentials from the local machine.`,
-	RunE:  runAuthLogout,
+	Long: `Remove the selected context's stored credentials from the local machine.
+
+Other contexts are not affected. Logging out of a named context removes the
+context; logging out of the default context removes only its credentials.`,
+	Example: `  hab auth logout
+  hab auth logout --context brother-homeassistant`,
+	RunE: runAuthLogout,
 }
 
 func init() {

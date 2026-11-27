@@ -142,6 +142,72 @@ run_core_tests() {
     do_auth_login
 
     # ==========================================================================
+    # Named contexts (both point at the test instance)
+    # ==========================================================================
+    log_test "auth login --context"
+    OUTPUT=$(run_hab --context second auth login --token --url "$URL" --access-token "$TOKEN")
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1; then
+        pass "auth login --context"
+    else
+        fail "auth login --context: $OUTPUT"
+    fi
+
+    log_test "auth context list"
+    OUTPUT=$(run_hab auth context list)
+    if echo "$OUTPUT" | jq -e '[.data[].name] == ["default", "second"] and ([.data[] | select(.current)] | map(.name)) == ["default"] and .data[1].url != null' > /dev/null 2>&1; then
+        pass "auth context list"
+    else
+        fail "auth context list: $OUTPUT"
+    fi
+
+    log_test "--context override"
+    OUTPUT=$(run_hab --context second auth status)
+    if echo "$OUTPUT" | jq -e '.data.authenticated == true and .data.context == "second"' > /dev/null 2>&1; then
+        pass "--context override"
+    else
+        fail "--context override: $OUTPUT"
+    fi
+
+    log_test "HAB_CONTEXT override"
+    OUTPUT=$(HAB_CONTEXT=second run_hab system info)
+    STATUS=$(HAB_CONTEXT=second run_hab auth status)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1 && echo "$STATUS" | jq -e '.data.context == "second"' > /dev/null 2>&1; then
+        pass "HAB_CONTEXT override"
+    else
+        fail "HAB_CONTEXT override: $OUTPUT $STATUS"
+    fi
+
+    log_test "auth context use"
+    OUTPUT=$(run_hab auth context use second)
+    STATUS=$(run_hab auth status)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1 && echo "$STATUS" | jq -e '.data.context == "second"' > /dev/null 2>&1; then
+        pass "auth context use"
+    else
+        fail "auth context use: $OUTPUT $STATUS"
+    fi
+    run_hab auth context use default > /dev/null
+
+    log_test "unknown context"
+    OUTPUT=$(run_hab --context missing system info)
+    if echo "$OUTPUT" | jq -e '.success == false and .error.code == "AUTH_REQUIRED" and (.error.message | contains("available contexts: default, second"))' > /dev/null 2>&1; then
+        pass "unknown context"
+    else
+        fail "unknown context: $OUTPUT"
+    fi
+
+    log_test "auth logout --context"
+    OUTPUT=$(run_hab --context second auth logout)
+    LIST=$(run_hab auth context list)
+    STATUS=$(run_hab auth status)
+    if echo "$OUTPUT" | jq -e '.success == true' > /dev/null 2>&1 \
+        && echo "$LIST" | jq -e '[.data[].name] == ["default"]' > /dev/null 2>&1 \
+        && echo "$STATUS" | jq -e '.data.authenticated == true and .data.context == "default"' > /dev/null 2>&1; then
+        pass "auth logout --context (default context intact)"
+    else
+        fail "auth logout --context: $OUTPUT $LIST $STATUS"
+    fi
+
+    # ==========================================================================
     # Version command tests
     # ==========================================================================
     log_test "version (JSON)"

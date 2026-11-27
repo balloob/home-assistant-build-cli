@@ -8,7 +8,7 @@ import (
 var authStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show current authentication status",
-	Long:  `Display the current authentication status and configuration.`,
+	Long:  `Display the authentication status and Home Assistant context selected for this command.`,
 	RunE:  runAuthStatus,
 }
 

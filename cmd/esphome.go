@@ -9,7 +9,6 @@ import (
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/config"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeDevice string
@@ -120,7 +119,11 @@ func resolveESPHomeConfiguration(args []string, index int) (string, error) {
 		return args[index], nil
 	}
 
-	ctx, err := config.LoadESPHomeContext(viper.GetString("config"))
+	dir, err := getAuthManager().ContextDir()
+	if err != nil {
+		return "", err
+	}
+	ctx, err := config.LoadESPHomeContext(dir)
 	if err != nil {
 		return "", fmt.Errorf("load ESPHome context: %w", err)
 	}

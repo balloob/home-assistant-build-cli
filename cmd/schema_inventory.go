@@ -54,6 +54,7 @@ todo uncomplete
 todo update
 zone delete`,
 		"array": `app list
+auth context list
 action data
 action list
 automation list
@@ -88,6 +89,7 @@ todo lists
 zone list`,
 		"object": `app get
 action docs
+auth context use
 auth login
 auth refresh
 auth status

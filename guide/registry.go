@@ -148,6 +148,7 @@ var topicRegistry = []topicDef{
 				"hab auth status --json",
 				"hab auth login",
 				"hab auth refresh --json",
+				"hab auth context list --json",
 			},
 			Prerequisites: []string{
 				"A reachable Home Assistant URL.",
@@ -156,10 +157,12 @@ var topicRegistry = []topicDef{
 			DiscoverySteps: []string{
 				"Use hab auth status --json to detect whether credentials already exist.",
 				"Use hab auth discover to find local Home Assistant instances when URL is unknown.",
+				"Use hab auth context list --json to see the stored Home Assistant contexts.",
 			},
 			MutationPatterns: []string{
 				"Authenticate once, then reuse the session across all workflows.",
 				"Use hab auth refresh when a long-running automation hits token expiry.",
+				"Pass --context <name> or HAB_CONTEXT=<name> to target a named Home Assistant instance.",
 			},
 			VerificationCommands: []string{
 				"hab auth status --json",

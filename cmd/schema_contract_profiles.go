@@ -116,6 +116,7 @@ func outputContractOverrides() map[string]SchemaOutputContract {
 				Description: "authentication status payload",
 				Fields: []SchemaField{
 					{Name: "authenticated", Type: "boolean", Required: true, Description: "whether credentials are available"},
+					{Name: "context", Type: "string", Description: "Home Assistant context selected for this command"},
 					{Name: "url", Type: "string", Description: "Home Assistant base URL"},
 					{Name: "auth_type", Type: "string", Description: "auth mechanism in use"},
 					{Name: "credential_source", Type: "string", Description: "credential origin"},

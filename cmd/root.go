@@ -24,6 +24,7 @@ import (
 
 var (
 	cfgDir          string
+	contextName     string
 	textMode        bool
 	jsonMode        bool
 	verbose         bool
@@ -69,6 +70,7 @@ Start with 'hab guide' for workflow-level guidance optimized for LLM and agent u
 			"json":    viper.GetBool("json"),
 			"verbose": viper.GetBool("verbose"),
 			"config":  viper.GetString("config"),
+			"context": contextName,
 		}).Debug("Configuration")
 
 		// Check for updates (skip for update and version commands)
@@ -136,12 +138,16 @@ func Execute() {
 func classifyError(err error) (code string, msg string, details map[string]any) {
 	// Check for auth sentinel first (it's a plain error, not an APIError)
 	if errors.Is(err, auth.ErrNotAuthenticated) {
-		return client.ErrCodeAuthRequired, "Not authenticated. Run 'hab auth login' to authenticate.", map[string]any{
+		msg := "Not authenticated. Run 'hab auth login' to authenticate."
+		if err != auth.ErrNotAuthenticated {
+			msg = err.Error()
+		}
+		return client.ErrCodeAuthRequired, msg, map[string]any{
 			"category":           "authentication",
 			"retryable":          false,
 			"likely_cause":       "No stored credentials were found for this Home Assistant instance.",
 			"suggested_fix":      "Authenticate before running commands that require API access.",
-			"suggested_commands": []string{"hab auth status --json", "hab auth login"},
+			"suggested_commands": []string{"hab auth status --json", "hab auth context list --json", "hab auth login"},
 		}
 	}
 
@@ -290,6 +296,7 @@ func init() {
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgDir, "config", "", "Path to config directory (default: ~/.config/home-assistant-builder)")
+	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Home Assistant context to use for this command (env: HAB_CONTEXT; default: the current context)")
 	rootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "Use JSON output instead of human-readable text")
 	rootCmd.PersistentFlags().BoolVar(&textMode, "text", false, "Use human-readable text output")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show verbose output")
@@ -307,6 +314,7 @@ func init() {
 	rootCmd.RegisterFlagCompletionFunc("text", boolCompletions)
 	rootCmd.RegisterFlagCompletionFunc("verbose", boolCompletions)
 	rootCmd.RegisterFlagCompletionFunc("skip-update-check", boolCompletions)
+	rootCmd.RegisterFlagCompletionFunc("context", contextCompletions)
 	rootCmd.MarkPersistentFlagDirname("config")
 }
 

@@ -62,55 +62,16 @@ func (c *Credentials) NeedsRefresh() bool {
 	return float64(time.Now().Unix()) >= (c.TokenExpiry - tokenRefreshWindow)
 }
 
-// LoadCredentials loads credentials from storage
+// LoadCredentials loads credentials for the default context: environment
+// variables first, then the encrypted credentials file, then the Supervisor.
 func LoadCredentials(configDir string) (*Credentials, error) {
-	// Check environment variables
-	envURL := os.Getenv("HAB_URL")
-	envToken := os.Getenv("HAB_TOKEN")
-
-	if envURL != "" && envToken != "" {
-		return &Credentials{
-			URL:         envURL,
-			AccessToken: envToken,
-			Source:      "env_token",
-		}, nil
+	if creds := loadEnvCredentials(); creds != nil {
+		return creds, nil
 	}
 
-	// Check for refresh token in environment
-	envRefresh := os.Getenv("HAB_REFRESH_TOKEN")
-	if envURL != "" && envRefresh != "" {
-		return &Credentials{
-			URL:          envURL,
-			RefreshToken: envRefresh,
-			Source:       "env_refresh_token",
-		}, nil
-	}
-
-	// Load from encrypted file
-	credsPath := config.GetCredentialsPath(configDir)
-
-	data, err := os.ReadFile(credsPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// Fall through to supervisor check
-		} else {
-			return nil, err
-		}
-	} else {
-		// Decrypt
-		key := deriveKey()
-		decrypted, err := decrypt(data, key)
-		if err != nil {
-			return nil, err
-		}
-
-		var creds Credentials
-		if err := json.Unmarshal(decrypted, &creds); err != nil {
-			return nil, err
-		}
-
-		creds.Source = "credentials_file"
-		return &creds, nil
+	creds, err := LoadStoredCredentials(configDir)
+	if err != nil || creds != nil {
+		return creds, err
 	}
 
 	// Fall back to Home Assistant Supervisor environment (add-on/app)
@@ -123,6 +84,56 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 	}
 
 	return nil, nil
+}
+
+// loadEnvCredentials returns credentials from HAB_URL with HAB_TOKEN or
+// HAB_REFRESH_TOKEN, or nil when they are not set.
+func loadEnvCredentials() *Credentials {
+	envURL := os.Getenv("HAB_URL")
+	if envURL == "" {
+		return nil
+	}
+	if envToken := os.Getenv("HAB_TOKEN"); envToken != "" {
+		return &Credentials{
+			URL:         envURL,
+			AccessToken: envToken,
+			Source:      "env_token",
+		}
+	}
+	if envRefresh := os.Getenv("HAB_REFRESH_TOKEN"); envRefresh != "" {
+		return &Credentials{
+			URL:          envURL,
+			RefreshToken: envRefresh,
+			Source:       "env_refresh_token",
+		}
+	}
+	return nil
+}
+
+// LoadStoredCredentials reads the encrypted credentials file in dir, ignoring
+// environment variables and the Supervisor. It returns nil when the file does
+// not exist.
+func LoadStoredCredentials(dir string) (*Credentials, error) {
+	data, err := os.ReadFile(config.GetCredentialsPath(dir))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	decrypted, err := decrypt(data, deriveKey())
+	if err != nil {
+		return nil, err
+	}
+
+	var creds Credentials
+	if err := json.Unmarshal(decrypted, &creds); err != nil {
+		return nil, err
+	}
+
+	creds.Source = "credentials_file"
+	return &creds, nil
 }
 
 // SaveCredentials saves credentials to encrypted storage

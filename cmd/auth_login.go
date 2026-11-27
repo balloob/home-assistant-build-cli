@@ -24,10 +24,15 @@ var (
 var authLoginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with Home Assistant",
-	Long:  `Authenticate with Home Assistant using OAuth flow or a long-lived access token.`,
+	Long: `Authenticate with Home Assistant using OAuth flow or a long-lived access token.
+
+Credentials are saved to the selected context (--context, HAB_CONTEXT, or the
+current context). Logging in to a new context name creates it without
+changing the current context.`,
 	Example: `  hab auth login
   hab auth login --token
-  hab auth login --token --url http://homeassistant.local:8123 --access-token "eyJ..."`,
+  hab auth login --token --url http://homeassistant.local:8123 --access-token "eyJ..."
+  hab auth login --context brother-homeassistant --url https://brother.example.com`,
 	RunE: runAuthLogin,
 }
 
