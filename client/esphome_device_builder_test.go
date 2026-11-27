@@ -78,6 +78,17 @@ func TestDeviceBuilderReadConfig(t *testing.T) {
 	}
 }
 
+func TestDeviceBuilderZeroTimeout(t *testing.T) {
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		send(map[string]any{"message_id": cmd.MessageID, "result": "a: 1\n"})
+	}, nil)
+
+	c := &ESPHomeClient{BaseURL: server.URL} // zero Timeout
+	if content, err := c.ReadConfig("kitchen.yaml"); err != nil || content != "a: 1\n" {
+		t.Fatalf("ReadConfig = %q, %v", content, err)
+	}
+}
+
 func TestDeviceBuilderReadConfigNotFound(t *testing.T) {
 	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
 		send(map[string]any{"message_id": cmd.MessageID, "error_code": "not_found", "details": "Configuration missing.yaml not found"})

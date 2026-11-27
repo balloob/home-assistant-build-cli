@@ -22,6 +22,7 @@ Use this topic for ESPHome configuration, validation, builds, and uploads.
 
 - Validate before build/upload.
 - Use `config-patch` for targeted YAML changes.
+- `config-patch` and `update` refuse to write when the file changed since they read it; read it again and reapply the patch.
 - Keep one configuration context active per workflow.
 
 ## Common Commands
@@ -32,7 +33,14 @@ hab esphome context use <configuration>
 hab esphome validate <configuration>
 hab esphome build <configuration>
 hab esphome upload <configuration>
+hab esphome troubleshoot <configuration>   # offline device: DNS, mDNS and ping checks
 ```
+
+## Dashboard Versions
+
+- Both the ESPHome Device Builder (the dashboard in the ESPHome app since 2026.11) and the classic ESPHome dashboard work. hab uses the Device Builder's `/ws` API when it is there and falls back to the classic endpoints otherwise.
+- `troubleshoot` needs the Device Builder.
+- `boards`, `create` and `import` do not work on the Device Builder yet.
 
 ## Verification Commands
 
@@ -45,3 +53,4 @@ hab esphome validate <configuration>
 
 - Uploading firmware before validation succeeds.
 - Running commands without setting configuration context.
+- Expecting `boards`, `create` or `import` to work on the ESPHome Device Builder; they need the classic dashboard for now.

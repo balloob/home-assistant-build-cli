@@ -71,11 +71,12 @@ func (c *ESPHomeClient) deviceBuilderCall(command string, args map[string]any, o
 	defer conn.Close()
 
 	streaming := onEvent != nil
-	if !streaming {
-		_ = conn.SetReadDeadline(time.Now().Add(c.Timeout))
-	} else {
-		_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	// Streams wait only for the greeting; a zero Timeout must not expire at once.
+	timeout := 10 * time.Second
+	if !streaming && c.Timeout > 0 {
+		timeout = c.Timeout
 	}
+	_ = conn.SetReadDeadline(time.Now().Add(timeout))
 
 	// The server greets every connection with a ServerInfoMessage.
 	var info struct {

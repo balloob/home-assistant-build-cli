@@ -130,6 +130,15 @@ run_esphome_tests() {
         fail "esphome info: $OUTPUT"
     fi
 
+    # The mock is the classic dashboard, which has no troubleshoot probe.
+    log_test "esphome troubleshoot on classic dashboard"
+    OUTPUT=$(run_hab esphome troubleshoot "$CONFIG")
+    if echo "$OUTPUT" | jq -e '.success == false and (.error.message | contains("requires the ESPHome Device Builder"))' > /dev/null 2>&1; then
+        pass "esphome troubleshoot on classic dashboard"
+    else
+        fail "esphome troubleshoot on classic dashboard: $OUTPUT"
+    fi
+
     TEMPLATE='{"NAME":"Example","GPIO":[0,0,0,0,0,0,0,0,0,32,0,224,0,0],"FLAG":0,"BASE":18}'
 
     log_test "esphome migrate tasmota analyze"

@@ -457,6 +457,7 @@ var topicRegistry = []topicDef{
 			MutationPatterns: []string{
 				"Validate before build/upload or run commands.",
 				"Prefer config-patch workflows for targeted YAML changes.",
+				"config-patch and update refuse to write when the file changed since it was read; re-read and reapply.",
 			},
 			VerificationCommands: []string{
 				"hab esphome info <configuration> --json",
@@ -465,6 +466,7 @@ var topicRegistry = []topicDef{
 			Pitfalls: []string{
 				"Uploading firmware before validating config and target device.",
 				"Running commands without setting --device or context.",
+				"Expecting boards, create or import to work on the ESPHome Device Builder; they need the classic dashboard for now (troubleshoot needs the Device Builder).",
 			},
 		},
 		Filename: "esphome",
