@@ -28,6 +28,8 @@ type managementSpec struct {
 	Effect                      string
 	// Prepare handles API payloads whose shape differs from positional arguments.
 	Prepare func(map[string]any) error
+	// Impact adds read-only server facts and risks to plans; it must not write.
+	Impact func(args []string, timeout time.Duration) (map[string]any, []string)
 }
 
 type managementFlags struct {
@@ -49,7 +51,11 @@ func newManagementCommand(s managementSpec) *cobra.Command {
 			return err
 		}
 		if planRequested(f.plan, f.dryRun) {
-			printMutationPlan(MutationPlan{WouldChange: true, Target: map[string]any{"command": schemaPath(cmd)}, Inputs: map[string]any{"payload": redact.Hidden}, Steps: []string{s.Short}, RequiresConfirmation: s.Effect == "destructive" && !f.force}, getTextMode(), defaultResourceTypeForCommand(cmd))
+			plan := MutationPlan{WouldChange: true, Target: map[string]any{"command": schemaPath(cmd)}, Inputs: map[string]any{"payload": redact.Hidden}, Steps: []string{s.Short}, RequiresConfirmation: s.Effect == "destructive" && !f.force}
+			if s.Impact != nil {
+				plan.Impact, plan.Risks = s.Impact(args, f.timeout)
+			}
+			printMutationPlan(plan, getTextMode(), defaultResourceTypeForCommand(cmd))
 			return nil
 		}
 		if s.Effect == "destructive" {

@@ -33,6 +33,13 @@ func runIntegrationGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if domain, _ := entry["domain"].(string); domain != "" {
+		if dependents, err := dependentIntegrations(ws, domain); err == nil {
+			entry["dependent_integrations"] = dependents
+		} else {
+			noteWarning("Dependent integrations could not be read.")
+		}
+	}
 
 	output.PrintOutput(entry, textMode, "")
 	return nil

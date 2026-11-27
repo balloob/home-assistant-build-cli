@@ -339,6 +339,7 @@ type MutationPlan struct {
 	DerivedIDs           map[string]any `json:"derived_ids,omitempty"`
 	Steps                []string       `json:"steps"`
 	Risks                []string       `json:"risks,omitempty"`
+	Impact               map[string]any `json:"impact,omitempty"`
 	RequiresConfirmation bool           `json:"requires_confirmation"`
 	VerificationCommands []string       `json:"verification_commands,omitempty"`
 	ChangeDetection      string         `json:"change_detection"`
