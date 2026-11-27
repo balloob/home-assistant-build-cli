@@ -281,6 +281,9 @@ func impactTestServer(t *testing.T, entries []map[string]any) {
 				return
 			}
 			kind, _ := message["type"].(string)
+			if entries[0]["domain"] == "slow" {
+				time.Sleep(400 * time.Millisecond)
+			}
 			var result any
 			switch kind {
 			case "config_entries/get":
@@ -352,6 +355,27 @@ func TestIntegrationDeletePlanImpact(t *testing.T) {
 		impact := plan(t, mqtt1)["impact"].(map[string]any)
 		if impact["other_domain_entries"] != float64(1) || len(impact["dependent_integrations"].([]any)) != 0 {
 			t.Fatalf("%#v", impact)
+		}
+	})
+	t.Run("ignored and disabled entries do not count", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "mqtt"}, {"entry_id": mqtt2, "domain": "mqtt", "disabled_by": "user"}, {"entry_id": "ignored", "domain": "mqtt", "source": "ignore"}})
+		impact := plan(t, mqtt1)["impact"].(map[string]any)
+		if impact["other_domain_entries"] != float64(0) || len(impact["dependent_integrations"].([]any)) != 2 {
+			t.Fatalf("%#v", impact)
+		}
+	})
+	t.Run("disabled entry breaks nothing", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "mqtt", "disabled_by": "user"}})
+		if deps := plan(t, mqtt1)["impact"].(map[string]any)["dependent_integrations"].([]any); len(deps) != 0 {
+			t.Fatalf("%#v", deps)
+		}
+	})
+	t.Run("slow server is bounded by timeout", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "slow"}})
+		start := time.Now()
+		out, err := executeAppTest(t, managementTestCommand(t, "integration delete"), mqtt1, "--plan", "--timeout", "1s")
+		if err != nil || !strings.Contains(out, `"not_determined"`) || time.Since(start) > 1500*time.Millisecond {
+			t.Fatalf("%s %v %s", out, err, time.Since(start))
 		}
 	})
 	t.Run("no dependents", func(t *testing.T) {

@@ -907,7 +907,7 @@ run_management_tests() {
                 pass "integration update --$preview with a full ID stays offline"
             else fail "offline update preview: $result"; fi
             result=$(HAB_URL=http://127.0.0.1:1 HAB_TOKEN=preview-test-token "$HAB" --config "$test_dir/offline-config" --json integration delete "$entry" "--$preview" || true)
-            if echo "$result" | jq -e '.success and .data.mode == "plan" and .data.impact.status == "not_determined"' >/dev/null; then
+            if echo "$result" | jq -e '.success and .data.mode == "plan" and .data.impact.status == "not_determined" and (.metadata.transports_used - ["websocket"]) == []' >/dev/null; then
                 pass "integration delete --$preview degrades when the server is unreachable"
             else fail "offline delete preview: $result"; fi
         done

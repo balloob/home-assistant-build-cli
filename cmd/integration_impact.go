@@ -37,7 +37,24 @@ func dependentIntegrations(ws client.WebSocketAPI, domain string) ([]string, err
 func integrationDeleteImpact(args []string, timeout time.Duration) (map[string]any, []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	impact, err := readIntegrationDeleteImpact(ctx, args[0], timeout)
+	type outcome struct {
+		impact map[string]any
+		err    error
+	}
+	// The reads take no context, so stop waiting at the deadline; the command exits after printing.
+	done := make(chan outcome, 1)
+	go func() {
+		impact, err := readIntegrationDeleteImpact(ctx, args[0], timeout)
+		done <- outcome{impact, err}
+	}()
+	var impact map[string]any
+	var err error
+	select {
+	case result := <-done:
+		impact, err = result.impact, result.err
+	case <-ctx.Done():
+		err = ctx.Err()
+	}
 	if err != nil {
 		_, message, _ := classifyError(err)
 		return map[string]any{"status": "not_determined", "reason": message}, nil
@@ -46,7 +63,7 @@ func integrationDeleteImpact(args []string, timeout time.Duration) (map[string]a
 	if len(dependents) == 0 {
 		return impact, nil
 	}
-	return impact, []string{fmt.Sprintf("This is the last %s entry; loaded integrations that require %s will break: %s", impact["domain"], impact["domain"], strings.Join(dependents, ", "))}
+	return impact, []string{fmt.Sprintf("This is the last enabled %s entry; loaded integrations that require %s will break: %s", impact["domain"], impact["domain"], strings.Join(dependents, ", "))}
 }
 
 func readIntegrationDeleteImpact(ctx context.Context, raw string, timeout time.Duration) (map[string]any, error) {
@@ -77,8 +94,16 @@ func readIntegrationDeleteImpact(ctx context.Context, raw string, timeout time.D
 	if err != nil {
 		return nil, err
 	}
+	// Ignored and disabled entries do not provide the domain to dependents.
+	active := func(e map[string]any) bool { return e["source"] != "ignore" && e["disabled_by"] == nil }
+	others := 0
+	for _, item := range siblings {
+		if sibling, _ := item.(map[string]any); sibling["entry_id"] != entryID && active(sibling) {
+			others++
+		}
+	}
 	dependents := []string{}
-	if len(siblings) <= 1 {
+	if others == 0 && active(entry) {
 		if dependents, err = dependentIntegrations(ws, domain); err != nil {
 			return nil, err
 		}
@@ -98,7 +123,7 @@ func readIntegrationDeleteImpact(ctx context.Context, raw string, timeout time.D
 		"status":                 "determined",
 		"entry_id":               entryID,
 		"domain":                 domain,
-		"other_domain_entries":   len(siblings) - 1,
+		"other_domain_entries":   others,
 		"dependent_integrations": dependents,
 		"devices":                devices,
 		"entities":               entities,
