@@ -382,3 +382,15 @@ func TestIntegrationGetDependents(t *testing.T) {
 		t.Fatalf("%s %v", out, err)
 	}
 }
+
+func TestPlanImpactText(t *testing.T) {
+	got := planImpactText(MutationPlan{Risks: []string{"frigate will break"}, Impact: map[string]any{"status": "determined", "domain": "mqtt", "other_domain_entries": 0, "dependent_integrations": []string{"frigate"}, "devices": []string{}, "entities": []string{"sensor.a", "sensor.b"}}})
+	want := "\nRisk: frigate will break\nImpact: determined\n  dependent_integrations (1): frigate\n  devices (0): \n  domain: mqtt\n  entities (2): sensor.a, sensor.b\n  other_domain_entries: 0"
+	if got != want {
+		t.Fatalf("%q", got)
+	}
+	got = planImpactText(MutationPlan{Impact: map[string]any{"status": "not_determined", "reason": "connection refused"}})
+	if got != "\nImpact: not_determined\n  reason: connection refused" {
+		t.Fatalf("%q", got)
+	}
+}

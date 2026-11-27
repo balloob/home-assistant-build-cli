@@ -940,6 +940,8 @@ run_management_tests() {
             if echo "$result" | jq -e '.success and (.data | type) == "array"' >/dev/null; then pass "subentry list"; else fail "subentry list: $result"; fi
             result=$(run_hab integration delete "$entry" --plan)
             if echo "$result" | jq -e --arg entry "$entry" '.success and .data.impact.status == "determined" and .data.impact.entry_id == $entry and .data.impact.domain == "min_max" and (.data.impact.entities | length) > 0 and .data.impact.dependent_integrations == []' >/dev/null; then pass "integration delete --plan reports impact"; else fail "integration delete --plan impact: $result"; fi
+            result=$("$HAB" --config "$HAB_TEST_CONFIG_DIR" --text integration delete "$entry" --plan || true)
+            if echo "$result" | grep -q '^Impact: determined' && echo "$result" | grep -q '^  domain: min_max' && echo "$result" | grep -q '^  entities ([1-9]'; then pass "integration delete --plan shows impact in text mode"; else fail "integration delete --plan text impact: $result"; fi
             result=$(run_hab integration get "$entry")
             if echo "$result" | jq -e '.success and (.data.dependent_integrations | type) == "array"' >/dev/null; then pass "integration get lists dependents"; else fail "integration get dependents: $result"; fi
             result=$(run_hab integration delete "$entry" --force)
