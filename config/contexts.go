@@ -31,12 +31,14 @@ const (
 	ContextSourceDefault = "default"
 )
 
-var contextNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+// Lowercase only and no trailing '.', because Windows and macOS file systems
+// would otherwise map "Brother" or "brother." onto the "brother" directory.
+var contextNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 
 // ValidateContextName rejects names that are not safe as a single path component.
 func ValidateContextName(name string) error {
-	if !contextNamePattern.MatchString(name) {
-		return fmt.Errorf("invalid context name %q: use 1-64 letters, digits, '.', '_' or '-', starting with a letter or digit", name)
+	if !contextNamePattern.MatchString(name) || strings.HasSuffix(name, ".") {
+		return fmt.Errorf("invalid context name %q: use 1-64 lowercase letters, digits, '.', '_' or '-', starting with a letter or digit and not ending with '.'", name)
 	}
 	return nil
 }

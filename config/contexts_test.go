@@ -16,12 +16,12 @@ func TestGetContextDir(t *testing.T) {
 }
 
 func TestValidateContextName(t *testing.T) {
-	for _, name := range []string{"default", "brother-homeassistant", "a.b_c", "A1"} {
+	for _, name := range []string{"default", "brother-homeassistant", "a.b_c", "a1"} {
 		if err := ValidateContextName(name); err != nil {
 			t.Errorf("%q rejected: %v", name, err)
 		}
 	}
-	for _, name := range []string{"", ".", "..", "../x", "a/b", `a\b`, "-x", ".hidden", "with space"} {
+	for _, name := range []string{"", ".", "..", "../x", "a/b", `a\b`, "-x", ".hidden", "with space", "A1", "Default", "DEFAULT", "brother."} {
 		if err := ValidateContextName(name); err == nil {
 			t.Errorf("%q accepted", name)
 		}
