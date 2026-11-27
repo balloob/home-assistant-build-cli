@@ -30,7 +30,8 @@ Use this topic to establish and verify authentication before running workflows.
 - `hab auth context list --json` lists contexts and their URLs; `hab auth status --json` reports the context in use.
 - `hab auth login --context <name>` adds a context; `hab auth logout --context <name>` removes only that context.
 - An unknown context fails with `AUTH_REQUIRED` and lists the available contexts; it never falls back to another instance.
-- `--context`/`HAB_CONTEXT` fails with a conflicting-credentials error while `HAB_URL` with `HAB_TOKEN` or `HAB_REFRESH_TOKEN` is set; unset those variables to use a named context (`hab auth login` warns about this).
+- `--context`/`HAB_CONTEXT`, or a current context set with `hab auth context use`, fails with a conflicting-credentials error while `HAB_URL` with `HAB_TOKEN` or `HAB_REFRESH_TOKEN` is set; unset those variables to use a context (`hab auth login` warns about this).
+- ESPHome commands on a named context fail while `HAB_ESPHOME_URL`, `HAB_ESPHOME_TOKEN` or `HA_ACCESS_TOKEN` is set; those variables apply to the `default` context only.
 
 ## Common Commands
 

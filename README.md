@@ -91,7 +91,7 @@ HAB_CONTEXT=brother-homeassistant hab integration list
 hab auth logout --context brother-homeassistant
 ```
 
-The context for a command is chosen by `--context`, then `HAB_CONTEXT`, then the current context set with `hab auth context use`, then `default`. An unknown context is an error that lists the available contexts; `hab` never falls back to another instance.
+The context for a command is chosen by `--context`, then `HAB_CONTEXT`, then the current context set with `hab auth context use`, then `default`. An unknown context is an error that lists the available contexts; `hab` never falls back to another instance. Context names use lowercase letters, digits, `.`, `_` and `-`.
 
 ### Auth behavior
 
@@ -101,7 +101,8 @@ The context for a command is chosen by `--context`, then `HAB_CONTEXT`, then the
 1. `HAB_URL` + `HAB_TOKEN` or `HAB_URL` + `HAB_REFRESH_TOKEN`
 2. Encrypted stored credentials of the selected context
 3. `SUPERVISOR_TOKEN` fallback when running inside a Home Assistant add-on or app context (`default` context only)
-- Selecting a context explicitly with `--context` or `HAB_CONTEXT` while `HAB_URL` + `HAB_TOKEN`/`HAB_REFRESH_TOKEN` are set is an error, so a command never runs against a different instance than the one named. `hab auth login --context <name>` still saves the context in that case, but warns that the context cannot be used until those variables are unset.
+- Selecting a context with `--context`, `HAB_CONTEXT` or `hab auth context use` while `HAB_URL` + `HAB_TOKEN`/`HAB_REFRESH_TOKEN` are set is an error, so a command never runs against a different instance than the one selected. `hab auth login --context <name>` still saves the context in that case, but warns that the context cannot be used until those variables are unset.
+- `HAB_ESPHOME_URL`, `HAB_ESPHOME_TOKEN` and `HA_ACCESS_TOKEN` apply to the `default` context only; ESPHome commands on a named context fail while they are set.
 - OAuth credentials auto-refresh when needed.
 
 ## Common Usage Patterns
