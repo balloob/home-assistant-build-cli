@@ -139,12 +139,11 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	}
 	result["registry"] = registry
 
-	ctx := output.EnvelopeContext{Operation: "get", ResourceType: "entity"}
 	if state == nil {
 		result["entity_id"] = entityID
 		result["state"] = nil
 		note := statelessEntityNote(entityID, registry)
-		ctx.Warnings = []string{note}
+		noteWarning(note)
 		if textMode {
 			fmt.Println(note)
 		}
@@ -157,7 +156,7 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 		result["related"] = relatedResult
 	}
 
-	output.PrintOutputWithContext(result, textMode, "", ctx)
+	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "entity"})
 	return nil
 }
 
