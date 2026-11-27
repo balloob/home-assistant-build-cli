@@ -837,6 +837,7 @@ hab esphome context clear
 ```bash
 hab esphome list
 hab esphome info living-room.yaml
+hab esphome troubleshoot living-room.yaml   # Device Builder only: DNS, mDNS and ping checks
 hab esphome config-read living-room.yaml
 hab esphome config-write living-room.yaml -f config.yaml
 hab esphome config-patch living-room.yaml --set wifi.ssid='!secret wifi_ssid'

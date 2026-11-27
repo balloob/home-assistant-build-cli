@@ -155,6 +155,10 @@ func TestESPHomeGetJSONConfigValidationError(t *testing.T) {
 
 func TestESPHomeGetSerialPorts(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/ws" { // the classic dashboard has no /ws API
+			http.NotFound(w, r)
+			return
+		}
 		if r.URL.Path != "/serial-ports" {
 			t.Fatalf("path = %q, want /serial-ports", r.URL.Path)
 		}

@@ -64,7 +64,7 @@ func runESPHomeConfigPatch(cmd *cobra.Command, args []string) error {
 
 	written := updated != original
 	if written {
-		if err := esClient.WriteConfig(configuration, updated); err != nil {
+		if err := esClient.WriteConfigIfUnchanged(configuration, updated, original); err != nil {
 			return err
 		}
 	}

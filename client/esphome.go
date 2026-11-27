@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -28,6 +29,9 @@ type ESPHomeClient struct {
 	VerifySSL      bool
 	client         *resty.Client
 	clientOnce     sync.Once
+	// legacyDashboard is set once the server turned out not to serve the
+	// Device Builder /ws API, so later calls go straight to the REST endpoints.
+	legacyDashboard bool
 }
 
 // ESPHomeDevice represents a configured device from the ESPHome dashboard.
@@ -168,6 +172,9 @@ func (c *ESPHomeClient) doGet(path, operation string, dest any) error {
 			Message: fmt.Sprintf("ESPHome dashboard returned status %d: %s", resp.StatusCode(), string(resp.Body())),
 		}
 	}
+	if isHTMLBody(resp.Header().Get("Content-Type"), resp.Body()) {
+		return &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to %s: this ESPHome server does not provide %s (it returned a web page)", operation, path)}
+	}
 	if err := json.Unmarshal(resp.Body(), dest); err != nil {
 		return &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse %s response: %s", operation, err)}
 	}
@@ -258,6 +265,16 @@ func (c *ESPHomeClient) GetVersion() (string, error) {
 // GetSerialPorts lists available serial ports from the ESPHome dashboard.
 func (c *ESPHomeClient) GetSerialPorts() ([]ESPHomeSerialPort, error) {
 	var result []ESPHomeSerialPort
+	raw, err := c.deviceBuilderCall("config/serial_ports", nil, nil)
+	if err == nil {
+		if err := json.Unmarshal(raw, &result); err != nil {
+			return nil, &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse list serial ports response: %s", err)}
+		}
+		return result, nil
+	}
+	if !errors.Is(err, errNotDeviceBuilder) {
+		return nil, err
+	}
 	if err := c.doGet("/serial-ports", "list serial ports", &result); err != nil {
 		return nil, err
 	}
@@ -272,7 +289,8 @@ func (c *ESPHomeClient) GetInfo(configuration string) (map[string]any, error) {
 	if err != nil {
 		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to get info: %s", err)}
 	}
-	if resp.StatusCode() == http.StatusNotFound {
+	// The Device Builder has no /info; its web app answers it with a page.
+	if resp.StatusCode() == http.StatusNotFound || (resp.StatusCode() == http.StatusOK && isHTMLBody(resp.Header().Get("Content-Type"), resp.Body())) {
 		return c.getInfoFallback(configuration)
 	}
 	if resp.StatusCode() != http.StatusOK {
@@ -571,6 +589,18 @@ func (c *ESPHomeClient) GetJSONConfig(configuration string) (map[string]any, err
 
 // ReadConfig reads the YAML configuration for a device.
 func (c *ESPHomeClient) ReadConfig(configuration string) (string, error) {
+	raw, err := c.deviceBuilderCall("devices/get_config", map[string]any{"configuration": configuration}, nil)
+	if err == nil {
+		var content string
+		if err := json.Unmarshal(raw, &content); err != nil {
+			return "", &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse read config response: %s", err)}
+		}
+		return content, nil
+	}
+	if !errors.Is(err, errNotDeviceBuilder) {
+		return "", err
+	}
+
 	resp, err := c.getClient().R().
 		SetQueryParam("configuration", configuration).
 		Get("/edit")
@@ -583,11 +613,49 @@ func (c *ESPHomeClient) ReadConfig(configuration string) (string, error) {
 	if resp.StatusCode() != http.StatusOK {
 		return "", &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("ESPHome dashboard returned status %d", resp.StatusCode())}
 	}
+	if isHTMLBody(resp.Header().Get("Content-Type"), resp.Body()) {
+		return "", &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to read config %q: the ESPHome server returned a web page instead of YAML", configuration)}
+	}
 	return string(resp.Body()), nil
 }
 
 // WriteConfig writes YAML configuration for a device.
 func (c *ESPHomeClient) WriteConfig(configuration, content string) error {
+	return c.writeConfig(configuration, content, nil)
+}
+
+// WriteConfigIfUnchanged writes YAML configuration for a device only while the
+// file still holds expected (the content read before patching). It fails with
+// a validation error, writing nothing, when the file changed in the meantime.
+func (c *ESPHomeClient) WriteConfigIfUnchanged(configuration, content, expected string) error {
+	return c.writeConfig(configuration, content, &expected)
+}
+
+func (c *ESPHomeClient) writeConfig(configuration, content string, expected *string) error {
+	args := map[string]any{"configuration": configuration, "content": content}
+	if expected != nil {
+		args["expected"] = *expected
+	}
+	_, err := c.deviceBuilderCall("devices/update_config", args, nil)
+	if !errors.Is(err, errNotDeviceBuilder) {
+		var apiErr *APIError
+		if expected != nil && errors.As(err, &apiErr) && apiErr.Details["error_code"] == "precondition_failed" {
+			apiErr.Message = fmt.Sprintf("configuration %q changed since it was read; nothing was written. %s", configuration, apiErr.Message)
+		}
+		return err
+	}
+
+	// The classic dashboard has no conditional write; compare just before writing.
+	if expected != nil {
+		current, err := c.ReadConfig(configuration)
+		if err != nil {
+			return err
+		}
+		if strings.TrimRight(current, "\n") != strings.TrimRight(*expected, "\n") {
+			return &APIError{Code: ErrCodeValidationError, Message: fmt.Sprintf("configuration %q changed since it was read; nothing was written", configuration)}
+		}
+	}
+
 	resp, err := c.getClient().R().
 		SetQueryParam("configuration", configuration).
 		SetHeader("Content-Type", "application/yaml").
@@ -761,7 +829,34 @@ func extractESPHomeLineColumn(raw string) (int, int, bool) {
 // then calls the callback for each event received until the process exits.
 // The callback receives ESPHomeStreamEvent with event "line" (output) or "exit" (done).
 // Returns the exit code of the subprocess, or an error if the connection fails.
+// On the ESPHome Device Builder, paths it no longer serves are mapped to its
+// /ws API.
 func (c *ESPHomeClient) StreamCommand(path string, spawnMsg map[string]any, callback func(ESPHomeStreamEvent)) (int, error) {
+	command, mapped := deviceBuilderStreamCommands[path]
+	if !mapped && path != "/run" {
+		return c.streamLegacy(path, spawnMsg, callback)
+	}
+	code := -1
+	var err error
+	if path == "/run" {
+		// A ping tells the Device Builder apart from the classic dashboard.
+		if _, err = c.deviceBuilderCall("ping", nil, nil); err == nil {
+			return c.streamDeviceBuilderRun(spawnMsg, callback)
+		}
+	} else {
+		args := map[string]any{"configuration": spawnMsg["configuration"]}
+		if port, ok := spawnMsg["port"]; ok && path == "/logs" {
+			args["port"] = port
+		}
+		code, err = c.deviceBuilderStream(command, args, callback)
+	}
+	if errors.Is(err, errNotDeviceBuilder) {
+		return c.streamLegacy(path, spawnMsg, callback)
+	}
+	return code, err
+}
+
+func (c *ESPHomeClient) streamLegacy(path string, spawnMsg map[string]any, callback func(ESPHomeStreamEvent)) (int, error) {
 	wsURL, err := c.buildWSURL(path)
 	if err != nil {
 		return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to build WebSocket URL: %s", err)}

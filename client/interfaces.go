@@ -272,6 +272,8 @@ type ESPHomeAPI interface {
 	GetJSONConfig(configuration string) (map[string]interface{}, error)
 	ReadConfig(configuration string) (string, error)
 	WriteConfig(configuration, content string) error
+	WriteConfigIfUnchanged(configuration, content, expected string) error
+	Troubleshoot(configuration string) (map[string]interface{}, error)
 	StreamCommand(path string, spawnMsg map[string]interface{}, callback func(ESPHomeStreamEvent)) (int, error)
 }
 
