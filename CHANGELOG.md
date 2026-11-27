@@ -2,12 +2,6 @@
 
 ## [Unreleased]
 
-### Saved logins survive network changes
-
-The key that protects the saved login no longer depends on a network adapter's MAC address, so VPNs, virtual adapters (Hyper-V, WSL, Docker), and Wi-Fi changes no longer invalidate it. Existing logins are converted the next time they are read.
-
-When a saved login still cannot be read, commands and `hab auth status` now say so and print the command to log in again, including the instance URL. The URL is stored next to the encrypted tokens for this purpose. Older `hab` versions cannot read the new credentials file.
-
 ## [1.9.0] - 2026-11-22
 
 ### App management
