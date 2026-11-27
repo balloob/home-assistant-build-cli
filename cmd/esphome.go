@@ -36,6 +36,16 @@ func getESPHomeClient() (client.ESPHomeAPI, error) {
 		return nil, err
 	}
 
+	// These variables describe one instance's dashboard; applying them to a
+	// named context would mix instances or send its token to another host.
+	if manager := getAuthManager(); manager.Context != config.DefaultContext && creds.Source == "credentials_file" {
+		for _, name := range []string{"HAB_ESPHOME_URL", "HAB_ESPHOME_TOKEN", "HA_ACCESS_TOKEN"} {
+			if os.Getenv(name) != "" {
+				return nil, fmt.Errorf("conflicting ESPHome settings: context %q is selected, but %s is set; unset it to use the ESPHome dashboard of that context", manager.Context, name)
+			}
+		}
+	}
+
 	esphomeURL := os.Getenv("HAB_ESPHOME_URL")
 	esphomeSession := os.Getenv("HAB_ESPHOME_SESSION")
 
