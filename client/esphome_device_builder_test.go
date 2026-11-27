@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -310,5 +311,33 @@ func TestReadConfigRejectsHTMLPage(t *testing.T) {
 	_, err := NewESPHomeClient(server.URL, "").ReadConfig("kitchen.yaml")
 	if err == nil || !strings.Contains(err.Error(), "web page") {
 		t.Fatalf("err = %v, want an HTML rejection", err)
+	}
+}
+
+func TestDeviceBuilderSilentGreetingIsNotClassic(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/ws" {
+			t.Errorf("unexpected request to %s", r.URL.Path)
+			return
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		_, _, _ = conn.ReadMessage() // never greet
+	}))
+	t.Cleanup(server.Close)
+
+	c := NewESPHomeClient(server.URL, "")
+	c.Timeout = 200 * time.Millisecond
+	_, err := c.ReadConfig("kitchen.yaml")
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Code != ErrCodeConnectionError {
+		t.Fatalf("err = %v, want CONNECTION_ERROR", err)
+	}
+	if c.legacyDashboard {
+		t.Fatal("a silent /ws must not mark the server as the classic dashboard")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -84,6 +85,12 @@ func (c *ESPHomeClient) deviceBuilderCall(command string, args map[string]any, o
 		RequiresAuth  bool    `json:"requires_auth"`
 	}
 	if err := conn.ReadJSON(&info); err != nil || info.ServerVersion == nil {
+		// A classic dashboard behind ingress closes at once; silence is a slow
+		// Device Builder, which must not be sent to the legacy endpoints.
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("ESPHome Device Builder did not answer on /ws: %s", err)}
+		}
 		c.legacyDashboard = true
 		return nil, errNotDeviceBuilder
 	}
