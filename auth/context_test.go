@@ -126,7 +126,15 @@ func TestExplicitContextConflictsWithEnvCredentials(t *testing.T) {
 	t.Setenv("HAB_URL", "http://env")
 	t.Setenv("HAB_TOKEN", "env")
 
-	// Without an explicit selection, env credentials win as they always have.
+	// A current context set with 'hab auth context use' is a selection too.
+	if _, err := NewContextManager(root, "").GetCredentials(); err == nil || !strings.Contains(err.Error(), "conflicting") {
+		t.Fatalf("current: err=%v", err)
+	}
+
+	// Without any selection, env credentials win as they always have.
+	if err := config.SaveCurrentContext(root, config.DefaultContext); err != nil {
+		t.Fatal(err)
+	}
 	creds, err := NewContextManager(root, "").GetCredentials()
 	if err != nil || creds.URL != "http://env" {
 		t.Fatalf("implicit: creds=%+v err=%v", creds, err)
@@ -191,19 +199,16 @@ func TestEnvRefreshTokenIsNotPersisted(t *testing.T) {
 	}))
 	defer server.Close()
 	root := t.TempDir()
-	saveContext(t, root, "brother", &Credentials{URL: "http://brother", AccessToken: "brother"})
-	if err := config.SaveCurrentContext(root, "brother"); err != nil {
-		t.Fatal(err)
-	}
+	saveContext(t, root, config.DefaultContext, &Credentials{URL: "http://stored", AccessToken: "stored"})
 	t.Setenv("HAB_URL", server.URL)
 	t.Setenv("HAB_REFRESH_TOKEN", "env-refresh")
 
 	if _, err := NewContextManager(root, "").GetCredentials(); err != nil {
 		t.Fatal(err)
 	}
-	stored, err := LoadStoredCredentials(config.GetContextDir(root, "brother"))
-	if err != nil || stored.URL != "http://brother" || stored.AccessToken != "brother" {
-		t.Fatalf("env refresh overwrote the brother context: %+v %v", stored, err)
+	stored, err := LoadStoredCredentials(config.GetContextDir(root, config.DefaultContext))
+	if err != nil || stored.URL != "http://stored" || stored.AccessToken != "stored" {
+		t.Fatalf("env refresh overwrote the stored credentials: %+v %v", stored, err)
 	}
 }
 

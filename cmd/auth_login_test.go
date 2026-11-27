@@ -69,7 +69,7 @@ func TestAuthLoginWarnsWhenEnvCredentialsShadowContext(t *testing.T) {
 	}
 
 	warnings, _ := getExecutionMetadata()["warnings"].([]string)
-	if len(warnings) != 1 || !strings.Contains(warnings[0], `select context "brother"`) {
+	if len(warnings) != 1 || !strings.Contains(warnings[0], `use context "brother"`) {
 		t.Fatalf("warnings = %v", warnings)
 	}
 	stored, err := auth.LoadStoredCredentials(config.GetContextDir(root, "brother"))

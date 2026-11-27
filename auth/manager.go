@@ -56,15 +56,12 @@ func (m *Manager) ContextDir() (string, error) {
 	return config.GetContextDir(m.ConfigDir, m.Context), nil
 }
 
-func (m *Manager) contextIsExplicit() bool {
-	return m.ContextSource == config.ContextSourceFlag || m.ContextSource == config.ContextSourceEnv
-}
-
-// EnvCredentialsConflict reports whether the context was selected explicitly
-// while HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is also set, which makes
-// every credential lookup fail.
+// EnvCredentialsConflict reports whether a context was selected (by
+// --context, HAB_CONTEXT, or the current-context file) while HAB_URL with
+// HAB_TOKEN or HAB_REFRESH_TOKEN is also set, which makes every credential
+// lookup fail. Only the implicit default context lets env credentials win.
 func (m *Manager) EnvCredentialsConflict() bool {
-	return m.contextIsExplicit() && loadEnvCredentials() != nil
+	return m.ContextSource != config.ContextSourceDefault && loadEnvCredentials() != nil
 }
 
 // loadCredentials loads credentials without printing warnings (internal use)
@@ -76,15 +73,15 @@ func (m *Manager) loadCredentials() (*Credentials, error) {
 	if err != nil {
 		return nil, err
 	}
-	// An explicit context must never be silently replaced by env credentials.
+	// A selected context must never be silently replaced by env credentials.
 	if m.EnvCredentialsConflict() {
-		return nil, fmt.Errorf("conflicting credentials: context %q was selected by --context or %s, but HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is also set; unset one of them", m.Context, config.ContextEnv)
+		return nil, fmt.Errorf("conflicting credentials: context %q was selected by --context, %s or 'hab auth context use', but HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is also set; unset those variables, or run 'hab auth context use default' to use them", m.Context, config.ContextEnv)
 	}
 
 	var creds *Credentials
 	if m.Context == config.DefaultContext {
 		creds, err = LoadCredentials(dir)
-	} else if creds = loadEnvCredentials(); creds == nil {
+	} else {
 		creds, err = LoadStoredCredentials(dir)
 		if err == nil && creds == nil {
 			err = m.contextNotFound()

@@ -60,7 +60,7 @@ func runAuthLogin(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if manager.EnvCredentialsConflict() {
-		warning := fmt.Sprintf("HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is set: commands that select context %q with --context or HAB_CONTEXT will fail until those variables are unset.", manager.Context)
+		warning := fmt.Sprintf("HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is set: commands that use context %q will fail until those variables are unset.", manager.Context)
 		noteWarning(warning)
 		if textMode {
 			fmt.Fprintln(os.Stderr, "Warning: "+warning)
