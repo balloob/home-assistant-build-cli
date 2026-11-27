@@ -60,6 +60,13 @@ func (m *Manager) contextIsExplicit() bool {
 	return m.ContextSource == config.ContextSourceFlag || m.ContextSource == config.ContextSourceEnv
 }
 
+// EnvCredentialsConflict reports whether the context was selected explicitly
+// while HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is also set, which makes
+// every credential lookup fail.
+func (m *Manager) EnvCredentialsConflict() bool {
+	return m.contextIsExplicit() && loadEnvCredentials() != nil
+}
+
 // loadCredentials loads credentials without printing warnings (internal use)
 func (m *Manager) loadCredentials() (*Credentials, error) {
 	if m.credentials != nil {
@@ -70,7 +77,7 @@ func (m *Manager) loadCredentials() (*Credentials, error) {
 		return nil, err
 	}
 	// An explicit context must never be silently replaced by env credentials.
-	if m.contextIsExplicit() && loadEnvCredentials() != nil {
+	if m.EnvCredentialsConflict() {
 		return nil, fmt.Errorf("conflicting credentials: context %q was selected by --context or %s, but HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is also set; unset one of them", m.Context, config.ContextEnv)
 	}
 

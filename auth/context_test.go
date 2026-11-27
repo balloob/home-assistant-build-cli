@@ -264,3 +264,39 @@ func TestSaveWritesToSelectedContext(t *testing.T) {
 		t.Fatalf("status = %v", status)
 	}
 }
+
+func TestNamedContextRefreshNeverTouchesDefault(t *testing.T) {
+	clearAuthEnv(t)
+	root := t.TempDir()
+	saveContext(t, root, config.DefaultContext, &Credentials{URL: "http://home", ClientID: "id", AccessToken: "home", RefreshToken: "home-refresh", TokenExpiry: 1})
+	defaultPath := config.GetCredentialsPath(root)
+	before, err := os.ReadFile(defaultPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	brotherDir := config.GetContextDir(root, "brother")
+
+	check := func(label string) {
+		t.Helper()
+		m := NewContextManager(root, "brother")
+		if creds, err := m.GetCredentials(); err == nil || creds != nil {
+			t.Fatalf("%s: GetCredentials = %+v, %v", label, creds, err)
+		}
+		if err := m.RefreshToken(); err == nil {
+			t.Fatalf("%s: RefreshToken succeeded", label)
+		}
+		after, err := os.ReadFile(defaultPath)
+		if err != nil || string(after) != string(before) {
+			t.Fatalf("%s: default credentials changed (%v)", label, err)
+		}
+	}
+
+	check("missing")
+	if err := os.MkdirAll(brotherDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.GetCredentialsPath(brotherDir), []byte("not encrypted"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	check("corrupt")
+}

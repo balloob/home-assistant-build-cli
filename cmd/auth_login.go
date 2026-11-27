@@ -55,6 +55,17 @@ func init() {
 func runAuthLogin(cmd *cobra.Command, args []string) error {
 	textMode := getTextMode()
 	manager := getAuthManager()
+	// Fail on a bad context name before any prompt, discovery, or OAuth flow.
+	if _, err := manager.ContextDir(); err != nil {
+		return err
+	}
+	if manager.EnvCredentialsConflict() {
+		warning := fmt.Sprintf("HAB_URL with HAB_TOKEN or HAB_REFRESH_TOKEN is set: commands that select context %q with --context or HAB_CONTEXT will fail until those variables are unset.", manager.Context)
+		noteWarning(warning)
+		if textMode {
+			fmt.Fprintln(os.Stderr, "Warning: "+warning)
+		}
+	}
 
 	if loginToken {
 		return loginWithToken(manager, textMode)

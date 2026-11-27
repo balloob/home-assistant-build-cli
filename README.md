@@ -101,7 +101,7 @@ The context for a command is chosen by `--context`, then `HAB_CONTEXT`, then the
 1. `HAB_URL` + `HAB_TOKEN` or `HAB_URL` + `HAB_REFRESH_TOKEN`
 2. Encrypted stored credentials of the selected context
 3. `SUPERVISOR_TOKEN` fallback when running inside a Home Assistant add-on or app context (`default` context only)
-- Selecting a context explicitly with `--context` or `HAB_CONTEXT` while `HAB_URL` + `HAB_TOKEN`/`HAB_REFRESH_TOKEN` are set is an error, so a command never runs against a different instance than the one named.
+- Selecting a context explicitly with `--context` or `HAB_CONTEXT` while `HAB_URL` + `HAB_TOKEN`/`HAB_REFRESH_TOKEN` are set is an error, so a command never runs against a different instance than the one named. `hab auth login --context <name>` still saves the context in that case, but warns that the context cannot be used until those variables are unset.
 - OAuth credentials auto-refresh when needed.
 
 ## Common Usage Patterns
