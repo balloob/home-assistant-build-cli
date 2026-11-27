@@ -17,9 +17,16 @@ import (
 )
 
 // getMachineID returns a machine-specific identifier for key derivation.
-// withMAC reproduces the old derivation, which broke whenever the first
-// network interface changed (VPNs, Hyper-V/WSL/Docker adapters, Wi-Fi).
-func getMachineID(withMAC bool) string {
+// It is the platform machine ID alone, or the hostname where there is none.
+// legacy reproduces the old derivation (hostname, MAC and machine ID), which
+// broke whenever the first network interface changed (VPNs, Hyper-V/WSL/Docker
+// adapters, Wi-Fi) or the hostname followed the network (macOS).
+func getMachineID(legacy bool) string {
+	hwUUID := getHardwareUUID()
+	if !legacy && hwUUID != "" {
+		return hwUUID
+	}
+
 	var sources []string
 
 	// Hostname
@@ -28,14 +35,14 @@ func getMachineID(withMAC bool) string {
 	}
 
 	// MAC address
-	if withMAC {
+	if legacy {
 		if mac := getMACAddress(); mac != "" {
 			sources = append(sources, mac)
 		}
 	}
 
 	// Platform-specific hardware UUID
-	if hwUUID := getHardwareUUID(); hwUUID != "" {
+	if hwUUID != "" {
 		sources = append(sources, hwUUID)
 	}
 
@@ -121,7 +128,7 @@ func deriveKey() []byte {
 	return derivedKey
 }
 
-// legacyKey is the old MAC-dependent key, used only to read files written by
+// legacyKey is the old hostname- and MAC-dependent key, used only to read files written by
 // older versions.
 func legacyKey() []byte {
 	hash := sha256.Sum256([]byte(getMachineID(true)))

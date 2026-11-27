@@ -3,7 +3,9 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/home-assistant/hab/config"
@@ -68,6 +70,24 @@ func (c *Credentials) NeedsRefresh() bool {
 type credentialsFile struct {
 	URL  string `json:"url"`
 	Data []byte `json:"data"`
+}
+
+var displayURLPattern = regexp.MustCompile(`^https?://[A-Za-z0-9._\-:\[\]]+(/[A-Za-z0-9._~%/\-]*)?$`)
+
+// displayURL reduces a URL to what may be stored and printed in the clear:
+// no userinfo, query or fragment, and nothing a shell would interpret, because
+// the unencrypted part of the file is not authenticated and ends up in a
+// suggested command. It returns "" when the URL does not qualify.
+func displayURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	u.User, u.RawQuery, u.Fragment = nil, "", ""
+	if s := u.String(); displayURLPattern.MatchString(s) {
+		return s
+	}
+	return ""
 }
 
 // UnreadableCredentialsError is returned when the saved login exists but
@@ -144,7 +164,7 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 			migrate = true
 		}
 		if err != nil {
-			return nil, &UnreadableCredentialsError{URL: file.URL, Err: err}
+			return nil, &UnreadableCredentialsError{URL: displayURL(file.URL), Err: err}
 		}
 
 		var creds Credentials
@@ -190,7 +210,7 @@ func SaveCredentials(creds *Credentials, configDir string) error {
 		return err
 	}
 
-	file, err := json.Marshal(credentialsFile{URL: creds.URL, Data: encrypted})
+	file, err := json.Marshal(credentialsFile{URL: displayURL(creds.URL), Data: encrypted})
 	if err != nil {
 		return err
 	}

@@ -292,9 +292,14 @@ func TestSaveAndLoadCredentials_RoundTrip(t *testing.T) {
 	}
 
 	// Load back
+	credsPath := filepath.Join(tmpDir, "credentials.json")
+	before, _ := os.ReadFile(credsPath)
 	loaded, err := LoadCredentials(tmpDir)
 	if err != nil {
 		t.Fatalf("LoadCredentials: %v", err)
+	}
+	if after, _ := os.ReadFile(credsPath); !bytes.Equal(before, after) {
+		t.Error("loading an up-to-date file must not rewrite it")
 	}
 	if loaded == nil {
 		t.Fatal("LoadCredentials returned nil")
@@ -381,16 +386,59 @@ func TestLoadCredentials_LegacyFileIsMigrated(t *testing.T) {
 	}
 }
 
-func TestMachineIDWithoutMAC(t *testing.T) {
+func TestMachineIDUsesOnlyStableSources(t *testing.T) {
+	id := getMachineID(false)
+	if hwUUID := getHardwareUUID(); hwUUID != "" && id != hwUUID {
+		t.Errorf("machine ID = %q, want the platform machine ID %q alone", id, hwUUID)
+	}
+
 	mac := getMACAddress()
 	if mac == "" {
 		t.Skip("no network interface with a MAC address")
 	}
-	if strings.Contains(getMachineID(false), mac) {
+	if strings.Contains(id, mac) {
 		t.Error("the key must not depend on the MAC address")
 	}
 	if !strings.Contains(getMachineID(true), mac) {
 		t.Error("the legacy key must keep the MAC address")
+	}
+}
+
+func TestDisplayURL(t *testing.T) {
+	tests := map[string]string{
+		"http://ha.local:8123":                    "http://ha.local:8123",
+		"https://ha.example.com/base/":            "https://ha.example.com/base/",
+		"http://[fe80::1]:8123":                   "http://[fe80::1]:8123",
+		"https://user:pass@ha.example.com/?a=1#x": "https://ha.example.com/",
+		"http://ha.local:8123; echo pwned":        "",
+		"http://ha.local/$(id)":                   "",
+		"http://ha.local/`id`":                    "http://ha.local/%60id%60", // escaped, so harmless
+		"ftp://ha.local":                          "",
+		"ha.local:8123":                           "",
+		"":                                        "",
+	}
+	for raw, want := range tests {
+		if got := displayURL(raw); got != want {
+			t.Errorf("displayURL(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
+
+func TestSaveCredentials_URLCredentialsStayEncrypted(t *testing.T) {
+	clearAuthEnv(t)
+	tmpDir := t.TempDir()
+	creds := &Credentials{URL: "https://user:hunter2@ha.example.com", AccessToken: "tok"}
+	if err := SaveCredentials(creds, tmpDir); err != nil {
+		t.Fatalf("SaveCredentials: %v", err)
+	}
+
+	raw, _ := os.ReadFile(filepath.Join(tmpDir, "credentials.json"))
+	if bytes.Contains(raw, []byte("hunter2")) {
+		t.Error("URL password is stored in the clear")
+	}
+	loaded, err := LoadCredentials(tmpDir)
+	if err != nil || loaded.URL != creds.URL {
+		t.Errorf("loaded URL = %v (err %v), want the original", loaded, err)
 	}
 }
 
@@ -402,6 +450,7 @@ func TestLoadCredentials_Unreadable(t *testing.T) {
 		t.Fatal(err)
 	}
 	withURL, _ := json.Marshal(credentialsFile{URL: "http://ha.local:8123", Data: sealed})
+	hostile, _ := json.Marshal(credentialsFile{URL: "http://ha.local:8123; echo pwned", Data: sealed})
 
 	tests := []struct {
 		name    string
@@ -412,6 +461,7 @@ func TestLoadCredentials_Unreadable(t *testing.T) {
 		{"new format keeps the URL", withURL, "http://ha.local:8123", "hab auth login --url http://ha.local:8123"},
 		{"legacy format has no URL", sealed, "", "hab auth login"},
 		{"corrupt file", []byte("x"), "", "hab auth login"},
+		{"tampered URL is not echoed", hostile, "", "hab auth login"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -428,7 +478,7 @@ func TestLoadCredentials_Unreadable(t *testing.T) {
 			if unreadable.URL != tt.wantURL {
 				t.Errorf("URL = %q, want %q", unreadable.URL, tt.wantURL)
 			}
-			if !strings.Contains(err.Error(), tt.wantCmd) {
+			if !strings.HasSuffix(err.Error(), "Log in again: "+tt.wantCmd) {
 				t.Errorf("error %q does not include %q", err, tt.wantCmd)
 			}
 
