@@ -89,6 +89,73 @@ test_entity_device_class() {
     run_hab helper template delete "$entry_id" > /dev/null
 }
 
+test_entity_disabled_visibility() {
+    local helper_id entity_id output attempt
+    helper_id=$(run_hab helper input-boolean create "Disabled Visibility $(date +%s)" | jq -r '.data.id // empty')
+    if [ -z "$helper_id" ]; then
+        fail "entity disabled visibility setup"
+        return
+    fi
+    entity_id="input_boolean.$helper_id"
+    run_hab entity update "$entity_id" --disabled > /dev/null
+    # The entity removes its state asynchronously after being disabled.
+    for attempt in {1..20}; do
+        output=$(run_hab entity get "$entity_id")
+        echo "$output" | jq -e '.data.state == null' > /dev/null 2>&1 && break
+        sleep 0.25
+    done
+
+    log_test "entity get disabled entity"
+    if echo "$output" | jq -e '.success == true and .data.state == null and .data.registry.disabled_by == "user" and (.warnings | length) > 0' > /dev/null; then
+        pass "entity get returns registry data for disabled entity"
+    else
+        fail "entity get disabled entity: $output"
+    fi
+
+    log_test "entity get disabled entity (text mode)"
+    output=$(run_hab_text entity get "$entity_id")
+    if echo "$output" | grep -q "is disabled (disabled_by: user)"; then
+        pass "entity get text mode explains disabled entity"
+    else
+        fail "entity get disabled entity text mode: $output"
+    fi
+
+    log_test "entity list omits disabled entity by default"
+    output=$(run_hab entity list --domain input_boolean)
+    if echo "$output" | jq -e --arg id "$entity_id" '.success == true and ([.data[] | select(.entity_id == $id)] | length) == 0 and all(.data[]; has("disabled_by") | not)' > /dev/null; then
+        pass "entity list omits disabled entity by default"
+    else
+        fail "entity list default: $output"
+    fi
+
+    log_test "entity list --include-disabled"
+    output=$(run_hab entity list --domain input_boolean --include-disabled)
+    if echo "$output" | jq -e --arg id "$entity_id" '.success == true and ([.data[] | select(.entity_id == $id and .state == null and .disabled == true and .disabled_by == "user")] | length) == 1' > /dev/null; then
+        pass "entity list --include-disabled lists disabled entity"
+    else
+        fail "entity list --include-disabled: $output"
+    fi
+
+    log_test "entity list --include-disabled respects filters"
+    output=$(run_hab entity list --domain light --include-disabled)
+    if echo "$output" | jq -e --arg id "$entity_id" '.success == true and ([.data[] | select(.entity_id == $id)] | length) == 0' > /dev/null; then
+        pass "entity list --include-disabled respects domain filter"
+    else
+        fail "entity list --include-disabled filter: $output"
+    fi
+
+    log_test "entity get missing entity still fails"
+    output=$(run_hab entity get "input_boolean.missing_$helper_id")
+    if echo "$output" | jq -e '.success == false and .error.code == "NOT_FOUND"' > /dev/null; then
+        pass "entity get missing entity returns NOT_FOUND"
+    else
+        fail "entity get missing entity: $output"
+    fi
+
+    run_hab entity update "$entity_id" --disabled=false > /dev/null
+    run_hab helper input-boolean delete "$helper_id" > /dev/null
+}
+
 run_registry_tests() {
     log_section "Registry Tests (Entity/Device/Area/Floor/Label)"
 
@@ -235,6 +302,7 @@ run_registry_tests() {
         fail "entity update setup"
     fi
     test_entity_device_class
+    test_entity_disabled_visibility
 
     # Test: entity search (search for any entity)
     log_test "entity search"

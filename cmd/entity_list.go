@@ -16,6 +16,8 @@ var (
 	entityListLabel       string
 	entityListDevice      string
 	entityListDeviceClass string
+
+	entityListIncludeDisabled bool
 )
 
 var entityListFlags *ListFlags
@@ -28,7 +30,8 @@ var entityListCmd = &cobra.Command{
   hab entity list -a kitchen
   hab entity list -f ground_floor -c
   hab entity list --device-class temperature -b
-  hab entity list --device abc123 -n 5`,
+  hab entity list --device abc123 -n 5
+  hab entity list --include-disabled -d sensor`,
 	RunE: runEntityList,
 }
 
@@ -41,6 +44,7 @@ func init() {
 	entityListCmd.Flags().StringVarP(&entityListLabel, "label", "l", "", "Filter by label ID")
 	entityListCmd.Flags().StringVar(&entityListDevice, "device", "", "Filter by device ID")
 	entityListCmd.Flags().StringVar(&entityListDeviceClass, "device-class", "", "Filter by device class (e.g., temperature, motion, door)")
+	entityListCmd.Flags().BoolVar(&entityListIncludeDisabled, "include-disabled", false, "Also list registry entries with no state (e.g. disabled entities), with state null and disabled_by")
 	entityListFlags = RegisterListFlags(entityListCmd, "entity_id")
 }
 
@@ -112,6 +116,10 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		areaFloorMap = buildAreaFloorMap(areas)
 	}
 
+	if entityListIncludeDisabled {
+		states = appendStatelessEntities(states, registry)
+	}
+
 	// Filter and build entity list
 	entities := filterAndBuildEntities(states, registryMap, deviceAreaMap, areaFloorMap, entityFilterCriteria{
 		EntityID:    entityListID,
@@ -121,6 +129,8 @@ func runEntityList(cmd *cobra.Command, args []string) error {
 		Label:       entityListLabel,
 		Device:      entityListDevice,
 		DeviceClass: entityListDeviceClass,
+
+		IncludeDisabled: entityListIncludeDisabled,
 	})
 
 	// Count mode

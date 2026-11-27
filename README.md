@@ -154,11 +154,13 @@ hab entity list --floor ground_floor
 hab entity list --device abc123
 hab entity list --device-class temperature
 hab entity list --brief --limit 10
+hab entity list --include-disabled   # also registry entries with no state
 
 # Get entity state and registry data
 hab entity get light.living_room
 hab entity get light.living_room --device
 hab entity get light.living_room --related
+# A disabled entity returns its registry data with "state": null
 
 # Search entities by text
 hab entity search motion
