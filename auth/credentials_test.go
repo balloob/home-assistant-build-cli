@@ -1,8 +1,12 @@
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -310,5 +314,131 @@ func TestSaveAndLoadCredentials_RoundTrip(t *testing.T) {
 	}
 	if loaded.TokenExpiry != original.TokenExpiry {
 		t.Errorf("TokenExpiry = %v, want %v", loaded.TokenExpiry, original.TokenExpiry)
+	}
+}
+
+func clearAuthEnv(t *testing.T) {
+	t.Helper()
+	for _, name := range []string{"HAB_URL", "HAB_TOKEN", "HAB_REFRESH_TOKEN", SupervisorTokenEnv} {
+		t.Setenv(name, "")
+	}
+}
+
+func TestSaveCredentials_URLReadableTokensNot(t *testing.T) {
+	tmpDir := t.TempDir()
+	creds := &Credentials{URL: "http://my-ha.local:8123", AccessToken: "secret-access-token"}
+	if err := SaveCredentials(creds, tmpDir); err != nil {
+		t.Fatalf("SaveCredentials: %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(tmpDir, "credentials.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file credentialsFile
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("file is not JSON: %v", err)
+	}
+	if file.URL != creds.URL {
+		t.Errorf("URL = %q, want %q", file.URL, creds.URL)
+	}
+	if bytes.Contains(raw, []byte(creds.AccessToken)) {
+		t.Error("access token is stored in the clear")
+	}
+}
+
+// Files from older versions are bare ciphertext under the MAC-dependent key.
+func TestLoadCredentials_LegacyFileIsMigrated(t *testing.T) {
+	clearAuthEnv(t)
+	tmpDir := t.TempDir()
+	credsPath := filepath.Join(tmpDir, "credentials.json")
+
+	plain, _ := json.Marshal(Credentials{URL: "http://old.local:8123", AccessToken: "tok"})
+	legacy, err := encrypt(plain, legacyKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(credsPath, legacy, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	creds, err := LoadCredentials(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadCredentials: %v", err)
+	}
+	if creds.URL != "http://old.local:8123" || creds.AccessToken != "tok" {
+		t.Errorf("unexpected credentials: %+v", creds)
+	}
+
+	// The file must now open with the MAC-independent key alone.
+	raw, _ := os.ReadFile(credsPath)
+	var file credentialsFile
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("file was not migrated: %v", err)
+	}
+	if _, err := decrypt(file.Data, deriveKey()); err != nil {
+		t.Errorf("migrated file does not use the new key: %v", err)
+	}
+}
+
+func TestMachineIDWithoutMAC(t *testing.T) {
+	mac := getMACAddress()
+	if mac == "" {
+		t.Skip("no network interface with a MAC address")
+	}
+	if strings.Contains(getMachineID(false), mac) {
+		t.Error("the key must not depend on the MAC address")
+	}
+	if !strings.Contains(getMachineID(true), mac) {
+		t.Error("the legacy key must keep the MAC address")
+	}
+}
+
+func TestLoadCredentials_Unreadable(t *testing.T) {
+	clearAuthEnv(t)
+	otherKey := bytes.Repeat([]byte{7}, 32)
+	sealed, err := encrypt([]byte(`{"url":"http://ha.local:8123"}`), otherKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withURL, _ := json.Marshal(credentialsFile{URL: "http://ha.local:8123", Data: sealed})
+
+	tests := []struct {
+		name    string
+		content []byte
+		wantURL string
+		wantCmd string
+	}{
+		{"new format keeps the URL", withURL, "http://ha.local:8123", "hab auth login --url http://ha.local:8123"},
+		{"legacy format has no URL", sealed, "", "hab auth login"},
+		{"corrupt file", []byte("x"), "", "hab auth login"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(tmpDir, "credentials.json"), tt.content, 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			_, err := LoadCredentials(tmpDir)
+			var unreadable *UnreadableCredentialsError
+			if !errors.As(err, &unreadable) {
+				t.Fatalf("err = %v, want UnreadableCredentialsError", err)
+			}
+			if unreadable.URL != tt.wantURL {
+				t.Errorf("URL = %q, want %q", unreadable.URL, tt.wantURL)
+			}
+			if !strings.Contains(err.Error(), tt.wantCmd) {
+				t.Errorf("error %q does not include %q", err, tt.wantCmd)
+			}
+
+			status := NewManager(tmpDir).GetAuthStatus()
+			if status["authenticated"] != false || status["message"] != err.Error() {
+				t.Errorf("unexpected status: %v", status)
+			}
+			if tt.wantURL != "" && status["url"] != tt.wantURL {
+				t.Errorf("status url = %v, want %q", status["url"], tt.wantURL)
+			}
+		})
 	}
 }

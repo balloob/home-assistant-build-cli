@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -62,6 +63,38 @@ func (c *Credentials) NeedsRefresh() bool {
 	return float64(time.Now().Unix()) >= (c.TokenExpiry - tokenRefreshWindow)
 }
 
+// credentialsFile is the on-disk format. The URL is not a secret and stays
+// readable so a login that can no longer be decrypted can still be identified.
+type credentialsFile struct {
+	URL  string `json:"url"`
+	Data []byte `json:"data"`
+}
+
+// UnreadableCredentialsError is returned when the saved login exists but
+// cannot be decrypted, e.g. because the machine identity changed.
+type UnreadableCredentialsError struct {
+	URL string // empty when the file predates the readable URL
+	Err error
+}
+
+func (e *UnreadableCredentialsError) Error() string {
+	target := ""
+	if e.URL != "" {
+		target = " for " + e.URL
+	}
+	return fmt.Sprintf("The saved login%s can't be read on this machine anymore. Log in again: %s", target, e.LoginCommand())
+}
+
+func (e *UnreadableCredentialsError) Unwrap() error { return e.Err }
+
+// LoginCommand returns the command that replaces the unreadable login.
+func (e *UnreadableCredentialsError) LoginCommand() string {
+	if e.URL == "" {
+		return "hab auth login"
+	}
+	return "hab auth login --url " + e.URL
+}
+
 // LoadCredentials loads credentials from storage
 func LoadCredentials(configDir string) (*Credentials, error) {
 	// Check environment variables
@@ -97,16 +130,31 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 			return nil, err
 		}
 	} else {
-		// Decrypt
-		key := deriveKey()
-		decrypted, err := decrypt(data, key)
+		// Files written before the URL was stored in the clear are bare ciphertext.
+		var file credentialsFile
+		ciphertext := data
+		if json.Unmarshal(data, &file) == nil && len(file.Data) > 0 {
+			ciphertext = file.Data
+		}
+
+		decrypted, err := decrypt(ciphertext, deriveKey())
+		migrate := len(file.Data) == 0
 		if err != nil {
-			return nil, err
+			decrypted, err = decrypt(ciphertext, legacyKey())
+			migrate = true
+		}
+		if err != nil {
+			return nil, &UnreadableCredentialsError{URL: file.URL, Err: err}
 		}
 
 		var creds Credentials
 		if err := json.Unmarshal(decrypted, &creds); err != nil {
 			return nil, err
+		}
+
+		if migrate {
+			// Best effort: the old file still works until the MAC changes.
+			_ = SaveCredentials(&creds, configDir)
 		}
 
 		creds.Source = "credentials_file"
@@ -142,8 +190,13 @@ func SaveCredentials(creds *Credentials, configDir string) error {
 		return err
 	}
 
+	file, err := json.Marshal(credentialsFile{URL: creds.URL, Data: encrypted})
+	if err != nil {
+		return err
+	}
+
 	credsPath := config.GetCredentialsPath(configDir)
-	return fileutil.WriteFileAtomic(credsPath, encrypted, 0600)
+	return fileutil.WriteFileAtomic(credsPath, file, 0600)
 }
 
 // DeleteCredentials removes stored credentials.

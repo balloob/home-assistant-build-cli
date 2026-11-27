@@ -16,8 +16,10 @@ import (
 	"sync"
 )
 
-// getMachineID returns a machine-specific identifier for key derivation
-func getMachineID() string {
+// getMachineID returns a machine-specific identifier for key derivation.
+// withMAC reproduces the old derivation, which broke whenever the first
+// network interface changed (VPNs, Hyper-V/WSL/Docker adapters, Wi-Fi).
+func getMachineID(withMAC bool) string {
 	var sources []string
 
 	// Hostname
@@ -26,8 +28,10 @@ func getMachineID() string {
 	}
 
 	// MAC address
-	if mac := getMACAddress(); mac != "" {
-		sources = append(sources, mac)
+	if withMAC {
+		if mac := getMACAddress(); mac != "" {
+			sources = append(sources, mac)
+		}
 	}
 
 	// Platform-specific hardware UUID
@@ -111,11 +115,17 @@ var (
 
 func deriveKey() []byte {
 	derivedKeyOnce.Do(func() {
-		machineID := getMachineID()
-		hash := sha256.Sum256([]byte(machineID))
+		hash := sha256.Sum256([]byte(getMachineID(false)))
 		derivedKey = hash[:]
 	})
 	return derivedKey
+}
+
+// legacyKey is the old MAC-dependent key, used only to read files written by
+// older versions.
+func legacyKey() []byte {
+	hash := sha256.Sum256([]byte(getMachineID(true)))
+	return hash[:]
 }
 
 // newGCM creates an AES-GCM cipher from the given key.
