@@ -145,6 +145,17 @@ func classifyError(err error) (code string, msg string, details map[string]any) 
 		}
 	}
 
+	var unreadable *auth.UnreadableCredentialsError
+	if errors.As(err, &unreadable) {
+		return client.ErrCodeAuthRequired, unreadable.Error(), map[string]any{
+			"category":           "authentication",
+			"retryable":          false,
+			"likely_cause":       "The saved login was encrypted with a machine-specific key that no longer matches (for example after an OS reinstall, or when the file was copied from another machine).",
+			"suggested_fix":      "Log in again; the old saved login is replaced. The suggested command opens a browser; add --token --access-token <token> to log in non-interactively with a long-lived access token.",
+			"suggested_commands": []string{unreadable.LoginCommand()},
+		}
+	}
+
 	// Check for structured API errors (from REST or WebSocket)
 	var apiErr *client.APIError
 	if errors.As(err, &apiErr) {

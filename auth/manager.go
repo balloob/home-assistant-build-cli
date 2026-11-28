@@ -113,7 +113,18 @@ func (m *Manager) Logout() error {
 
 // GetAuthStatus returns authentication status as a map
 func (m *Manager) GetAuthStatus() map[string]interface{} {
-	creds, _ := m.loadCredentials()
+	creds, err := m.loadCredentials()
+	var unreadable *UnreadableCredentialsError
+	if errors.As(err, &unreadable) {
+		status := map[string]interface{}{
+			"authenticated": false,
+			"message":       unreadable.Error(),
+		}
+		if unreadable.URL != "" {
+			status["url"] = unreadable.URL
+		}
+		return status
+	}
 	if creds == nil {
 		return map[string]interface{}{
 			"authenticated": false,

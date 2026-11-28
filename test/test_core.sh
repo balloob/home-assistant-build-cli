@@ -138,6 +138,34 @@ run_core_tests() {
         fail "auth status after logout: $OUTPUT"
     fi
 
+    # Test: a saved login that can no longer be decrypted says how to recover
+    log_test "unreadable saved login"
+    do_auth_login
+    CREDS_FILE="$HAB_TEST_CONFIG_DIR/credentials.json"
+    if jq -e --arg url "$URL" '.url == $url' "$CREDS_FILE" > /dev/null 2>&1; then
+        pass "credentials file keeps the URL readable"
+    else
+        fail "credentials file keeps the URL readable"
+    fi
+    if grep -q "$TOKEN" "$CREDS_FILE"; then
+        fail "credentials file must not contain the token in the clear"
+    else
+        pass "credentials file encrypts the token"
+    fi
+    jq '.data = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"' "$CREDS_FILE" > "$CREDS_FILE.tmp" && mv "$CREDS_FILE.tmp" "$CREDS_FILE"
+    OUTPUT=$(run_hab auth status)
+    if echo "$OUTPUT" | jq -e --arg url "$URL" '.data.authenticated == false and .data.url == $url and (.data.message | contains("hab auth login --url " + $url))' > /dev/null 2>&1; then
+        pass "auth status with unreadable saved login"
+    else
+        fail "auth status with unreadable saved login: $OUTPUT"
+    fi
+    OUTPUT=$(run_hab system info)
+    if echo "$OUTPUT" | jq -e --arg url "$URL" '.error.code == "AUTH_REQUIRED" and (.error.message | contains("hab auth login --url " + $url))' > /dev/null 2>&1; then
+        pass "command error with unreadable saved login"
+    else
+        fail "command error with unreadable saved login: $OUTPUT"
+    fi
+
     # Re-login for other tests that may run after
     do_auth_login
 
