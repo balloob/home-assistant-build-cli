@@ -385,7 +385,7 @@ func (c *ESPHomeClient) GetJSONConfig(configuration string) (map[string]any, err
 		return nil, &APIError{Code: ErrCodeNotFound, Message: fmt.Sprintf("configuration %q not found", configuration)}
 	}
 	if resp.StatusCode() == http.StatusUnprocessableEntity {
-		return nil, parseESPHomeValidationError(configuration, string(resp.Body()))
+		return nil, parseESPHomeValidationError(configuration, c.validationOutput(configuration, espHomeHTTPErrorMessage(string(resp.Body()))))
 	}
 	if resp.StatusCode() != http.StatusOK {
 		return nil, parseESPHomeHTTPError(resp.StatusCode(), string(resp.Body()), "validate config")
@@ -396,6 +396,26 @@ func (c *ESPHomeClient) GetJSONConfig(configuration string) (map[string]any, err
 		return nil, &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse validation response: %s", err)}
 	}
 	return result, nil
+}
+
+// espHomeColor matches the color codes in `esphome config` output, both as
+// escape bytes and as the literal \033 text that dashboard mode prints.
+var espHomeColor = regexp.MustCompile(`(\x1b|\\033)\[[0-9;]*m`)
+
+// validationOutput returns the `esphome config` output for a configuration.
+// The /json-config 422 body is generic, so the error details come from the
+// devices/validate stream, which removes secrets. It returns fallback when the
+// stream gives no output.
+func (c *ESPHomeClient) validationOutput(configuration, fallback string) string {
+	var output strings.Builder
+	if _, err := c.StreamCommand("validate", configuration, "", func(event ESPHomeStreamEvent) {
+		if event.Event == "line" {
+			output.WriteString(event.Data)
+		}
+	}); err != nil || strings.TrimSpace(output.String()) == "" {
+		return fallback
+	}
+	return espHomeColor.ReplaceAllString(output.String(), "")
 }
 
 func parseESPHomeHTTPError(statusCode int, body string, operation string) error {

@@ -239,6 +239,24 @@ func TestLegacyDashboardRejected(t *testing.T) {
 	}
 }
 
+func TestDeviceBuilderUnavailable(t *testing.T) {
+	for status, code := range map[int]string{
+		http.StatusUnauthorized:       ErrCodeAuthenticationError,
+		http.StatusBadGateway:         ErrCodeConnectionError,
+		http.StatusServiceUnavailable: ErrCodeConnectionError,
+	} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(status) }))
+			defer server.Close()
+			_, err := NewESPHomeClient(server.URL, "").ReadConfig("kitchen.yaml")
+			apiErr, ok := err.(*APIError)
+			if !ok || apiErr.Code != code || strings.Contains(apiErr.Message, "legacy") {
+				t.Fatalf("err = %#v, want code %s without the legacy dashboard message", err, code)
+			}
+		})
+	}
+}
+
 func TestLegacyDashboardWebSocketRejected(t *testing.T) {
 	// A WebSocket server that does not greet with a ServerInfoMessage.
 	upgrader := websocket.Upgrader{}

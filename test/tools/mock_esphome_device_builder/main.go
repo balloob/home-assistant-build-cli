@@ -129,8 +129,15 @@ func (s *serverState) dispatch(cmd command, event func(string, any)) (any, error
 		}
 		return map[string]any{"configuration": configuration, "address": strings.TrimSuffix(configuration, ".yaml") + ".local", "icmp_available": true, "zeroconf_running": true, "dns_resolved": true, "dns_addresses": []string{"192.0.2.10"}, "ping_attempted": true, "ping_rtt_ms": 3.2}, nil
 	case "devices/validate", "devices/logs":
-		if _, ok := s.config(configuration); !ok {
+		content, ok := s.config(configuration)
+		if !ok {
 			return nil, &commandError{"not_found", "Configuration " + configuration + " not found"}
+		}
+		if cmd.Command == "devices/validate" && strings.Contains(content, "invalid:") {
+			event("output", "Error while reading config")
+			event("output", "[source "+configuration+":3:3]")
+			event("result", map[string]any{"success": false, "code": 2})
+			return nil, nil
 		}
 		event("output", "INFO "+cmd.Command+" "+configuration)
 		event("result", map[string]any{"success": true, "code": 0})
@@ -243,8 +250,11 @@ func (s *serverState) handleJSONConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.Contains(content, "invalid:") {
+		// Like the Device Builder, keep the details out of the body;
+		// devices/validate streams them.
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = w.Write([]byte("Error while reading config\n[source " + configuration + ":3:3]"))
+		_, _ = w.Write([]byte(`{"error":"Configuration is invalid"}`))
 		return
 	}
 

@@ -31,12 +31,25 @@ func TestESPHomeGetJSONConfig(t *testing.T) {
 	}
 }
 
+// invalidJSONConfig answers /json-config like the Device Builder does for an
+// invalid configuration: status 422 with a generic body.
+func invalidJSONConfig(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	_, _ = io.WriteString(w, `{"error":"Configuration is invalid"}`)
+}
+
 func TestESPHomeGetJSONConfigValidationError(t *testing.T) {
-	raw := "Error while reading config: required option 'ssid' is missing\n[wifi]\nssid: [source living-room.yaml:12:7]"
-	server, _ := newDeviceBuilderServer(t, pong, map[string]http.HandlerFunc{"/json-config": func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = io.WriteString(w, raw)
-	}})
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		if cmd.Command != "devices/validate" {
+			pong(cmd, send)
+			return
+		}
+		for _, line := range []string{"INFO Reading configuration living-room.yaml...", "\\033[1;31mError while reading config: required option 'ssid' is missing\\033[0m", "[wifi]", "ssid: [source living-room.yaml:12:7]"} {
+			send(map[string]any{"message_id": cmd.MessageID, "event": "output", "data": line})
+		}
+		send(map[string]any{"message_id": cmd.MessageID, "event": "result", "data": map[string]any{"success": false, "code": 2}})
+		send(map[string]any{"message_id": cmd.MessageID, "result": nil})
+	}, map[string]http.HandlerFunc{"/json-config": invalidJSONConfig})
 
 	_, err := NewESPHomeClient(server.URL, "").GetJSONConfig("living-room.yaml")
 	apiErr, ok := err.(*APIError)
@@ -54,6 +67,25 @@ func TestESPHomeGetJSONConfigValidationError(t *testing.T) {
 	}
 	if apiErr.Details["line"] != 12 || apiErr.Details["column"] != 7 {
 		t.Fatalf("line/column = %#v/%#v, want 12/7", apiErr.Details["line"], apiErr.Details["column"])
+	}
+	if apiErr.Message != "Error while reading config: required option 'ssid' is missing" {
+		t.Fatalf("Message = %q", apiErr.Message)
+	}
+}
+
+func TestESPHomeGetJSONConfigValidationErrorWithoutOutput(t *testing.T) {
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		if cmd.Command != "devices/validate" {
+			pong(cmd, send)
+			return
+		}
+		send(map[string]any{"message_id": cmd.MessageID, "error_code": "internal_error", "details": "validation failed to start"})
+	}, map[string]http.HandlerFunc{"/json-config": invalidJSONConfig})
+
+	_, err := NewESPHomeClient(server.URL, "").GetJSONConfig("living-room.yaml")
+	apiErr, ok := err.(*APIError)
+	if !ok || apiErr.Code != ErrCodeValidationError || apiErr.Message != "Configuration is invalid" {
+		t.Fatalf("err = %#v, want validation error with the server message", err)
 	}
 }
 

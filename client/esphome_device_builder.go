@@ -50,8 +50,16 @@ func (c *ESPHomeClient) call(command string, args map[string]any, onEvent func(e
 	conn, resp, err := dialer.Dial(wsURL, headers)
 	if err != nil {
 		if resp != nil && resp.StatusCode != http.StatusSwitchingProtocols {
-			// An HTTP answer without the upgrade: some other server owns this URL.
-			return nil, &APIError{Code: ErrCodeAPIError, Message: errLegacyDashboard, Details: map[string]any{"status_code": resp.StatusCode}}
+			details := map[string]any{"status_code": resp.StatusCode}
+			switch {
+			case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+				return nil, &APIError{Code: ErrCodeAuthenticationError, Message: fmt.Sprintf("ESPHome Device Builder refused the connection with status %d; check the Home Assistant login or HAB_ESPHOME_TOKEN", resp.StatusCode), Details: details}
+			case resp.StatusCode >= http.StatusInternalServerError:
+				// Home Assistant ingress answers 5xx while the app is stopped or starting.
+				return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("ESPHome Device Builder is not available (status %d); check that the ESPHome app is running", resp.StatusCode), Details: details}
+			}
+			// Any other HTTP answer without the upgrade: some other server owns this URL.
+			return nil, &APIError{Code: ErrCodeAPIError, Message: errLegacyDashboard, Details: details}
 		}
 		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("ESPHome Device Builder connection failed: %s", err)}
 	}
