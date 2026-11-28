@@ -18,7 +18,7 @@ var esphomeConfigPatchCmd = &cobra.Command{
 	Use:   "config-patch [configuration]",
 	Short: "Patch an ESPHome YAML configuration safely",
 	Long: `Read the current ESPHome YAML, apply a structured patch, write the updated
-configuration back to the dashboard, and optionally validate the result with
+configuration back to the Device Builder, and optionally validate the result with
 automatic rollback on failure.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runESPHomeConfigPatch,

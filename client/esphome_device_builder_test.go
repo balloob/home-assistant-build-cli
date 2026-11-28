@@ -21,7 +21,7 @@ type wsCommand struct {
 
 // newDeviceBuilderServer emulates the ESPHome Device Builder: a /ws endpoint
 // that greets with a ServerInfoMessage and passes each command to handle,
-// plus any extra REST/legacy routes. It records every command received.
+// plus any extra REST routes. It records every command received.
 func newDeviceBuilderServer(t *testing.T, handle func(cmd wsCommand, send func(any)), extra map[string]http.HandlerFunc) (*httptest.Server, func() []wsCommand) {
 	t.Helper()
 	var mu sync.Mutex
@@ -158,7 +158,7 @@ func TestDeviceBuilderLogs(t *testing.T) {
 	}, nil)
 
 	var events []ESPHomeStreamEvent
-	code, err := NewESPHomeClient(server.URL, "").StreamCommand("/logs", map[string]any{"type": "spawn", "configuration": "kitchen.yaml", "port": "OTA"}, func(e ESPHomeStreamEvent) {
+	code, err := NewESPHomeClient(server.URL, "").StreamCommand("logs", "kitchen.yaml", "OTA", func(e ESPHomeStreamEvent) {
 		events = append(events, e)
 	})
 	if err != nil {
@@ -176,47 +176,6 @@ func TestDeviceBuilderLogs(t *testing.T) {
 	}
 }
 
-func TestDeviceBuilderRunUsesCompileThenUpload(t *testing.T) {
-	upgrader := websocket.Upgrader{}
-	var spawns []map[string]any
-	legacy := func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-		var spawn map[string]any
-		_ = conn.ReadJSON(&spawn)
-		spawn["path"] = r.URL.Path
-		spawns = append(spawns, spawn)
-		_ = conn.WriteJSON(map[string]any{"event": "line", "data": r.URL.Path + " ok\n"})
-		_ = conn.WriteJSON(map[string]any{"event": "exit", "code": 0})
-	}
-	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
-		send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{"pong": true}})
-	}, map[string]http.HandlerFunc{"/compile": legacy, "/upload": legacy})
-
-	var events []ESPHomeStreamEvent
-	code, err := NewESPHomeClient(server.URL, "").StreamCommand("/run", map[string]any{"type": "spawn", "configuration": "kitchen.yaml", "port": "OTA"}, func(e ESPHomeStreamEvent) {
-		events = append(events, e)
-	})
-	if err != nil || code != 0 {
-		t.Fatalf("StreamCommand: code=%d err=%v", code, err)
-	}
-	if len(spawns) != 2 || spawns[0]["path"] != "/compile" || spawns[1]["path"] != "/upload" || spawns[1]["port"] != "OTA" {
-		t.Fatalf("spawns = %+v", spawns)
-	}
-	exits := 0
-	for _, e := range events {
-		if e.Event == "exit" {
-			exits++
-		}
-	}
-	if exits != 1 || len(events) != 3 {
-		t.Fatalf("events = %+v, want two lines and one exit", events)
-	}
-}
-
 func TestDeviceBuilderTroubleshoot(t *testing.T) {
 	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
 		send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{"configuration": cmd.Args["configuration"], "dns_resolved": true}})
@@ -231,90 +190,7 @@ func TestDeviceBuilderTroubleshoot(t *testing.T) {
 	}
 }
 
-func TestClassicDashboardFallback(t *testing.T) {
-	upgrader := websocket.Upgrader{}
-	wsCalls := 0
-	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		wsCalls++
-		http.NotFound(w, r)
-	})
-	mux.HandleFunc("/edit", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, "esphome:\n  name: kitchen\n")
-	})
-	mux.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-		var spawn map[string]any
-		_ = conn.ReadJSON(&spawn)
-		_ = conn.WriteJSON(map[string]any{"event": "line", "data": "classic log\n"})
-		_ = conn.WriteJSON(map[string]any{"event": "exit", "code": 0})
-	})
-	server := httptest.NewServer(mux)
-	defer server.Close()
-
-	c := NewESPHomeClient(server.URL, "")
-	content, err := c.ReadConfig("kitchen.yaml")
-	if err != nil || content != "esphome:\n  name: kitchen\n" {
-		t.Fatalf("ReadConfig = %q, %v", content, err)
-	}
-	var lines []string
-	code, err := c.StreamCommand("/logs", map[string]any{"type": "spawn", "configuration": "kitchen.yaml", "port": "OTA"}, func(e ESPHomeStreamEvent) {
-		if e.Event == "line" {
-			lines = append(lines, e.Data)
-		}
-	})
-	if err != nil || code != 0 || len(lines) != 1 || lines[0] != "classic log\n" {
-		t.Fatalf("StreamCommand: code=%d err=%v lines=%q", code, err, lines)
-	}
-	if wsCalls != 1 {
-		t.Fatalf("/ws probed %d times, want 1 (the result is cached)", wsCalls)
-	}
-}
-
-func TestClassicDashboardWriteConfigIfUnchangedConflict(t *testing.T) {
-	wrote := false
-	mux := http.NewServeMux()
-	mux.HandleFunc("/edit", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			wrote = true
-		}
-		_, _ = io.WriteString(w, "other: 2\n")
-	})
-	server := httptest.NewServer(mux)
-	defer server.Close()
-
-	err := NewESPHomeClient(server.URL, "").WriteConfigIfUnchanged("kitchen.yaml", "new: 1\n", "old: 1\n")
-	var apiErr *APIError
-	if !errors.As(err, &apiErr) || apiErr.Code != ErrCodeValidationError {
-		t.Fatalf("err = %v, want VALIDATION_ERROR", err)
-	}
-	if wrote {
-		t.Fatal("config was written despite the conflict")
-	}
-}
-
-func TestReadConfigRejectsHTMLPage(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/ws" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		_, _ = io.WriteString(w, "<!doctype html><title>ESPHome Device Builder</title>")
-	}))
-	defer server.Close()
-
-	_, err := NewESPHomeClient(server.URL, "").ReadConfig("kitchen.yaml")
-	if err == nil || !strings.Contains(err.Error(), "web page") {
-		t.Fatalf("err = %v, want an HTML rejection", err)
-	}
-}
-
-func TestDeviceBuilderSilentGreetingIsNotClassic(t *testing.T) {
+func TestDeviceBuilderSilentGreetingIsConnectionError(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/ws" {
@@ -337,7 +213,268 @@ func TestDeviceBuilderSilentGreetingIsNotClassic(t *testing.T) {
 	if !errors.As(err, &apiErr) || apiErr.Code != ErrCodeConnectionError {
 		t.Fatalf("err = %v, want CONNECTION_ERROR", err)
 	}
-	if c.legacyDashboard {
-		t.Fatal("a silent /ws must not mark the server as the classic dashboard")
+}
+
+func TestLegacyDashboardRejected(t *testing.T) {
+	for name, handler := range map[string]http.HandlerFunc{
+		// The legacy dashboard answers /ws with 404.
+		"404": http.NotFound,
+		// A web app that answers every path with a page.
+		"html": func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = io.WriteString(w, "<!doctype html>")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(handler)
+			defer server.Close()
+			c := NewESPHomeClient(server.URL, "")
+			if _, err := c.ReadConfig("kitchen.yaml"); err == nil || !strings.Contains(err.Error(), "legacy ESPHome dashboard is no longer supported") {
+				t.Fatalf("ReadConfig: err = %v, want the legacy dashboard error", err)
+			}
+			if _, err := c.GetJSONConfig("kitchen.yaml"); err == nil || !strings.Contains(err.Error(), "legacy ESPHome dashboard is no longer supported") {
+				t.Fatalf("GetJSONConfig: err = %v, want the legacy dashboard error", err)
+			}
+		})
+	}
+}
+
+func TestLegacyDashboardWebSocketRejected(t *testing.T) {
+	// A WebSocket server that does not greet with a ServerInfoMessage.
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		_ = conn.WriteJSON(map[string]any{"event": "line", "data": "hello"})
+	}))
+	defer server.Close()
+
+	_, err := NewESPHomeClient(server.URL, "").ReadConfig("kitchen.yaml")
+	if err == nil || !strings.Contains(err.Error(), "no longer supported") {
+		t.Fatalf("err = %v, want the legacy dashboard error", err)
+	}
+}
+
+func TestDeviceBuilderGetDevices(t *testing.T) {
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{
+			"configured": []any{map[string]any{
+				"name": "kitchen", "configuration": "kitchen.yaml", "target_platform": "ESP32",
+				"runtime_state": map[string]any{"state": "online", "deployed_version": "2026.11.1"},
+			}},
+			"importable": []any{map[string]any{"name": "plug", "project_name": "acme.plug"}},
+		}})
+	}, nil)
+
+	devices, err := NewESPHomeClient(server.URL, "").GetDevices()
+	if err != nil {
+		t.Fatalf("GetDevices: %v", err)
+	}
+	if len(devices.Configured) != 1 || len(devices.Importable) != 1 {
+		t.Fatalf("devices = %+v", devices)
+	}
+	d := devices.Configured[0]
+	if d.State != "online" || d.DeployedVersion != "2026.11.1" || d.TargetPlatform != "ESP32" {
+		t.Fatalf("device = %+v", d)
+	}
+}
+
+func TestDeviceBuilderGetBoards(t *testing.T) {
+	server, received := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{
+			"boards": []any{
+				map[string]any{"id": "nodemcu-32s", "name": "NodeMCU-32S"},
+				map[string]any{"id": "esp32dev", "name": "ESP32 Dev Board"},
+			},
+			"total": 2,
+		}})
+	}, nil)
+
+	boards, err := NewESPHomeClient(server.URL, "").GetBoards("ESP32")
+	if err != nil {
+		t.Fatalf("GetBoards: %v", err)
+	}
+	if len(boards) != 2 || boards[0].ID != "esp32dev" {
+		t.Fatalf("boards = %+v, want sorted by name", boards)
+	}
+	cmd := received()[0]
+	if cmd.Command != "boards/get_boards" || cmd.Args["platform"] != "esp32" {
+		t.Fatalf("command = %+v", cmd)
+	}
+}
+
+func TestDeviceBuilderCreateConfig(t *testing.T) {
+	server, received := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{"configuration": "demo.yaml"}})
+	}, nil)
+	c := NewESPHomeClient(server.URL, "")
+
+	result, err := c.CreateConfig(ESPHomeCreateRequest{Name: "demo", Board: "esp32dev", SSID: "net", PSK: "secret"})
+	if err != nil || result.Configuration != "demo.yaml" {
+		t.Fatalf("CreateConfig = %+v, %v", result, err)
+	}
+	if _, err := c.CreateConfig(ESPHomeCreateRequest{Name: "uploaded", FileContent: []byte("esphome:\n  name: uploaded\n")}); err != nil {
+		t.Fatalf("CreateConfig upload: %v", err)
+	}
+
+	cmds := received()
+	board := cmds[0].Args
+	if cmds[0].Command != "devices/create" || board["name"] != "demo" || board["board_id"] != "esp32dev" || board["ssid"] != "net" || board["psk"] != "secret" {
+		t.Fatalf("board create = %+v", cmds[0])
+	}
+	upload := cmds[1].Args
+	if upload["file_content"] != "esphome:\n  name: uploaded\n" {
+		t.Fatalf("file_content = %#v, want the YAML as plain text", upload["file_content"])
+	}
+	if _, ok := upload["board_id"]; ok {
+		t.Fatal("upload create must not send board_id")
+	}
+}
+
+func TestDeviceBuilderImportConfig(t *testing.T) {
+	server, received := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{"configuration": "plug.yaml", "warning": "kept despite a package error"}})
+	}, nil)
+	c := NewESPHomeClient(server.URL, "")
+
+	result, err := c.ImportConfig(ESPHomeImportRequest{Name: "plug", ProjectName: "acme.plug", PackageImportURL: "github://acme/plug.yaml", Encryption: true})
+	if err != nil || result.Configuration != "plug.yaml" || result.Warning == "" {
+		t.Fatalf("ImportConfig = %+v, %v", result, err)
+	}
+	if _, err := c.ImportConfig(ESPHomeImportRequest{Name: "plug2", ProjectName: "acme.plug", PackageImportURL: "github://acme/plug.yaml"}); err != nil {
+		t.Fatalf("ImportConfig: %v", err)
+	}
+
+	cmds := received()
+	if cmds[0].Command != "devices/import" || cmds[0].Args["package_import_url"] != "github://acme/plug.yaml" || cmds[0].Args["encryption"] == nil {
+		t.Fatalf("import = %+v", cmds[0])
+	}
+	if _, ok := cmds[1].Args["encryption"]; ok {
+		t.Fatal("encryption must be omitted when not requested")
+	}
+}
+
+func TestDeviceBuilderSerialPortsAndVersion(t *testing.T) {
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		switch cmd.Command {
+		case "config/serial_ports":
+			send(map[string]any{"message_id": cmd.MessageID, "result": []any{map[string]any{"port": "COM3", "desc": "USB Serial", "hint": "esp"}}})
+		case "config/version":
+			send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{"server_version": "1.0.0", "esphome_version": "2026.11.1"}})
+		}
+	}, nil)
+	c := NewESPHomeClient(server.URL, "")
+
+	ports, err := c.GetSerialPorts()
+	if err != nil || len(ports) != 1 || ports[0].Port != "COM3" {
+		t.Fatalf("GetSerialPorts = %+v, %v", ports, err)
+	}
+	version, err := c.GetVersion()
+	if err != nil || version != "2026.11.1" {
+		t.Fatalf("GetVersion = %q, %v", version, err)
+	}
+}
+
+// jobServer answers firmware job commands: each queued job's id is its
+// command, and following it streams one output line and the given result.
+func jobServer(t *testing.T, results map[string]map[string]any) (*httptest.Server, func() []wsCommand) {
+	return newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		switch cmd.Command {
+		case "firmware/compile", "firmware/upload":
+			send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{"job_id": cmd.Command, "status": "queued"}})
+		case "firmware/follow_job":
+			id, _ := cmd.Args["job_id"].(string)
+			send(map[string]any{"message_id": cmd.MessageID, "event": "output", "data": id + " running\n"})
+			send(map[string]any{"message_id": cmd.MessageID, "event": "result", "data": results[id]})
+			send(map[string]any{"message_id": cmd.MessageID, "result": nil})
+		}
+	}, nil)
+}
+
+func TestDeviceBuilderBuildFollowsJob(t *testing.T) {
+	server, received := jobServer(t, map[string]map[string]any{
+		"firmware/compile": {"status": "completed", "exit_code": 0, "error": nil},
+	})
+
+	var events []ESPHomeStreamEvent
+	code, err := NewESPHomeClient(server.URL, "").StreamCommand("build", "kitchen.yaml", "", func(e ESPHomeStreamEvent) {
+		events = append(events, e)
+	})
+	if err != nil || code != 0 {
+		t.Fatalf("StreamCommand: code=%d err=%v", code, err)
+	}
+	if len(events) != 2 || events[0].Data != "firmware/compile running\n" || events[1].Event != "exit" {
+		t.Fatalf("events = %+v", events)
+	}
+	cmds := received()
+	if cmds[0].Command != "firmware/compile" || cmds[1].Command != "firmware/follow_job" || cmds[1].Args["job_id"] != "firmware/compile" {
+		t.Fatalf("commands = %+v", cmds)
+	}
+}
+
+func TestDeviceBuilderFailedJobReportsError(t *testing.T) {
+	server, _ := jobServer(t, map[string]map[string]any{
+		"firmware/upload": {"status": "failed", "exit_code": nil, "error": "Device not reachable"},
+	})
+
+	var lines []string
+	code, err := NewESPHomeClient(server.URL, "").StreamCommand("upload", "kitchen.yaml", "OTA", func(e ESPHomeStreamEvent) {
+		if e.Event == "line" {
+			lines = append(lines, e.Data)
+		}
+	})
+	if err != nil || code != 1 {
+		t.Fatalf("StreamCommand: code=%d err=%v, want code 1", code, err)
+	}
+	if len(lines) != 2 || lines[1] != "Device not reachable\n" {
+		t.Fatalf("lines = %q", lines)
+	}
+}
+
+func TestDeviceBuilderRunCompilesThenUploads(t *testing.T) {
+	server, received := jobServer(t, map[string]map[string]any{
+		"firmware/compile": {"status": "completed", "exit_code": 0},
+		"firmware/upload":  {"status": "completed", "exit_code": 0},
+	})
+
+	exits := 0
+	code, err := NewESPHomeClient(server.URL, "").StreamCommand("run", "kitchen.yaml", "OTA", func(e ESPHomeStreamEvent) {
+		if e.Event == "exit" {
+			exits++
+		}
+	})
+	if err != nil || code != 0 || exits != 1 {
+		t.Fatalf("StreamCommand: code=%d err=%v exits=%d", code, err, exits)
+	}
+	var queued []string
+	for _, cmd := range received() {
+		if cmd.Command != "firmware/follow_job" {
+			queued = append(queued, cmd.Command)
+		}
+		if cmd.Command == "firmware/upload" && cmd.Args["port"] != "OTA" {
+			t.Fatalf("upload port = %#v, want OTA", cmd.Args["port"])
+		}
+	}
+	if strings.Join(queued, ",") != "firmware/compile,firmware/upload" {
+		t.Fatalf("queued = %v", queued)
+	}
+}
+
+func TestDeviceBuilderRunStopsWhenBuildFails(t *testing.T) {
+	server, received := jobServer(t, map[string]map[string]any{
+		"firmware/compile": {"status": "failed", "exit_code": 2},
+	})
+
+	code, err := NewESPHomeClient(server.URL, "").StreamCommand("run", "kitchen.yaml", "OTA", func(ESPHomeStreamEvent) {})
+	if err != nil || code != 2 {
+		t.Fatalf("StreamCommand: code=%d err=%v, want 2", code, err)
+	}
+	for _, cmd := range received() {
+		if cmd.Command == "firmware/upload" {
+			t.Fatal("upload must not run after a failed build")
+		}
 	}
 }

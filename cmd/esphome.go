@@ -17,7 +17,7 @@ var esphomeDevice string
 var esphomeCmd = &cobra.Command{
 	Use:   "esphome",
 	Short: "Manage ESPHome devices",
-	Long: `Create, validate, build, patch, and manage ESPHome devices via the ESPHome Dashboard.
+	Long: `Create, validate, build, patch, and manage ESPHome devices via the ESPHome Device Builder.
 
 For workflow guidance, run 'hab guide esphome'.`,
 	GroupID: "other",
@@ -29,7 +29,7 @@ func init() {
 }
 
 // getESPHomeClient is the shared helper used by all esphome subcommands.
-// It resolves the dashboard URL (via HAB_ESPHOME_URL or ingress auto-discovery)
+// It resolves the Device Builder URL (via HAB_ESPHOME_URL or ingress auto-discovery)
 // and returns a configured ESPHomeClient implementing client.ESPHomeAPI.
 func getESPHomeClient() (client.ESPHomeAPI, error) {
 	creds, err := getCredentials()
@@ -42,7 +42,7 @@ func getESPHomeClient() (client.ESPHomeAPI, error) {
 
 	// Allow overriding the Bearer token for ESPHome specifically.
 	// This is needed when calling through HA Core's ingress proxy from
-	// an addon container, where the Supervisor token won't work and a
+	// an app container, where the Supervisor token won't work and a
 	// long-lived access token is required instead.
 	token := creds.AccessToken
 	if t := os.Getenv("HAB_ESPHOME_TOKEN"); t != "" {
@@ -70,11 +70,11 @@ func decodeESPHomeAnsi(s string) string {
 	return strings.ReplaceAll(s, `\033`, "\033")
 }
 
-// streamToOutput is a shared helper that handles streaming ESPHome WebSocket
-// commands (build, logs, validate, upload, run) with proper text/JSON output.
-func streamToOutput(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[string]any, textMode bool) error {
+// streamToOutput is a shared helper that handles streaming ESPHome
+// operations (build, logs, validate, upload, run) with proper text/JSON output.
+func streamToOutput(esClient client.ESPHomeAPI, operation, configuration, port string, textMode bool) error {
 	if textMode {
-		exitCode, err := esClient.StreamCommand(wsPath, spawnMsg, func(event client.ESPHomeStreamEvent) {
+		exitCode, err := esClient.StreamCommand(operation, configuration, port, func(event client.ESPHomeStreamEvent) {
 			switch event.Event {
 			case "line":
 				fmt.Print(decodeESPHomeAnsi(event.Data))
@@ -92,7 +92,7 @@ func streamToOutput(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[stri
 	}
 
 	// JSON mode: emit NDJSON - one JSON object per event
-	exitCode, err := esClient.StreamCommand(wsPath, spawnMsg, func(event client.ESPHomeStreamEvent) {
+	exitCode, err := esClient.StreamCommand(operation, configuration, port, func(event client.ESPHomeStreamEvent) {
 		// Decode ANSI escapes so consumers get real escape bytes
 		event.Data = decodeESPHomeAnsi(event.Data)
 		b, _ := json.Marshal(event)

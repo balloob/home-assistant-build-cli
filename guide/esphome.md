@@ -9,7 +9,7 @@ Use this topic for ESPHome configuration, validation, builds, and uploads.
 
 ## Prerequisites
 
-- Reachable ESPHome dashboard and valid auth context.
+- A reachable ESPHome Device Builder (the ESPHome app's web UI) and valid auth context.
 - A selected configuration (argument, `--device`, or saved context).
 
 ## Discovery Sequence
@@ -36,11 +36,10 @@ hab esphome upload <configuration>
 hab esphome troubleshoot <configuration>   # offline device: DNS, mDNS and ping checks
 ```
 
-## Dashboard Versions
+## Boards and Create
 
-- Both the ESPHome Device Builder (the dashboard in the ESPHome app since 2026.11) and the classic ESPHome dashboard work. hab uses the Device Builder's `/ws` API when it is there and falls back to the classic endpoints otherwise.
-- `troubleshoot` needs the Device Builder.
-- `boards`, `create` and `import` do not work on the Device Builder yet.
+- `boards <platform>` lists the Device Builder's board catalog; pass a board ID to `create --board`.
+- `create --type basic` generates the config from the board's template. `--ssid`/`--psk` are stored as the shared `wifi_ssid`/`wifi_password` secrets.
 
 ## Verification Commands
 
@@ -53,4 +52,3 @@ hab esphome validate <configuration>
 
 - Uploading firmware before validation succeeds.
 - Running commands without setting configuration context.
-- Expecting `boards`, `create` or `import` to work on the ESPHome Device Builder; they need the classic dashboard for now.

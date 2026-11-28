@@ -38,19 +38,24 @@ var (
 var esphomeCreateCmd = &cobra.Command{
 	Use:   "create [name]",
 	Short: "Create a new ESPHome device configuration",
-	Long: `Create a new ESPHome configuration from scratch using the dashboard wizard.
+	Long: `Create a new ESPHome configuration on the ESPHome Device Builder.
 
-Use --type basic to scaffold a working config with wifi/api/ota defaults,
---type empty for a blank file, or --type upload to seed from an existing YAML file.`,
+Use --type basic to generate a config from a board template (--board takes a
+board ID from 'hab esphome boards <platform>'), --type empty for a minimal
+stub, or --type upload to seed from an existing YAML file.
+
+--ssid and --psk are stored as the shared wifi_ssid / wifi_password secrets in
+secrets.yaml, and the generated YAML references them.`,
 	Args: cobra.RangeArgs(0, 1),
 	RunE: runESPHomeCreate,
 }
 
 func init() {
 	esphomeCmd.AddCommand(esphomeCreateCmd)
-	esphomeCreateCmd.Flags().StringVar(&esphomeCreateType, "type", "basic", "Wizard type: basic, empty, or upload")
-	esphomeCreateCmd.Flags().StringVar(&esphomeCreatePlatform, "platform", "", "ESPHome platform for basic scaffolds (esp32, esp8266, rp2040, bk72xx, ln882x, rtl87xx)")
-	esphomeCreateCmd.Flags().StringVar(&esphomeCreateBoard, "board", "", "Board ID for basic scaffolds")
+	esphomeCreateCmd.Flags().StringVar(&esphomeCreateType, "type", "basic", "Create type: basic (board template), empty (minimal stub), or upload (--file)")
+	esphomeCreateCmd.Flags().StringVar(&esphomeCreatePlatform, "platform", "", "Ignored: the board determines the platform")
+	_ = esphomeCreateCmd.Flags().MarkDeprecated("platform", "the board determines the platform")
+	esphomeCreateCmd.Flags().StringVar(&esphomeCreateBoard, "board", "", "Board ID for basic scaffolds (see 'hab esphome boards <platform>')")
 	esphomeCreateCmd.Flags().StringVar(&esphomeCreateSSID, "ssid", "", "WiFi SSID for basic scaffolds")
 	esphomeCreateCmd.Flags().StringVar(&esphomeCreatePSK, "psk", "", "WiFi password for basic scaffolds")
 	esphomeCreateCmd.Flags().StringVarP(&esphomeCreateFile, "file", "f", "", "Local YAML file to upload when --type upload is used")
@@ -110,7 +115,10 @@ func runESPHomeCreate(cmd *cobra.Command, args []string) error {
 			return createErr
 		}
 		configuration = result.Configuration
-		data["create_type"] = req.Type
+		data["create_type"] = esphomeCreateType
+		if result.Warning != "" {
+			data["warning"] = result.Warning
+		}
 	}
 
 	data["configuration"] = configuration
@@ -225,7 +233,6 @@ func createESPHomeFromCatalog(esClient client.ESPHomeAPI, deviceName string) (st
 	}
 
 	result, err := esClient.CreateConfig(client.ESPHomeCreateRequest{
-		Type:        "upload",
 		Name:        deviceName,
 		FileContent: []byte(device.YAMLContent),
 	})
@@ -268,7 +275,6 @@ func alignCatalogConfigurationName(esClient client.ESPHomeAPI, configuration str
 
 func buildESPHomeCreateRequest(name string) (client.ESPHomeCreateRequest, error) {
 	req := client.ESPHomeCreateRequest{
-		Type: esphomeCreateType,
 		Name: name,
 	}
 
@@ -277,14 +283,6 @@ func buildESPHomeCreateRequest(name string) (client.ESPHomeCreateRequest, error)
 		if esphomeCreateBoard == "" {
 			return client.ESPHomeCreateRequest{}, fmt.Errorf("--board is required for --type basic")
 		}
-		if esphomeCreatePlatform == "" {
-			return client.ESPHomeCreateRequest{}, fmt.Errorf("--platform is required for --type basic")
-		}
-		platform, err := normalizeESPHomeWizardPlatform(esphomeCreatePlatform)
-		if err != nil {
-			return client.ESPHomeCreateRequest{}, err
-		}
-		req.Platform = platform
 		req.Board = esphomeCreateBoard
 		req.SSID = esphomeCreateSSID
 		req.PSK = esphomeCreatePSK

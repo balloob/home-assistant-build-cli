@@ -2,16 +2,6 @@ package cmd
 
 import "testing"
 
-func TestNormalizeESPHomeWizardPlatform(t *testing.T) {
-	platform, err := normalizeESPHomeWizardPlatform("esp32")
-	if err != nil {
-		t.Fatalf("normalizeESPHomeWizardPlatform: %v", err)
-	}
-	if platform != "ESP32" {
-		t.Fatalf("platform = %q, want ESP32", platform)
-	}
-}
-
 func TestApplyESPHomePatch(t *testing.T) {
 	original := "wifi:\n  ssid: old\n"
 	updated, err := applyESPHomePatch(original, map[string]any{"logger": map[string]any{}}, []string{"wifi.ssid=new"})

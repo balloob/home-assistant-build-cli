@@ -9,9 +9,7 @@ var esphomeTroubleshootCmd = &cobra.Command{
 	Use:   "troubleshoot [configuration]",
 	Short: "Check why an ESPHome device is offline (DNS, mDNS, ping)",
 	Long: `Run the ESPHome Device Builder's connectivity probe for a device: a live
-DNS lookup of its address, an mDNS re-query, and a ping of the best address found.
-
-Requires the ESPHome Device Builder; the classic dashboard has no equivalent.`,
+DNS lookup of its address, an mDNS re-query, and a ping of the best address found.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configuration, err := resolveESPHomeConfiguration(args, 0)

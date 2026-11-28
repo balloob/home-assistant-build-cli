@@ -447,7 +447,7 @@ var topicRegistry = []topicDef{
 				"hab esphome validate <configuration>",
 			},
 			Prerequisites: []string{
-				"A reachable ESPHome dashboard via HAB_ESPHOME_URL or ingress discovery.",
+				"A reachable ESPHome Device Builder via HAB_ESPHOME_URL or ingress discovery.",
 				"A selected configuration argument or saved context.",
 			},
 			DiscoverySteps: []string{
@@ -466,7 +466,6 @@ var topicRegistry = []topicDef{
 			Pitfalls: []string{
 				"Uploading firmware before validating config and target device.",
 				"Running commands without setting --device or context.",
-				"Expecting boards, create or import to work on the ESPHome Device Builder; they need the classic dashboard for now (troubleshoot needs the Device Builder).",
 			},
 		},
 		Filename: "esphome",

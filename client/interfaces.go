@@ -258,11 +258,10 @@ type WebSocketAPI interface {
 	RepairAPI
 }
 
-// ESPHomeAPI defines the interface for operations against the ESPHome Dashboard.
+// ESPHomeAPI defines the interface for operations against the ESPHome Device Builder.
 // This enables unit-testing ESPHome command handlers with mock implementations.
 type ESPHomeAPI interface {
 	GetDevices() (*ESPHomeDeviceList, error)
-	GetPing() (map[string]*bool, error)
 	GetBoards(platform string) ([]ESPHomeBoard, error)
 	GetVersion() (string, error)
 	GetSerialPorts() ([]ESPHomeSerialPort, error)
@@ -274,7 +273,7 @@ type ESPHomeAPI interface {
 	WriteConfig(configuration, content string) error
 	WriteConfigIfUnchanged(configuration, content, expected string) error
 	Troubleshoot(configuration string) (map[string]interface{}, error)
-	StreamCommand(path string, spawnMsg map[string]interface{}, callback func(ESPHomeStreamEvent)) (int, error)
+	StreamCommand(operation, configuration, port string, callback func(ESPHomeStreamEvent)) (int, error)
 }
 
 // RestAPI defines the interface for REST operations against Home Assistant.

@@ -27,7 +27,7 @@ var esphomeSerialCmd = &cobra.Command{
 
 var esphomeSerialPortsCmd = &cobra.Command{
 	Use:   "ports",
-	Short: "List available serial ports from ESPHome dashboard",
+	Short: "List serial ports attached to the ESPHome Device Builder",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		textMode := getTextMode()
 
