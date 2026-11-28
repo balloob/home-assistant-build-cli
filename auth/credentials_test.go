@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -352,55 +354,57 @@ func TestSaveCredentials_URLReadableTokensNot(t *testing.T) {
 	}
 }
 
-// Files from older versions are bare ciphertext under the MAC-dependent key.
+// Files from older versions are bare ciphertext under a MAC-dependent key.
+// Every MAC on the machine is tried, because the interface the old code
+// picked may no longer be the first active one.
 func TestLoadCredentials_LegacyFileIsMigrated(t *testing.T) {
-	clearAuthEnv(t)
-	tmpDir := t.TempDir()
-	credsPath := filepath.Join(tmpDir, "credentials.json")
+	for i, key := range legacyKeys() {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			clearAuthEnv(t)
+			tmpDir := t.TempDir()
+			credsPath := filepath.Join(tmpDir, "credentials.json")
 
-	plain, _ := json.Marshal(Credentials{URL: "http://old.local:8123", AccessToken: "tok"})
-	legacy, err := encrypt(plain, legacyKey())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(credsPath, legacy, 0600); err != nil {
-		t.Fatal(err)
-	}
+			plain, _ := json.Marshal(Credentials{URL: "http://old.local:8123", AccessToken: "tok"})
+			legacy, err := encrypt(plain, key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(credsPath, legacy, 0600); err != nil {
+				t.Fatal(err)
+			}
 
-	creds, err := LoadCredentials(tmpDir)
-	if err != nil {
-		t.Fatalf("LoadCredentials: %v", err)
-	}
-	if creds.URL != "http://old.local:8123" || creds.AccessToken != "tok" {
-		t.Errorf("unexpected credentials: %+v", creds)
-	}
+			creds, err := LoadCredentials(tmpDir)
+			if err != nil {
+				t.Fatalf("LoadCredentials: %v", err)
+			}
+			if creds.URL != "http://old.local:8123" || creds.AccessToken != "tok" {
+				t.Errorf("unexpected credentials: %+v", creds)
+			}
 
-	// The file must now open with the MAC-independent key alone.
-	raw, _ := os.ReadFile(credsPath)
-	var file credentialsFile
-	if err := json.Unmarshal(raw, &file); err != nil {
-		t.Fatalf("file was not migrated: %v", err)
-	}
-	if _, err := decrypt(file.Data, deriveKey()); err != nil {
-		t.Errorf("migrated file does not use the new key: %v", err)
+			// The file must now open with the MAC-independent key alone.
+			raw, _ := os.ReadFile(credsPath)
+			var file credentialsFile
+			if err := json.Unmarshal(raw, &file); err != nil {
+				t.Fatalf("file was not migrated: %v", err)
+			}
+			if _, err := decrypt(file.Data, deriveKey()); err != nil {
+				t.Errorf("migrated file does not use the new key: %v", err)
+			}
+		})
 	}
 }
 
 func TestMachineIDUsesOnlyStableSources(t *testing.T) {
-	id := getMachineID(false)
+	id := getMachineID()
 	if hwUUID := getHardwareUUID(); hwUUID != "" && id != hwUUID {
 		t.Errorf("machine ID = %q, want the platform machine ID %q alone", id, hwUUID)
 	}
 
-	mac := getMACAddress()
-	if mac == "" {
-		t.Skip("no network interface with a MAC address")
-	}
-	if strings.Contains(id, mac) {
-		t.Error("the key must not depend on the MAC address")
-	}
-	if !strings.Contains(getMachineID(true), mac) {
-		t.Error("the legacy key must keep the MAC address")
+	interfaces, _ := net.Interfaces()
+	for _, iface := range interfaces {
+		if mac := iface.HardwareAddr.String(); mac != "" && strings.Contains(id, mac) {
+			t.Error("the key must not depend on the MAC address")
+		}
 	}
 }
 

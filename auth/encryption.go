@@ -12,57 +12,53 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 )
 
 // getMachineID returns a machine-specific identifier for key derivation.
 // It is the platform machine ID alone, or the hostname where there is none.
-// legacy reproduces the old derivation (hostname, MAC and machine ID), which
-// broke whenever the first network interface changed (VPNs, Hyper-V/WSL/Docker
-// adapters, Wi-Fi) or the hostname followed the network (macOS).
-func getMachineID(legacy bool) string {
-	hwUUID := getHardwareUUID()
-	if !legacy && hwUUID != "" {
+func getMachineID() string {
+	if hwUUID := getHardwareUUID(); hwUUID != "" {
 		return hwUUID
 	}
-
-	var sources []string
-
-	// Hostname
-	if hostname, err := os.Hostname(); err == nil {
-		sources = append(sources, hostname)
-	}
-
-	// MAC address
-	if legacy {
-		if mac := getMACAddress(); mac != "" {
-			sources = append(sources, mac)
-		}
-	}
-
-	// Platform-specific hardware UUID
-	if hwUUID != "" {
-		sources = append(sources, hwUUID)
-	}
-
-	return strings.Join(sources, "|")
+	hostname, _ := os.Hostname()
+	return hostname
 }
 
-func getMACAddress() string {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return ""
-	}
-
-	for _, iface := range interfaces {
-		if iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagLoopback == 0 {
-			if mac := iface.HardwareAddr.String(); mac != "" {
-				return mac
+// legacyMachineIDs returns the identifiers older versions derived the key
+// from: hostname, the MAC of the first active network interface, and the
+// machine ID. That interface changes with VPNs, Hyper-V/WSL/Docker adapters
+// and Wi-Fi, so there is one candidate per MAC on the machine, and one
+// without a MAC.
+func legacyMachineIDs() []string {
+	macs := []string{""}
+	if interfaces, err := net.Interfaces(); err == nil {
+		for _, iface := range interfaces {
+			if mac := iface.HardwareAddr.String(); mac != "" && !slices.Contains(macs, mac) {
+				macs = append(macs, mac)
 			}
 		}
 	}
-	return ""
+
+	hostname, hostnameErr := os.Hostname()
+	hwUUID := getHardwareUUID()
+	ids := make([]string, 0, len(macs))
+	for _, mac := range macs {
+		var sources []string
+		if hostnameErr == nil {
+			sources = append(sources, hostname)
+		}
+		if mac != "" {
+			sources = append(sources, mac)
+		}
+		if hwUUID != "" {
+			sources = append(sources, hwUUID)
+		}
+		ids = append(ids, strings.Join(sources, "|"))
+	}
+	return ids
 }
 
 func getHardwareUUID() string {
@@ -122,17 +118,22 @@ var (
 
 func deriveKey() []byte {
 	derivedKeyOnce.Do(func() {
-		hash := sha256.Sum256([]byte(getMachineID(false)))
+		hash := sha256.Sum256([]byte(getMachineID()))
 		derivedKey = hash[:]
 	})
 	return derivedKey
 }
 
-// legacyKey is the old hostname- and MAC-dependent key, used only to read files written by
-// older versions.
-func legacyKey() []byte {
-	hash := sha256.Sum256([]byte(getMachineID(true)))
-	return hash[:]
+// legacyKeys returns the old hostname- and MAC-dependent keys, used only to
+// read files written by older versions.
+func legacyKeys() [][]byte {
+	ids := legacyMachineIDs()
+	keys := make([][]byte, 0, len(ids))
+	for _, id := range ids {
+		hash := sha256.Sum256([]byte(id))
+		keys = append(keys, hash[:])
+	}
+	return keys
 }
 
 // newGCM creates an AES-GCM cipher from the given key.

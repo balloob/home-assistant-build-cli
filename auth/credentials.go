@@ -160,7 +160,11 @@ func LoadCredentials(configDir string) (*Credentials, error) {
 		decrypted, err := decrypt(ciphertext, deriveKey())
 		migrate := len(file.Data) == 0
 		if err != nil {
-			decrypted, err = decrypt(ciphertext, legacyKey())
+			for _, key := range legacyKeys() {
+				if decrypted, err = decrypt(ciphertext, key); err == nil {
+					break
+				}
+			}
 			migrate = true
 		}
 		if err != nil {
