@@ -179,11 +179,13 @@ hab entity list --floor ground_floor
 hab entity list --device abc123
 hab entity list --device-class temperature
 hab entity list --brief --limit 10
+hab entity list --include-disabled   # also registry entries with no state
 
 # Get entity state and registry data
 hab entity get light.living_room
 hab entity get light.living_room --device
 hab entity get light.living_room --related
+# A disabled entity returns its registry data with "state": null
 
 # Search entities by text
 hab entity search motion
@@ -818,7 +820,7 @@ Automatic update checks run only for interactive sessions, are cached, and can b
 
 ## ESPHome
 
-Requires the ESPHome add-on or a reachable ESPHome dashboard. The ESPHome dashboard URL is auto-discovered when possible; set `HAB_ESPHOME_URL` to override.
+Requires the ESPHome Device Builder, the web UI of the ESPHome app. Its URL is auto-discovered through Home Assistant ingress when possible; set `HAB_ESPHOME_URL` to override.
 
 Serial recovery commands use `esptool`; install it, set `HAB_ESPTOOL_BIN`, or use `uvx esptool`.
 
@@ -826,10 +828,10 @@ Serial recovery commands use `esptool`; install it, set `HAB_ESPTOOL_BIN`, or us
 
 ```bash
 # Create from scratch, preset, or catalog
-hab esphome create living-room --platform esp32 --board nodemcu-32s --ssid MyWifi --psk secret
+hab esphome create living-room --board nodemcu-32s --ssid MyWifi --psk secret
 hab esphome create --list-presets
 hab esphome create --preset-help relay
-hab esphome create garage-relay --platform esp32 --board esp32dev --preset relay --relay-pin 23
+hab esphome create garage-relay --board esp32dev --preset relay --relay-pin 23
 hab esphome create office-plug --catalog Athom-Smart-Plug-PG01V3-EU16A
 
 # Import a package-backed device
@@ -862,6 +864,7 @@ hab esphome context clear
 ```bash
 hab esphome list
 hab esphome info living-room.yaml
+hab esphome troubleshoot living-room.yaml   # DNS, mDNS and ping checks for an offline device
 hab esphome config-read living-room.yaml
 hab esphome config-write living-room.yaml -f config.yaml
 hab esphome config-patch living-room.yaml --set wifi.ssid='!secret wifi_ssid'
@@ -894,7 +897,7 @@ hab esphome serial probe --port /dev/ttyUSB0 --chip auto
 hab esphome serial erase-flash --port /dev/ttyUSB0 --chip esp32 --force
 
 hab esphome migrate tasmota-template analyze --file template.json
-hab esphome migrate tasmota-template create migrated-node --platform esp8266 --board esp01_1m --file template.json
+hab esphome migrate tasmota-template create migrated-node --board esp01_1m --file template.json
 ```
 
 ### ESPHome output behavior
@@ -1099,7 +1102,7 @@ hab action call light.turn_on -d '{"entity_id":"light.kitchen","brightness":200}
 - Capability probing via `hab capability probe --json`
 - Mutation planning via `--plan` and `--dry-run`
 - OAuth support plus token, Supervisor, and stored credential flows
-- REST, WebSocket, and ESPHome dashboard transport support
+- REST, WebSocket, and ESPHome Device Builder transport support
 - Built-in guide recipes for LLM-driven workflows
 - ESPHome workflows for create, import, validate, build, upload, logs, catalog browsing, config patching, context, serial recovery, and Tasmota migration
 - Automatic update checks in interactive use and self-update via `hab update`
@@ -1170,7 +1173,7 @@ Use `--config <dir>` to point `hab` at a different config directory.
 - `HAB_REFRESH_TOKEN`: OAuth refresh token
 - `HAB_CONTEXT`: context to use for this command (overrides the current context; `--context` overrides it)
 - `HAB_SKIP_UPDATE_CHECK`: disable automatic update checks
-- `HAB_ESPHOME_URL`: ESPHome Dashboard URL
+- `HAB_ESPHOME_URL`: ESPHome Device Builder URL
 - `HAB_ESPHOME_TOKEN`: Bearer token for ESPHome
 - `HAB_ESPHOME_SESSION`: ingress session token for ESPHome access through Home Assistant
 - `HAB_ESPTOOL_BIN`: path to the `esptool` binary used by ESPHome serial commands

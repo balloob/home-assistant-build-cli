@@ -112,6 +112,9 @@ type entityFilterCriteria struct {
 	Label       string
 	Device      string
 	DeviceClass string
+
+	// IncludeDisabled adds a disabled_by field to every entity.
+	IncludeDisabled bool
 }
 
 // filterAndBuildEntities filters states against the registry and criteria,
@@ -216,7 +219,7 @@ func filterAndBuildEntities(
 			disabled = regEntry["disabled_by"] != nil
 		}
 
-		entities = append(entities, map[string]interface{}{
+		entity := map[string]interface{}{
 			"entity_id":    entityID,
 			"state":        state["state"],
 			"name":         friendlyName,
@@ -225,10 +228,48 @@ func filterAndBuildEntities(
 			"device_class": deviceClass,
 			"labels":       labels,
 			"disabled":     disabled,
-		})
+		}
+		if f.IncludeDisabled {
+			entity["disabled_by"] = regEntry["disabled_by"]
+		}
+		entities = append(entities, entity)
 	}
 
 	return entities
+}
+
+// appendStatelessEntities appends a state-shaped entry (state nil) for each
+// registry entry that has no state, such as disabled entities, so they go
+// through the same filters as live entities.
+func appendStatelessEntities(states []interface{}, registry []interface{}) []interface{} {
+	seen := make(map[string]bool, len(states))
+	for _, s := range states {
+		if state, ok := s.(map[string]interface{}); ok {
+			if entityID, ok := state["entity_id"].(string); ok {
+				seen[entityID] = true
+			}
+		}
+	}
+	for _, e := range registry {
+		entry, ok := e.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		entityID, _ := entry["entity_id"].(string)
+		if entityID == "" || seen[entityID] {
+			continue
+		}
+		name, _ := entry["name"].(string)
+		if name == "" {
+			name, _ = entry["original_name"].(string)
+		}
+		states = append(states, map[string]interface{}{
+			"entity_id":  entityID,
+			"state":      nil,
+			"attributes": map[string]interface{}{"friendly_name": name},
+		})
+	}
+	return states
 }
 
 // ──────────────────────────────────────────────────────────
@@ -284,6 +325,14 @@ func printEntityText(e map[string]interface{}, indent string) {
 	name, _ := e["name"].(string)
 	areaID, _ := e["area_id"].(string)
 	deviceClass, _ := e["device_class"].(string)
+
+	if e["state"] == nil {
+		if by, _ := e["disabled_by"].(string); by != "" {
+			state = "(disabled by " + by + ")"
+		} else {
+			state = "(no state)"
+		}
+	}
 
 	// First line: entity with state
 	if name != "" && name != entityID {

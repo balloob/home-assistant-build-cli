@@ -1,114 +1,27 @@
 package client
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
-func TestESPHomeGetBoards(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/boards/esp32" {
-			t.Fatalf("path = %q, want /boards/esp32", r.URL.Path)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `[{"items":{"nodemcu-32s":"NodeMCU-32S","esp32dev":"ESP32 Dev Board"}}]`)
-	}))
-	defer server.Close()
-
-	client := NewESPHomeClient(server.URL, "")
-	boards, err := client.GetBoards("ESP32")
-	if err != nil {
-		t.Fatalf("GetBoards: %v", err)
-	}
-	if len(boards) != 2 {
-		t.Fatalf("len(boards) = %d, want 2", len(boards))
-	}
-	if boards[0].ID != "esp32dev" {
-		t.Fatalf("boards[0].ID = %q, want esp32dev", boards[0].ID)
-	}
-}
-
-func TestESPHomeCreateConfig(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/wizard" {
-			t.Fatalf("path = %q, want /wizard", r.URL.Path)
-		}
-		var payload map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Fatalf("decode request: %v", err)
-		}
-		if payload["type"] != "upload" {
-			t.Fatalf("type = %#v, want upload", payload["type"])
-		}
-		decoded, err := base64.StdEncoding.DecodeString(payload["file_content"].(string))
-		if err != nil {
-			t.Fatalf("DecodeString: %v", err)
-		}
-		if string(decoded) != "esphome:\n  name: kitchen\n" {
-			t.Fatalf("decoded file = %q", string(decoded))
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"configuration":"kitchen.yaml"}`)
-	}))
-	defer server.Close()
-
-	client := NewESPHomeClient(server.URL, "")
-	result, err := client.CreateConfig(ESPHomeCreateRequest{
-		Type:        "upload",
-		Name:        "Kitchen",
-		FileContent: []byte("esphome:\n  name: kitchen\n"),
-	})
-	if err != nil {
-		t.Fatalf("CreateConfig: %v", err)
-	}
-	if result.Configuration != "kitchen.yaml" {
-		t.Fatalf("Configuration = %q, want kitchen.yaml", result.Configuration)
-	}
-}
-
-func TestESPHomeImportConfig(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/import" {
-			t.Fatalf("path = %q, want /import", r.URL.Path)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"configuration":"plug.yaml"}`)
-	}))
-	defer server.Close()
-
-	client := NewESPHomeClient(server.URL, "")
-	result, err := client.ImportConfig(ESPHomeImportRequest{
-		Name:             "plug",
-		ProjectName:      "esphome.demo",
-		PackageImportURL: "https://example.com/demo.yaml",
-	})
-	if err != nil {
-		t.Fatalf("ImportConfig: %v", err)
-	}
-	if result.Configuration != "plug.yaml" {
-		t.Fatalf("Configuration = %q, want plug.yaml", result.Configuration)
-	}
+// pong answers every /ws command, which GetJSONConfig uses to confirm the
+// server is the Device Builder before its REST call.
+func pong(cmd wsCommand, send func(any)) {
+	send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{"pong": true}})
 }
 
 func TestESPHomeGetJSONConfig(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/json-config" {
-			t.Fatalf("path = %q, want /json-config", r.URL.Path)
-		}
+	server, _ := newDeviceBuilderServer(t, pong, map[string]http.HandlerFunc{"/json-config": func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("configuration") != "kitchen.yaml" {
-			t.Fatalf("configuration = %q, want kitchen.yaml", r.URL.Query().Get("configuration"))
+			t.Errorf("configuration = %q, want kitchen.yaml", r.URL.Query().Get("configuration"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `{"esphome":{"name":"kitchen"}}`)
-	}))
-	defer server.Close()
+	}})
 
-	client := NewESPHomeClient(server.URL, "")
-	result, err := client.GetJSONConfig("kitchen.yaml")
+	result, err := NewESPHomeClient(server.URL, "").GetJSONConfig("kitchen.yaml")
 	if err != nil {
 		t.Fatalf("GetJSONConfig: %v", err)
 	}
@@ -118,23 +31,30 @@ func TestESPHomeGetJSONConfig(t *testing.T) {
 	}
 }
 
+// invalidJSONConfig answers /json-config like the Device Builder does for an
+// invalid configuration: status 422 with a generic body.
+func invalidJSONConfig(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	_, _ = io.WriteString(w, `{"error":"Configuration is invalid"}`)
+}
+
 func TestESPHomeGetJSONConfigValidationError(t *testing.T) {
-	raw := "Error while reading config: required option 'ssid' is missing\n[wifi]\nssid: [source living-room.yaml:12:7]"
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = io.WriteString(w, raw)
-	}))
-	defer server.Close()
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		if cmd.Command != "devices/validate" {
+			pong(cmd, send)
+			return
+		}
+		for _, line := range []string{"INFO Reading configuration living-room.yaml...", "\\033[1;31mError while reading config: required option 'ssid' is missing\\033[0m", "[wifi]", "ssid: [source living-room.yaml:12:7]"} {
+			send(map[string]any{"message_id": cmd.MessageID, "event": "output", "data": line})
+		}
+		send(map[string]any{"message_id": cmd.MessageID, "event": "result", "data": map[string]any{"success": false, "code": 2}})
+		send(map[string]any{"message_id": cmd.MessageID, "result": nil})
+	}, map[string]http.HandlerFunc{"/json-config": invalidJSONConfig})
 
-	client := NewESPHomeClient(server.URL, "")
-	_, err := client.GetJSONConfig("living-room.yaml")
-	if err == nil {
-		t.Fatal("expected validation error")
-	}
-
+	_, err := NewESPHomeClient(server.URL, "").GetJSONConfig("living-room.yaml")
 	apiErr, ok := err.(*APIError)
 	if !ok {
-		t.Fatalf("err = %T, want *APIError", err)
+		t.Fatalf("err = %v, want *APIError", err)
 	}
 	if apiErr.Code != ErrCodeValidationError {
 		t.Fatalf("Code = %q, want %q", apiErr.Code, ErrCodeValidationError)
@@ -145,94 +65,59 @@ func TestESPHomeGetJSONConfigValidationError(t *testing.T) {
 	if apiErr.Details["component"] != "wifi" {
 		t.Fatalf("component detail = %#v, want wifi", apiErr.Details["component"])
 	}
-	if apiErr.Details["line"] != 12 {
-		t.Fatalf("line detail = %#v, want 12", apiErr.Details["line"])
+	if apiErr.Details["line"] != 12 || apiErr.Details["column"] != 7 {
+		t.Fatalf("line/column = %#v/%#v, want 12/7", apiErr.Details["line"], apiErr.Details["column"])
 	}
-	if apiErr.Details["column"] != 7 {
-		t.Fatalf("column detail = %#v, want 7", apiErr.Details["column"])
+	if apiErr.Message != "Error while reading config: required option 'ssid' is missing" {
+		t.Fatalf("Message = %q", apiErr.Message)
 	}
 }
 
-func TestESPHomeGetSerialPorts(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/serial-ports" {
-			t.Fatalf("path = %q, want /serial-ports", r.URL.Path)
+func TestESPHomeGetJSONConfigValidationErrorWithoutOutput(t *testing.T) {
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		if cmd.Command != "devices/validate" {
+			pong(cmd, send)
+			return
 		}
-		_, _ = io.WriteString(w, `[{"port":"COM3","desc":"USB Serial"}]`)
-	}))
-	defer server.Close()
+		send(map[string]any{"message_id": cmd.MessageID, "error_code": "internal_error", "details": "validation failed to start"})
+	}, map[string]http.HandlerFunc{"/json-config": invalidJSONConfig})
 
-	client := NewESPHomeClient(server.URL, "")
-	ports, err := client.GetSerialPorts()
-	if err != nil {
-		t.Fatalf("GetSerialPorts: %v", err)
-	}
-	if len(ports) != 1 {
-		t.Fatalf("len(ports) = %d, want 1", len(ports))
-	}
-	if ports[0].Port != "COM3" {
-		t.Fatalf("ports[0].Port = %q, want COM3", ports[0].Port)
+	_, err := NewESPHomeClient(server.URL, "").GetJSONConfig("living-room.yaml")
+	apiErr, ok := err.(*APIError)
+	if !ok || apiErr.Code != ErrCodeValidationError || apiErr.Message != "Configuration is invalid" {
+		t.Fatalf("err = %#v, want validation error with the server message", err)
 	}
 }
 
 func TestESPHomeGetInfo(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/info" {
-			t.Fatalf("path = %q, want /info", r.URL.Path)
+	server, _ := newDeviceBuilderServer(t, func(cmd wsCommand, send func(any)) {
+		if cmd.Command != "devices/list" {
+			pong(cmd, send)
+			return
 		}
-		if r.URL.Query().Get("configuration") != "kitchen.yaml" {
-			t.Fatalf("configuration = %q, want kitchen.yaml", r.URL.Query().Get("configuration"))
-		}
-		_, _ = io.WriteString(w, `{"name":"kitchen","target_platform":"ESP32"}`)
-	}))
-	defer server.Close()
+		send(map[string]any{"message_id": cmd.MessageID, "result": map[string]any{
+			"configured": []any{map[string]any{"name": "plug-test", "friendly_name": "Plug Test", "configuration": "plug-test.yaml", "current_version": "2026.11.1", "address": "plug-test.local", "target_platform": "ESP32C3"}},
+			"importable": []any{},
+		}})
+	}, map[string]http.HandlerFunc{"/json-config": func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"esphome":{"name":"plug-test","friendly_name":"Plug Test","build_path":"build/plug-test"},"esp32":{"variant":"ESP32C3","framework":{"type":"esp-idf"}},"switch":[{"platform":"gpio"}]}`)
+	}})
 
-	client := NewESPHomeClient(server.URL, "")
-	info, err := client.GetInfo("kitchen.yaml")
-	if err != nil {
-		t.Fatalf("GetInfo: %v", err)
-	}
-	if info["name"] != "kitchen" {
-		t.Fatalf("name = %#v, want kitchen", info["name"])
-	}
-}
-
-func TestESPHomeGetInfoFallsBackToJSONConfig(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/info":
-			w.WriteHeader(http.StatusNotFound)
-		case "/json-config":
-			_, _ = io.WriteString(w, `{"esphome":{"name":"plug-test","friendly_name":"Plug Test","build_path":"build/plug-test"},"esp32":{"variant":"ESP32C3","framework":{"type":"esp-idf"}},"switch":[{"platform":"gpio"}]}`)
-		case "/devices":
-			_, _ = io.WriteString(w, `{"configured":[{"name":"plug-test","friendly_name":"Plug Test","configuration":"plug-test.yaml","current_version":"2026.2.4","path":"/config/esphome/plug-test.yaml","address":"plug-test.local","target_platform":"ESP32C3"}],"importable":[]}`)
-		case "/version":
-			_, _ = io.WriteString(w, `{"version":"2026.2.4"}`)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	client := NewESPHomeClient(server.URL, "")
-	info, err := client.GetInfo("plug-test.yaml")
+	info, err := NewESPHomeClient(server.URL, "").GetInfo("plug-test.yaml")
 	if err != nil {
 		t.Fatalf("GetInfo: %v", err)
 	}
 	if info["source"] != "devices+json_config" {
 		t.Fatalf("source = %#v, want devices+json_config", info["source"])
 	}
-	if info["name"] != "plug-test" {
-		t.Fatalf("name = %#v, want plug-test", info["name"])
+	if info["name"] != "plug-test" || info["address"] != "plug-test.local" {
+		t.Fatalf("info = %#v", info)
 	}
-	if info["esp_platform"] != "ESP32C3" {
-		t.Fatalf("esp_platform = %#v, want ESP32C3", info["esp_platform"])
+	if info["esp_platform"] != "ESP32C3" || info["core_platform"] != "esp32" || info["framework"] != "esp-idf" {
+		t.Fatalf("platform info = %#v/%#v/%#v", info["esp_platform"], info["core_platform"], info["framework"])
 	}
-	if info["core_platform"] != "esp32" {
-		t.Fatalf("core_platform = %#v, want esp32", info["core_platform"])
-	}
-	if info["framework"] != "esp-idf" {
-		t.Fatalf("framework = %#v, want esp-idf", info["framework"])
+	if info["esphome_version"] != "2026.11.1" {
+		t.Fatalf("esphome_version = %#v", info["esphome_version"])
 	}
 	loadedPlatforms, ok := info["loaded_platforms"].([]string)
 	if !ok || len(loadedPlatforms) != 1 || loadedPlatforms[0] != "switch/gpio" {

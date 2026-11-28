@@ -4,7 +4,7 @@ Use `--json` for structured results. Most operations require an administrator ac
 
 Commands accept exact IDs from discovery results. Settings use `--data` (JSON or YAML), `--file`, or `--file -` for stdin. Send the fields supported by your Home Assistant version. The server validates their types and values. Do not include WebSocket envelope fields `id` or `type` in WebSocket payloads.
 
-Mutations support `--plan` and `--dry-run`. These previews validate local input only. They do not contact the server or predict a configuration diff. Destructive commands require confirmation; use `--force` for unattended execution. Use `--timeout 10m` for long Supervisor operations. A timeout can leave a mutation running. Inspect its result before retrying.
+Mutations support `--plan` and `--dry-run`. These previews validate local input only. They do not contact the server or predict a configuration diff. One exception: `integration delete --plan` makes read-only calls to report its `impact`. It lists the entities the entry owns and the devices that belong to no other entry, which the delete removes. It also lists, when no other enabled entry of its domain remains (ignored and disabled entries do not count), the loaded integrations whose manifest lists the domain under `dependencies` (those break). `after_dependencies` only orders setup and is not reported. If the server cannot be read, the plan still succeeds with `impact.status` set to `not_determined`. Destructive commands require confirmation; use `--force` for unattended execution. Use `--timeout 10m` for long Supervisor operations. A timeout can leave a mutation running. Inspect its result before retrying.
 
 ## Integration and repair flows
 
@@ -19,8 +19,11 @@ hab integration options start <entry_id> --json
 hab integration options step <flow_id> --data '{}' --json
 hab integration flow start <domain> --data '{"entry_id":"<entry_id>"}' --json
 hab integration update <entry_id> --data '{"title":"New name"}'
+hab integration delete <entry_id> --plan --json
 hab integration delete <entry_id> --force
 ```
+
+`hab integration get <entry_id>` includes `dependent_integrations`: loaded integrations that require the entry's domain.
 
 Read `type`, `step_id`, `data_schema`, `errors`, and `menu_options` in each flow result. Submit fields for that step. Use `{}` to confirm an empty form. A flow can require several steps. For a menu, send `next_step_id`. For an external step, open the returned URL and complete browser authentication. Then read the flow again. Stop at `create_entry` or `abort`. Flow errors can appear inside a successful HTTP response.
 

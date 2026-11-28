@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,6 +29,8 @@ type managementSpec struct {
 	Effect                      string
 	// Prepare handles API payloads whose shape differs from positional arguments.
 	Prepare func(map[string]any) error
+	// Impact adds read-only server facts and risks to plans; it must not write.
+	Impact func(args []string, timeout time.Duration) (map[string]any, []string)
 }
 
 type managementFlags struct {
@@ -49,7 +52,11 @@ func newManagementCommand(s managementSpec) *cobra.Command {
 			return err
 		}
 		if planRequested(f.plan, f.dryRun) {
-			printMutationPlan(MutationPlan{WouldChange: true, Target: map[string]any{"command": schemaPath(cmd)}, Inputs: map[string]any{"payload": redact.Hidden}, Steps: []string{s.Short}, RequiresConfirmation: s.Effect == "destructive" && !f.force}, getTextMode(), defaultResourceTypeForCommand(cmd))
+			plan := MutationPlan{WouldChange: true, Target: map[string]any{"command": schemaPath(cmd)}, Inputs: map[string]any{"payload": redact.Hidden}, Steps: []string{s.Short}, RequiresConfirmation: s.Effect == "destructive" && !f.force}
+			if s.Impact != nil {
+				plan.Impact, plan.Risks = s.Impact(args, f.timeout)
+			}
+			printMutationPlan(plan, getTextMode(), defaultResourceTypeForCommand(cmd))
 			return nil
 		}
 		if s.Effect == "destructive" {
@@ -80,6 +87,9 @@ func newManagementCommand(s managementSpec) *cobra.Command {
 	}
 	if strings.HasPrefix(s.Endpoint, "hassio/") {
 		caps = append(caps, "supervisor")
+	}
+	if s.Impact != nil && !slices.Contains(caps, "ws") {
+		caps = append(caps, "ws")
 	}
 	annotation := SchemaAnnotation{SideEffect: s.Effect, OutputMode: "json_envelope", Capabilities: caps, GuideTopic: "management", InputSources: []string{"args", "flags"}}
 	if s.Input {

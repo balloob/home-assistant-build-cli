@@ -85,7 +85,7 @@ func applyAuditedMetadata(cmd *cobra.Command) {
 		ann.ResourceType = "command"
 		ann.Args = []SchemaPositionalArg{{Name: "command_path", Raw: "[command path]", Variadic: true}}
 	}
-	if slices.Contains([]string{"esphome build", "esphome upload", "esphome run", "esphome logs", "esphome validate", "esphome info", "esphome config-patch", "esphome update"}, path) {
+	if slices.Contains([]string{"esphome build", "esphome upload", "esphome run", "esphome logs", "esphome validate", "esphome info", "esphome troubleshoot", "esphome config-patch", "esphome update"}, path) {
 		// These resolve the positional value, --device, or saved device context.
 		ann.Args = []SchemaPositionalArg{{Name: "configuration", Raw: "[configuration]"}}
 		if !slices.Contains(ann.InputSources, "saved_context") {

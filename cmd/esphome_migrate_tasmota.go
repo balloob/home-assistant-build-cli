@@ -59,9 +59,6 @@ var esphomeMigrateTasmotaCreateCmd = &cobra.Command{
 	Short: "Create an ESPHome config from a Tasmota template",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if esphomeMigrateCreatePlatform == "" {
-			return fmt.Errorf("--platform is required")
-		}
 		if esphomeMigrateCreateBoard == "" {
 			return fmt.Errorf("--board is required")
 		}
@@ -79,18 +76,11 @@ var esphomeMigrateTasmotaCreateCmd = &cobra.Command{
 			return err
 		}
 
-		platform, err := esphomeconfig.NormalizeWizardPlatform(esphomeMigrateCreatePlatform)
-		if err != nil {
-			return err
-		}
-
 		createResult, err := esClient.CreateConfig(client.ESPHomeCreateRequest{
-			Type:     "basic",
-			Name:     args[0],
-			Platform: platform,
-			Board:    esphomeMigrateCreateBoard,
-			SSID:     esphomeMigrateCreateSSID,
-			PSK:      esphomeMigrateCreatePSK,
+			Name:  args[0],
+			Board: esphomeMigrateCreateBoard,
+			SSID:  esphomeMigrateCreateSSID,
+			PSK:   esphomeMigrateCreatePSK,
 		})
 		if err != nil {
 			return err
@@ -136,7 +126,8 @@ func init() {
 		migrateCmd.Flags().StringVarP(&esphomeMigrateTemplateData, "data", "d", "", "Inline Tasmota template JSON")
 	}
 
-	esphomeMigrateTasmotaCreateCmd.Flags().StringVar(&esphomeMigrateCreatePlatform, "platform", "", "ESPHome platform for scaffold (esp32, esp8266, rp2040, ...)")
+	esphomeMigrateTasmotaCreateCmd.Flags().StringVar(&esphomeMigrateCreatePlatform, "platform", "", "Ignored: the board determines the platform")
+	_ = esphomeMigrateTasmotaCreateCmd.Flags().MarkDeprecated("platform", "the board determines the platform")
 	esphomeMigrateTasmotaCreateCmd.Flags().StringVar(&esphomeMigrateCreateBoard, "board", "", "ESPHome board ID for scaffold")
 	esphomeMigrateTasmotaCreateCmd.Flags().StringVar(&esphomeMigrateCreateSSID, "ssid", "", "WiFi SSID for scaffold")
 	esphomeMigrateTasmotaCreateCmd.Flags().StringVar(&esphomeMigrateCreatePSK, "psk", "", "WiFi password for scaffold")

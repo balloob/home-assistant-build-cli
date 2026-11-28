@@ -57,6 +57,9 @@ func runESPHomeImport(cmd *cobra.Command, args []string) error {
 		"project_name":  esphomeImportProjectName,
 		"package_url":   esphomeImportPackageURL,
 	}
+	if result.Warning != "" {
+		data["warning"] = result.Warning
+	}
 	output.PrintOutput(data, textMode, fmt.Sprintf("Imported ESPHome device %s.", args[0]))
 	return nil
 }

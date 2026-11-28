@@ -77,7 +77,7 @@ func runESPHomeUpdate(cmd *cobra.Command, args []string) error {
 
 	written := updated != original
 	if written {
-		if err := esClient.WriteConfig(configuration, updated); err != nil {
+		if err := esClient.WriteConfigIfUnchanged(configuration, updated, original); err != nil {
 			return err
 		}
 	}
@@ -102,11 +102,7 @@ func runESPHomeUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	if esphomeUpdateRun {
-		events, err := runESPHomeWorkflowStream(esClient, "/run", map[string]any{
-			"type":          "spawn",
-			"configuration": configuration,
-			"port":          esphomeUpdatePort,
-		}, textMode)
+		events, err := runESPHomeWorkflowStream(esClient, "run", configuration, esphomeUpdatePort, textMode)
 		if err != nil {
 			if written && esphomeUpdateRollback {
 				return withESPHomeRollbackError(err, rollbackESPHomeConfig(esClient, configuration, original))
@@ -119,11 +115,7 @@ func runESPHomeUpdate(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		if esphomeUpdateBuild {
-			events, err := runESPHomeWorkflowStream(esClient, "/compile", map[string]any{
-				"type":          "spawn",
-				"configuration": configuration,
-				"only_generate": false,
-			}, textMode)
+			events, err := runESPHomeWorkflowStream(esClient, "build", configuration, "", textMode)
 			if err != nil {
 				if written && esphomeUpdateRollback {
 					return withESPHomeRollbackError(err, rollbackESPHomeConfig(esClient, configuration, original))
@@ -137,11 +129,7 @@ func runESPHomeUpdate(cmd *cobra.Command, args []string) error {
 		}
 
 		if esphomeUpdateUpload {
-			events, err := runESPHomeWorkflowStream(esClient, "/upload", map[string]any{
-				"type":          "spawn",
-				"configuration": configuration,
-				"port":          esphomeUpdatePort,
-			}, textMode)
+			events, err := runESPHomeWorkflowStream(esClient, "upload", configuration, esphomeUpdatePort, textMode)
 			if err != nil {
 				if written && esphomeUpdateRollback {
 					return withESPHomeRollbackError(err, rollbackESPHomeConfig(esClient, configuration, original))

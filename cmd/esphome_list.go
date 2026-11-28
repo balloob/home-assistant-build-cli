@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/output"
@@ -29,28 +28,9 @@ func runESPHomeList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Fetch devices and ping status concurrently — these are independent
-	// REST calls to the ESPHome dashboard.
-	var (
-		devices *client.ESPHomeDeviceList
-		ping    map[string]*bool
-		devErr  error
-	)
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		devices, devErr = esClient.GetDevices()
-	}()
-	go func() {
-		defer wg.Done()
-		ping, _ = esClient.GetPing() // best-effort, don't fail if ping fails
-	}()
-	wg.Wait()
-
-	if devErr != nil {
-		return devErr
+	devices, err := esClient.GetDevices()
+	if err != nil {
+		return err
 	}
 
 	if textMode {
@@ -62,15 +42,9 @@ func runESPHomeList(cmd *cobra.Command, args []string) error {
 		if len(devices.Configured) > 0 {
 			fmt.Printf("Configured devices (%d):\n\n", len(devices.Configured))
 			for _, d := range devices.Configured {
-				status := "unknown"
-				if ping != nil {
-					if s, ok := ping[d.Configuration]; ok && s != nil {
-						if *s {
-							status = "online"
-						} else {
-							status = "offline"
-						}
-					}
+				status := d.State
+				if status == "" {
+					status = "unknown"
 				}
 
 				name := d.FriendlyName
@@ -118,7 +92,7 @@ func runESPHomeList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// JSON mode: return combined data with ping status merged in
+	// JSON mode: return combined data with online status derived from state
 	type deviceWithStatus struct {
 		client.ESPHomeDevice
 		Online *bool `json:"online"`
@@ -127,10 +101,10 @@ func runESPHomeList(cmd *cobra.Command, args []string) error {
 	var enriched []deviceWithStatus
 	for _, d := range devices.Configured {
 		dws := deviceWithStatus{ESPHomeDevice: d}
-		if ping != nil {
-			if s, ok := ping[d.Configuration]; ok {
-				dws.Online = s
-			}
+		switch d.State {
+		case "online", "offline":
+			online := d.State == "online"
+			dws.Online = &online
 		}
 		enriched = append(enriched, dws)
 	}

@@ -1,8 +1,14 @@
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -288,9 +294,14 @@ func TestSaveAndLoadCredentials_RoundTrip(t *testing.T) {
 	}
 
 	// Load back
+	credsPath := filepath.Join(tmpDir, "credentials.json")
+	before, _ := os.ReadFile(credsPath)
 	loaded, err := LoadCredentials(tmpDir)
 	if err != nil {
 		t.Fatalf("LoadCredentials: %v", err)
+	}
+	if after, _ := os.ReadFile(credsPath); !bytes.Equal(before, after) {
+		t.Error("loading an up-to-date file must not rewrite it")
 	}
 	if loaded == nil {
 		t.Fatal("LoadCredentials returned nil")
@@ -310,5 +321,171 @@ func TestSaveAndLoadCredentials_RoundTrip(t *testing.T) {
 	}
 	if loaded.TokenExpiry != original.TokenExpiry {
 		t.Errorf("TokenExpiry = %v, want %v", loaded.TokenExpiry, original.TokenExpiry)
+	}
+}
+
+func TestSaveCredentials_URLReadableTokensNot(t *testing.T) {
+	tmpDir := t.TempDir()
+	creds := &Credentials{URL: "http://my-ha.local:8123", AccessToken: "secret-access-token"}
+	if err := SaveCredentials(creds, tmpDir); err != nil {
+		t.Fatalf("SaveCredentials: %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(tmpDir, "credentials.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file credentialsFile
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("file is not JSON: %v", err)
+	}
+	if file.URL != creds.URL {
+		t.Errorf("URL = %q, want %q", file.URL, creds.URL)
+	}
+	if bytes.Contains(raw, []byte(creds.AccessToken)) {
+		t.Error("access token is stored in the clear")
+	}
+}
+
+// Files from older versions are bare ciphertext under a MAC-dependent key.
+// Every MAC on the machine is tried, because the interface the old code
+// picked may no longer be the first active one.
+func TestLoadCredentials_LegacyFileIsMigrated(t *testing.T) {
+	for i, key := range legacyKeys() {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			clearAuthEnv(t)
+			tmpDir := t.TempDir()
+			credsPath := filepath.Join(tmpDir, "credentials.json")
+
+			plain, _ := json.Marshal(Credentials{URL: "http://old.local:8123", AccessToken: "tok"})
+			legacy, err := encrypt(plain, key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(credsPath, legacy, 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			creds, err := LoadCredentials(tmpDir)
+			if err != nil {
+				t.Fatalf("LoadCredentials: %v", err)
+			}
+			if creds.URL != "http://old.local:8123" || creds.AccessToken != "tok" {
+				t.Errorf("unexpected credentials: %+v", creds)
+			}
+
+			// The file must now open with the MAC-independent key alone.
+			raw, _ := os.ReadFile(credsPath)
+			var file credentialsFile
+			if err := json.Unmarshal(raw, &file); err != nil {
+				t.Fatalf("file was not migrated: %v", err)
+			}
+			if _, err := decrypt(file.Data, deriveKey()); err != nil {
+				t.Errorf("migrated file does not use the new key: %v", err)
+			}
+		})
+	}
+}
+
+func TestMachineIDUsesOnlyStableSources(t *testing.T) {
+	id := getMachineID()
+	if hwUUID := getHardwareUUID(); hwUUID != "" && id != hwUUID {
+		t.Errorf("machine ID = %q, want the platform machine ID %q alone", id, hwUUID)
+	}
+
+	interfaces, _ := net.Interfaces()
+	for _, iface := range interfaces {
+		if mac := iface.HardwareAddr.String(); mac != "" && strings.Contains(id, mac) {
+			t.Error("the key must not depend on the MAC address")
+		}
+	}
+}
+
+func TestDisplayURL(t *testing.T) {
+	tests := map[string]string{
+		"http://ha.local:8123":                    "http://ha.local:8123",
+		"https://ha.example.com/base/":            "https://ha.example.com/base/",
+		"http://[fe80::1]:8123":                   "http://[fe80::1]:8123",
+		"https://user:pass@ha.example.com/?a=1#x": "https://ha.example.com/",
+		"http://ha.local:8123; echo pwned":        "",
+		"http://ha.local/$(id)":                   "",
+		"http://ha.local/`id`":                    "http://ha.local/%60id%60", // escaped, so harmless
+		"ftp://ha.local":                          "",
+		"ha.local:8123":                           "",
+		"":                                        "",
+	}
+	for raw, want := range tests {
+		if got := displayURL(raw); got != want {
+			t.Errorf("displayURL(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
+
+func TestSaveCredentials_URLCredentialsStayEncrypted(t *testing.T) {
+	clearAuthEnv(t)
+	tmpDir := t.TempDir()
+	creds := &Credentials{URL: "https://user:hunter2@ha.example.com", AccessToken: "tok"}
+	if err := SaveCredentials(creds, tmpDir); err != nil {
+		t.Fatalf("SaveCredentials: %v", err)
+	}
+
+	raw, _ := os.ReadFile(filepath.Join(tmpDir, "credentials.json"))
+	if bytes.Contains(raw, []byte("hunter2")) {
+		t.Error("URL password is stored in the clear")
+	}
+	loaded, err := LoadCredentials(tmpDir)
+	if err != nil || loaded.URL != creds.URL {
+		t.Errorf("loaded URL = %v (err %v), want the original", loaded, err)
+	}
+}
+
+func TestLoadCredentials_Unreadable(t *testing.T) {
+	clearAuthEnv(t)
+	otherKey := bytes.Repeat([]byte{7}, 32)
+	sealed, err := encrypt([]byte(`{"url":"http://ha.local:8123"}`), otherKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withURL, _ := json.Marshal(credentialsFile{URL: "http://ha.local:8123", Data: sealed})
+	hostile, _ := json.Marshal(credentialsFile{URL: "http://ha.local:8123; echo pwned", Data: sealed})
+
+	tests := []struct {
+		name    string
+		content []byte
+		wantURL string
+		wantCmd string
+	}{
+		{"new format keeps the URL", withURL, "http://ha.local:8123", "hab auth login --url http://ha.local:8123"},
+		{"legacy format has no URL", sealed, "", "hab auth login"},
+		{"corrupt file", []byte("x"), "", "hab auth login"},
+		{"tampered URL is not echoed", hostile, "", "hab auth login"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(tmpDir, "credentials.json"), tt.content, 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			_, err := LoadCredentials(tmpDir)
+			var unreadable *UnreadableCredentialsError
+			if !errors.As(err, &unreadable) {
+				t.Fatalf("err = %v, want UnreadableCredentialsError", err)
+			}
+			if unreadable.URL != tt.wantURL {
+				t.Errorf("URL = %q, want %q", unreadable.URL, tt.wantURL)
+			}
+			if !strings.HasSuffix(err.Error(), "Log in again: "+tt.wantCmd) {
+				t.Errorf("error %q does not include %q", err, tt.wantCmd)
+			}
+
+			status := NewManager(tmpDir).GetAuthStatus()
+			if status["authenticated"] != false || status["message"] != err.Error() {
+				t.Errorf("unexpected status: %v", status)
+			}
+			if tt.wantURL != "" && status["url"] != tt.wantURL {
+				t.Errorf("status url = %v, want %q", status["url"], tt.wantURL)
+			}
+		})
 	}
 }

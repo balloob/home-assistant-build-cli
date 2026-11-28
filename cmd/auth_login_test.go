@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -79,5 +80,51 @@ func TestAuthLoginWarnsWhenEnvCredentialsShadowContext(t *testing.T) {
 	// The documented consequence: the same environment cannot use the context.
 	if _, err := auth.NewContextManager(root, "brother").GetCredentials(); err == nil || !strings.Contains(err.Error(), "conflicting") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestAuthContextListFlagsUnreadableContext(t *testing.T) {
+	for _, name := range []string{"HAB_URL", "HAB_TOKEN", "HAB_REFRESH_TOKEN", config.ContextEnv} {
+		t.Setenv(name, "")
+	}
+	root := t.TempDir()
+	viper.Set("config", root)
+	t.Cleanup(func() { viper.Set("config", nil) })
+	useLoginManager(t, auth.NewContextManager(root, ""))
+	if err := auth.SaveCredentials(&auth.Credentials{URL: "http://home:8123", AccessToken: "home"}, root); err != nil {
+		t.Fatal(err)
+	}
+	broken := config.GetContextDir(root, "brother")
+	if err := os.MkdirAll(broken, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.GetCredentialsPath(broken), []byte(`{"url":"http://brother:8123","data":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	file, err := os.CreateTemp(t.TempDir(), "output")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout := os.Stdout
+	os.Stdout = file
+	err = runAuthContextList(authContextListCmd, nil)
+	os.Stdout = stdout
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(file.Name())
+	var envelope struct {
+		Data []map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil || len(envelope.Data) != 2 {
+		t.Fatalf("output = %s, %v", raw, err)
+	}
+	home, brother := envelope.Data[0], envelope.Data[1]
+	if brother["name"] != "brother" || brother["unreadable"] != true || brother["url"] != "http://brother:8123" {
+		t.Fatalf("brother = %#v", brother)
+	}
+	if home["name"] != "default" || home["unreadable"] != nil || home["url"] != "http://home:8123" {
+		t.Fatalf("default = %#v", home)
 	}
 }

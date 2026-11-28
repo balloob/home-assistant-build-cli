@@ -2,7 +2,10 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/home-assistant/hab/config"
@@ -60,6 +63,61 @@ func (c *Credentials) NeedsRefresh() bool {
 	}
 	// Refresh if within tokenRefreshWindow of expiry
 	return float64(time.Now().Unix()) >= (c.TokenExpiry - tokenRefreshWindow)
+}
+
+// credentialsFile is the on-disk format. The URL is not a secret and stays
+// readable so a login that can no longer be decrypted can still be identified.
+type credentialsFile struct {
+	URL  string `json:"url"`
+	Data []byte `json:"data"`
+}
+
+var displayURLPattern = regexp.MustCompile(`^https?://[A-Za-z0-9._\-:\[\]]+(/[A-Za-z0-9._~%/\-]*)?$`)
+
+// displayURL reduces a URL to what may be stored and printed in the clear:
+// no userinfo, query or fragment, and nothing a shell would interpret, because
+// the unencrypted part of the file is not authenticated and ends up in a
+// suggested command. It returns "" when the URL does not qualify.
+func displayURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	u.User, u.RawQuery, u.Fragment = nil, "", ""
+	if s := u.String(); displayURLPattern.MatchString(s) {
+		return s
+	}
+	return ""
+}
+
+// UnreadableCredentialsError is returned when the saved login exists but
+// cannot be decrypted, e.g. because the machine identity changed.
+type UnreadableCredentialsError struct {
+	URL     string // empty when the file predates the readable URL
+	Context string // the named context the login belongs to; empty for the default
+	Err     error
+}
+
+func (e *UnreadableCredentialsError) Error() string {
+	target := ""
+	if e.URL != "" {
+		target = " for " + e.URL
+	}
+	return fmt.Sprintf("The saved login%s can't be read on this machine anymore. Log in again: %s", target, e.LoginCommand())
+}
+
+func (e *UnreadableCredentialsError) Unwrap() error { return e.Err }
+
+// LoginCommand returns the command that replaces the unreadable login.
+func (e *UnreadableCredentialsError) LoginCommand() string {
+	command := "hab auth login"
+	if e.Context != "" {
+		command += " --context " + e.Context
+	}
+	if e.URL != "" {
+		command += " --url " + e.URL
+	}
+	return command
 }
 
 // LoadCredentials loads credentials for the default context: environment
@@ -122,14 +180,35 @@ func LoadStoredCredentials(dir string) (*Credentials, error) {
 		return nil, err
 	}
 
-	decrypted, err := decrypt(data, deriveKey())
+	// Files written before the URL was stored in the clear are bare ciphertext.
+	var file credentialsFile
+	ciphertext := data
+	if json.Unmarshal(data, &file) == nil && len(file.Data) > 0 {
+		ciphertext = file.Data
+	}
+
+	decrypted, err := decrypt(ciphertext, deriveKey())
+	migrate := len(file.Data) == 0
 	if err != nil {
-		return nil, err
+		for _, key := range legacyKeys() {
+			if decrypted, err = decrypt(ciphertext, key); err == nil {
+				break
+			}
+		}
+		migrate = true
+	}
+	if err != nil {
+		return nil, &UnreadableCredentialsError{URL: displayURL(file.URL), Err: err}
 	}
 
 	var creds Credentials
 	if err := json.Unmarshal(decrypted, &creds); err != nil {
 		return nil, err
+	}
+
+	if migrate {
+		// Best effort: the old file still works until the MAC changes.
+		_ = SaveCredentials(&creds, dir)
 	}
 
 	creds.Source = "credentials_file"
@@ -153,8 +232,13 @@ func SaveCredentials(creds *Credentials, configDir string) error {
 		return err
 	}
 
+	file, err := json.Marshal(credentialsFile{URL: displayURL(creds.URL), Data: encrypted})
+	if err != nil {
+		return err
+	}
+
 	credsPath := config.GetCredentialsPath(configDir)
-	return fileutil.WriteFileAtomic(credsPath, encrypted, 0600)
+	return fileutil.WriteFileAtomic(credsPath, file, 0600)
 }
 
 // DeleteCredentials removes stored credentials.

@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
 )
@@ -54,6 +57,23 @@ func TestClassifyErrorIncludesDetails(t *testing.T) {
 	}
 	if details["suggested_fix"] != "Fix payload" {
 		t.Fatalf("details = %#v, want suggested_fix", details)
+	}
+}
+
+func TestClassifyErrorUnreadableCredentials(t *testing.T) {
+	err := fmt.Errorf("failed to load credentials: %w", &auth.UnreadableCredentialsError{URL: "https://ha.example.com"})
+
+	code, msg, details := classifyError(err)
+	if code != client.ErrCodeAuthRequired {
+		t.Fatalf("code = %q, want %q", code, client.ErrCodeAuthRequired)
+	}
+	want := "hab auth login --url https://ha.example.com"
+	if !strings.Contains(msg, want) {
+		t.Fatalf("msg = %q, want it to include %q", msg, want)
+	}
+	commands, _ := details["suggested_commands"].([]string)
+	if len(commands) != 1 || commands[0] != want {
+		t.Fatalf("details = %#v, want suggested command %q", details, want)
 	}
 }
 

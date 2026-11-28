@@ -305,3 +305,22 @@ func TestNamedContextRefreshNeverTouchesDefault(t *testing.T) {
 	}
 	check("corrupt")
 }
+
+func TestUnreadableNamedContextSuggestsItsOwnLogin(t *testing.T) {
+	clearAuthEnv(t)
+	root := t.TempDir()
+	saveContext(t, root, "brother", &Credentials{URL: "http://brother:8123", AccessToken: "brother"})
+	path := config.GetCredentialsPath(config.GetContextDir(root, "brother"))
+	if err := os.WriteFile(path, []byte(`{"url":"http://brother:8123","data":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	want := "hab auth login --context brother --url http://brother:8123"
+	if _, err := NewContextManager(root, "brother").GetCredentials(); err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("err = %v, want it to suggest %q", err, want)
+	}
+	status := NewContextManager(root, "brother").GetAuthStatus()
+	if status["context"] != "brother" || !strings.Contains(status["message"].(string), want) {
+		t.Fatalf("status = %#v", status)
+	}
+}

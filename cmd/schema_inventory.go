@@ -123,6 +123,7 @@ esphome migrate tasmota-template analyze
 esphome migrate tasmota-template create
 esphome serial erase-flash
 esphome serial probe
+esphome troubleshoot
 esphome update
 helper delete
 integration disable

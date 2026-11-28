@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -72,8 +73,16 @@ func runAuthContextList(cmd *cobra.Command, args []string) error {
 	for _, name := range names {
 		item := map[string]any{"name": name, "current": name == selected}
 		// The URL is not secret; tokens are never listed.
-		if creds, err := auth.LoadStoredCredentials(config.GetContextDir(configDir, name)); err == nil && creds != nil {
+		creds, err := auth.LoadStoredCredentials(config.GetContextDir(configDir, name))
+		var unreadable *auth.UnreadableCredentialsError
+		switch {
+		case err == nil && creds != nil:
 			item["url"] = creds.URL
+		case errors.As(err, &unreadable):
+			item["unreadable"] = true
+			if unreadable.URL != "" {
+				item["url"] = unreadable.URL
+			}
 		}
 		contexts = append(contexts, item)
 	}

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/home-assistant/hab/auth"
 	"github.com/home-assistant/hab/client"
 	"github.com/spf13/cobra"
@@ -256,5 +257,174 @@ func TestTransferArguments(t *testing.T) {
 	endpoint, _, _, err = prepareTransfer("diagnostics", false, "entry", f)
 	if err != nil || endpoint != "diagnostics/config_entry/entry/device/device" {
 		t.Fatalf("%s %v", endpoint, err)
+	}
+}
+
+// impactTestServer answers the read-only commands an impact plan may send and
+// fails the test on any other command, so a plan that writes is caught.
+func impactTestServer(t *testing.T, entries []map[string]any) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		var message map[string]any
+		if conn.WriteJSON(map[string]any{"type": "auth_required"}) != nil || conn.ReadJSON(&message) != nil || conn.WriteJSON(map[string]any{"type": "auth_ok"}) != nil {
+			return
+		}
+		for {
+			message = nil
+			if conn.ReadJSON(&message) != nil {
+				return
+			}
+			kind, _ := message["type"].(string)
+			if entries[0]["domain"] == "slow" {
+				time.Sleep(400 * time.Millisecond)
+			}
+			var result any
+			switch kind {
+			case "config_entries/get":
+				list := []any{}
+				for _, entry := range entries {
+					if domain, ok := message["domain"]; !ok || entry["domain"] == domain {
+						list = append(list, entry)
+					}
+				}
+				result = list
+			case "config_entries/get_single":
+				for _, entry := range entries {
+					if entry["entry_id"] == message["entry_id"] {
+						result = map[string]any{"config_entry": entry}
+					}
+				}
+			case "manifest/list":
+				result = []any{
+					map[string]any{"domain": "mqtt", "dependencies": []any{"http"}},
+					map[string]any{"domain": "frigate", "dependencies": []any{"mqtt", "http"}},
+					map[string]any{"domain": "tasmota", "dependencies": []any{"mqtt"}},
+					map[string]any{"domain": "zha", "after_dependencies": []any{"mqtt"}},
+				}
+			case "config/device_registry/list":
+				result = []any{
+					map[string]any{"id": "dev1", "config_entries": []any{entries[0]["entry_id"]}},
+					map[string]any{"id": "shared", "config_entries": []any{entries[0]["entry_id"], "other"}},
+					map[string]any{"id": "foreign", "config_entries": []any{"other"}},
+				}
+			case "config/entity_registry/list":
+				result = []any{
+					map[string]any{"entity_id": "sensor.b", "config_entry_id": entries[0]["entry_id"], "device_id": "shared"},
+					map[string]any{"entity_id": "sensor.a", "config_entry_id": entries[0]["entry_id"], "disabled_by": "user"},
+					map[string]any{"entity_id": "light.other", "config_entry_id": "other", "device_id": "dev1"},
+				}
+			default:
+				t.Errorf("unexpected command %s", kind)
+			}
+			if conn.WriteJSON(map[string]any{"id": message["id"], "type": "result", "success": true, "result": result}) != nil {
+				return
+			}
+		}
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("HAB_URL", server.URL)
+	t.Setenv("HAB_TOKEN", "token")
+	previous := getAuthManager()
+	cachedAuthMgr = auth.NewManager(t.TempDir())
+	t.Cleanup(func() { cachedAuthMgr = previous })
+}
+
+func TestIntegrationDeletePlanImpact(t *testing.T) {
+	const mqtt1, mqtt2 = "0123456789abcdef0123456789abcdef", "fedcba9876543210fedcba9876543210"
+	plan := func(t *testing.T, arg string) map[string]any {
+		t.Helper()
+		out, err := executeAppTest(t, managementTestCommand(t, "integration delete"), arg, "--plan")
+		if err != nil {
+			t.Fatalf("%s %v", out, err)
+		}
+		var envelope struct{ Data map[string]any }
+		if err := json.Unmarshal([]byte(out), &envelope); err != nil {
+			t.Fatal(out)
+		}
+		return envelope.Data
+	}
+	t.Run("last entry lists dependents", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "mqtt"}, {"entry_id": "other", "domain": "hue"}})
+		data := plan(t, mqtt1[:8])
+		impact := data["impact"].(map[string]any)
+		if impact["status"] != "determined" || impact["entry_id"] != mqtt1 || !reflect.DeepEqual(impact["dependent_integrations"], []any{"frigate", "tasmota"}) || !reflect.DeepEqual(impact["entities"], []any{"sensor.a", "sensor.b"}) || !reflect.DeepEqual(impact["devices"], []any{"dev1"}) {
+			t.Fatalf("%#v", impact)
+		}
+		if risks, _ := data["risks"].([]any); len(risks) != 1 || !strings.Contains(risks[0].(string), "frigate, tasmota") {
+			t.Fatalf("%#v", data["risks"])
+		}
+	})
+	t.Run("not the last entry", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "mqtt"}, {"entry_id": mqtt2, "domain": "mqtt"}})
+		impact := plan(t, mqtt1)["impact"].(map[string]any)
+		if impact["other_domain_entries"] != float64(1) || len(impact["dependent_integrations"].([]any)) != 0 {
+			t.Fatalf("%#v", impact)
+		}
+	})
+	t.Run("ignored and disabled entries do not count", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "mqtt"}, {"entry_id": mqtt2, "domain": "mqtt", "disabled_by": "user"}, {"entry_id": "ignored", "domain": "mqtt", "source": "ignore"}})
+		impact := plan(t, mqtt1)["impact"].(map[string]any)
+		if impact["other_domain_entries"] != float64(0) || len(impact["dependent_integrations"].([]any)) != 2 {
+			t.Fatalf("%#v", impact)
+		}
+	})
+	t.Run("disabled entry breaks nothing", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "mqtt", "disabled_by": "user"}})
+		if deps := plan(t, mqtt1)["impact"].(map[string]any)["dependent_integrations"].([]any); len(deps) != 0 {
+			t.Fatalf("%#v", deps)
+		}
+	})
+	t.Run("slow server is bounded by timeout", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "slow"}})
+		start := time.Now()
+		out, err := executeAppTest(t, managementTestCommand(t, "integration delete"), mqtt1, "--plan", "--timeout", "1s")
+		if err != nil || !strings.Contains(out, `"not_determined"`) || time.Since(start) > 1500*time.Millisecond {
+			t.Fatalf("%s %v %s", out, err, time.Since(start))
+		}
+	})
+	t.Run("no dependents", func(t *testing.T) {
+		impactTestServer(t, []map[string]any{{"entry_id": mqtt1, "domain": "frigate"}})
+		data := plan(t, mqtt1)
+		if deps := data["impact"].(map[string]any)["dependent_integrations"].([]any); len(deps) != 0 || data["risks"] != nil {
+			t.Fatalf("%#v", data)
+		}
+	})
+	t.Run("server unreachable", func(t *testing.T) {
+		t.Setenv("HAB_URL", "http://127.0.0.1:1")
+		t.Setenv("HAB_TOKEN", "token")
+		previous := getAuthManager()
+		cachedAuthMgr = auth.NewManager(t.TempDir())
+		defer func() { cachedAuthMgr = previous }()
+		data := plan(t, mqtt1)
+		impact := data["impact"].(map[string]any)
+		if data["mode"] != "plan" || impact["status"] != "not_determined" || impact["reason"] == "" {
+			t.Fatalf("%#v", data)
+		}
+	})
+}
+
+func TestIntegrationGetDependents(t *testing.T) {
+	impactTestServer(t, []map[string]any{{"entry_id": "entry", "domain": "mqtt"}})
+	out, err := executeAppTest(t, managementTestCommand(t, "integration get"), "entry")
+	if err != nil || !strings.Contains(out, `"dependent_integrations": [`) || !strings.Contains(out, `"frigate"`) || strings.Contains(out, `"zha"`) {
+		t.Fatalf("%s %v", out, err)
+	}
+}
+
+func TestPlanImpactText(t *testing.T) {
+	got := planImpactText(MutationPlan{Risks: []string{"frigate will break"}, Impact: map[string]any{"status": "determined", "domain": "mqtt", "other_domain_entries": 0, "dependent_integrations": []string{"frigate"}, "devices": []string{}, "entities": []string{"sensor.a", "sensor.b"}}})
+	want := "\nRisk: frigate will break\nImpact: determined\n  dependent_integrations (1): frigate\n  devices (0): \n  domain: mqtt\n  entities (2): sensor.a, sensor.b\n  other_domain_entries: 0"
+	if got != want {
+		t.Fatalf("%q", got)
+	}
+	got = planImpactText(MutationPlan{Impact: map[string]any{"status": "not_determined", "reason": "connection refused"}})
+	if got != "\nImpact: not_determined\n  reason: connection refused" {
+		t.Fatalf("%q", got)
 	}
 }

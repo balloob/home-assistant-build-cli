@@ -86,6 +86,11 @@ func (m *Manager) loadCredentials() (*Credentials, error) {
 		if err == nil && creds == nil {
 			err = m.contextNotFound()
 		}
+		var unreadable *UnreadableCredentialsError
+		if errors.As(err, &unreadable) {
+			// The login hint must not write to another context.
+			unreadable.Context = m.Context
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -202,6 +207,18 @@ func (m *Manager) Logout() error {
 // GetAuthStatus returns authentication status as a map
 func (m *Manager) GetAuthStatus() map[string]interface{} {
 	creds, err := m.loadCredentials()
+	var unreadable *UnreadableCredentialsError
+	if errors.As(err, &unreadable) {
+		status := map[string]interface{}{
+			"authenticated": false,
+			"context":       m.Context,
+			"message":       unreadable.Error(),
+		}
+		if unreadable.URL != "" {
+			status["url"] = unreadable.URL
+		}
+		return status
+	}
 	if creds == nil {
 		message := "Not authenticated. Run 'hab auth login' to authenticate."
 		if err != nil {
