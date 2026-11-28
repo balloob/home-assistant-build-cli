@@ -307,8 +307,18 @@ func impactTestServer(t *testing.T, entries []map[string]any) {
 					map[string]any{"domain": "tasmota", "dependencies": []any{"mqtt"}},
 					map[string]any{"domain": "zha", "after_dependencies": []any{"mqtt"}},
 				}
-			case "search/related":
-				result = map[string]any{"device": []any{"dev1"}, "entity": []any{"sensor.a", "sensor.b"}}
+			case "config/device_registry/list":
+				result = []any{
+					map[string]any{"id": "dev1", "config_entries": []any{entries[0]["entry_id"]}},
+					map[string]any{"id": "shared", "config_entries": []any{entries[0]["entry_id"], "other"}},
+					map[string]any{"id": "foreign", "config_entries": []any{"other"}},
+				}
+			case "config/entity_registry/list":
+				result = []any{
+					map[string]any{"entity_id": "sensor.b", "config_entry_id": entries[0]["entry_id"], "device_id": "shared"},
+					map[string]any{"entity_id": "sensor.a", "config_entry_id": entries[0]["entry_id"], "disabled_by": "user"},
+					map[string]any{"entity_id": "light.other", "config_entry_id": "other", "device_id": "dev1"},
+				}
 			default:
 				t.Errorf("unexpected command %s", kind)
 			}

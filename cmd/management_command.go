@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"time"
 
@@ -86,6 +87,9 @@ func newManagementCommand(s managementSpec) *cobra.Command {
 	}
 	if strings.HasPrefix(s.Endpoint, "hassio/") {
 		caps = append(caps, "supervisor")
+	}
+	if s.Impact != nil && !slices.Contains(caps, "ws") {
+		caps = append(caps, "ws")
 	}
 	annotation := SchemaAnnotation{SideEffect: s.Effect, OutputMode: "json_envelope", Capabilities: caps, GuideTopic: "management", InputSources: []string{"args", "flags"}}
 	if s.Input {

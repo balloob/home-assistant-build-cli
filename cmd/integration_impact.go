@@ -108,16 +108,9 @@ func readIntegrationDeleteImpact(ctx context.Context, raw string, timeout time.D
 			return nil, err
 		}
 	}
-	related, err := ws.SearchRelated("config_entry", entryID)
+	devices, entities, err := removedRegistryItems(ws, entryID)
 	if err != nil {
 		return nil, err
-	}
-	devices, entities := related["device"], related["entity"]
-	if devices == nil {
-		devices = []string{}
-	}
-	if entities == nil {
-		entities = []string{}
 	}
 	return map[string]any{
 		"status":                 "determined",
@@ -128,4 +121,36 @@ func readIntegrationDeleteImpact(ctx context.Context, raw string, timeout time.D
 		"devices":                devices,
 		"entities":               entities,
 	}, nil
+}
+
+// removedRegistryItems lists what Home Assistant removes with the entry: entities
+// owned by it and devices that have no other config entry. Entities of other
+// entries on those devices stay and lose their device link.
+func removedRegistryItems(ws client.WebSocketAPI, entryID string) ([]string, []string, error) {
+	deviceList, err := ws.DeviceRegistryList()
+	if err != nil {
+		return nil, nil, err
+	}
+	devices := []string{}
+	for _, item := range deviceList {
+		device, _ := item.(map[string]any)
+		entries, _ := device["config_entries"].([]any)
+		if id, _ := device["id"].(string); id != "" && len(entries) == 1 && entries[0] == entryID {
+			devices = append(devices, id)
+		}
+	}
+	entityList, err := ws.EntityRegistryList()
+	if err != nil {
+		return nil, nil, err
+	}
+	entities := []string{}
+	for _, item := range entityList {
+		entity, _ := item.(map[string]any)
+		if id, _ := entity["entity_id"].(string); id != "" && entity["config_entry_id"] == entryID {
+			entities = append(entities, id)
+		}
+	}
+	slices.Sort(devices)
+	slices.Sort(entities)
+	return devices, entities, nil
 }
