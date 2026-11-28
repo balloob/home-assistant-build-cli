@@ -9,7 +9,6 @@ import (
 	"github.com/home-assistant/hab/client"
 	"github.com/home-assistant/hab/config"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeDevice string
@@ -35,6 +34,16 @@ func getESPHomeClient() (client.ESPHomeAPI, error) {
 	creds, err := getCredentials()
 	if err != nil || creds == nil {
 		return nil, err
+	}
+
+	// These variables describe one instance's dashboard; applying them to a
+	// named context would mix instances or send its token to another host.
+	if manager := getAuthManager(); manager.Context != config.DefaultContext && creds.Source == "credentials_file" {
+		for _, name := range []string{"HAB_ESPHOME_URL", "HAB_ESPHOME_TOKEN", "HA_ACCESS_TOKEN"} {
+			if os.Getenv(name) != "" {
+				return nil, fmt.Errorf("conflicting ESPHome settings: context %q is selected, but %s is set; unset it to use the ESPHome dashboard of that context", manager.Context, name)
+			}
+		}
 	}
 
 	esphomeURL := os.Getenv("HAB_ESPHOME_URL")
@@ -120,7 +129,11 @@ func resolveESPHomeConfiguration(args []string, index int) (string, error) {
 		return args[index], nil
 	}
 
-	ctx, err := config.LoadESPHomeContext(viper.GetString("config"))
+	dir, err := getAuthManager().ContextDir()
+	if err != nil {
+		return "", err
+	}
+	ctx, err := config.LoadESPHomeContext(dir)
 	if err != nil {
 		return "", fmt.Errorf("load ESPHome context: %w", err)
 	}

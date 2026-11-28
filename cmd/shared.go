@@ -67,10 +67,10 @@ func init() {
 	output.SetDefaultEnvelopeContextProvider(getExecutionEnvelopeContext)
 }
 
-// getAuthManager returns a cached auth.Manager using the configured config dir.
+// getAuthManager returns a cached auth.Manager for the selected context.
 func getAuthManager() *auth.Manager {
 	authManagerOnce.Do(func() {
-		cachedAuthMgr = auth.NewManager(viper.GetString("config"))
+		cachedAuthMgr = auth.NewContextManager(viper.GetString("config"), contextName)
 	})
 	return cachedAuthMgr
 }

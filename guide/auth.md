@@ -23,6 +23,16 @@ Use this topic to establish and verify authentication before running workflows.
 - Authenticate once and reuse the stored session.
 - Use `hab auth refresh --json` for long-running workflows.
 
+## Multiple Instances (Contexts)
+
+- Each context holds the URL and credentials of one Home Assistant instance; existing credentials are the `default` context.
+- When told which context to use, pass `--context <name>` (or set `HAB_CONTEXT=<name>`) on every command instead of switching the current context.
+- `hab auth context list --json` lists contexts and their URLs; `hab auth status --json` reports the context in use.
+- `hab auth login --context <name>` adds a context; `hab auth logout --context <name>` removes only that context.
+- An unknown context fails with `AUTH_REQUIRED` and lists the available contexts; it never falls back to another instance.
+- `--context`/`HAB_CONTEXT`, or a current context set with `hab auth context use`, fails with a conflicting-credentials error while `HAB_URL` with `HAB_TOKEN` or `HAB_REFRESH_TOKEN` is set; unset those variables to use a context (`hab auth login` warns about this).
+- ESPHome commands on a named context fail while `HAB_ESPHOME_URL`, `HAB_ESPHOME_TOKEN` or `HA_ACCESS_TOKEN` is set; those variables apply to the `default` context only.
+
 ## Common Commands
 
 ```bash
@@ -30,6 +40,9 @@ hab auth status --json
 hab auth login
 hab auth refresh --json
 hab auth logout
+hab auth context list --json
+hab auth context use <name>
+hab --context <name> auth status --json
 ```
 
 ## Verification Commands
@@ -43,3 +56,4 @@ hab overview --json
 
 - Running write commands before checking session state.
 - Mixing credentials from one Home Assistant instance with another.
+- Switching the current context with `hab auth context use` when one command should target another instance; prefer `--context`.

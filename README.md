@@ -70,14 +70,39 @@ hab auth refresh
 hab auth logout
 ```
 
+### Multiple Home Assistant instances (contexts)
+
+Each context stores the URL and credentials of one Home Assistant instance. Existing credentials are the `default` context.
+
+```bash
+# Log in to another instance under a context name (does not change the current context)
+hab auth login --context brother-homeassistant --url https://brother.example.com
+
+# List contexts and switch the current one
+hab auth context list
+hab auth context use brother-homeassistant
+hab auth context use default
+
+# Use a context for one command only
+hab --context brother-homeassistant system health
+HAB_CONTEXT=brother-homeassistant hab integration list
+
+# Remove a context; other contexts are untouched
+hab auth logout --context brother-homeassistant
+```
+
+The context for a command is chosen by `--context`, then `HAB_CONTEXT`, then the current context set with `hab auth context use`, then `default`. An unknown context is an error that lists the available contexts; `hab` never falls back to another instance. Context names use lowercase letters, digits, `.`, `_` and `-`.
+
 ### Auth behavior
 
 - If `--url` is omitted during `hab auth login`, `hab` can discover servers and prompt for selection.
 - Stored credentials are encrypted and saved in `credentials.json`.
 - Credential resolution order is:
 1. `HAB_URL` + `HAB_TOKEN` or `HAB_URL` + `HAB_REFRESH_TOKEN`
-2. Encrypted stored credentials
-3. `SUPERVISOR_TOKEN` fallback when running inside a Home Assistant add-on or app context
+2. Encrypted stored credentials of the selected context
+3. `SUPERVISOR_TOKEN` fallback when running inside a Home Assistant add-on or app context (`default` context only)
+- Selecting a context with `--context`, `HAB_CONTEXT` or `hab auth context use` while `HAB_URL` + `HAB_TOKEN`/`HAB_REFRESH_TOKEN` are set is an error, so a command never runs against a different instance than the one selected. `hab auth login --context <name>` still saves the context in that case, but warns that the context cannot be used until those variables are unset.
+- `HAB_ESPHOME_URL`, `HAB_ESPHOME_TOKEN` and `HA_ACCESS_TOKEN` apply to the `default` context only; ESPHome commands on a named context fail while they are set.
 - OAuth credentials auto-refresh when needed.
 
 ## Common Usage Patterns
@@ -1132,7 +1157,10 @@ Run `hab <command> --help` for more information on a specific command group.
 By default, configuration lives under `~/.config/home-assistant-builder/`.
 
 - `config.json`: general settings
-- `credentials.json`: encrypted credentials
+- `credentials.json`: encrypted credentials of the `default` context
+- `current-context`: name of the current context (absent means `default`)
+- `contexts/<name>/credentials.json`: encrypted credentials of a named context
+- `esphome-context.json` and `contexts/<name>/esphome-context.json`: saved ESPHome device per context
 
 If `XDG_CONFIG_HOME` is set, `hab` uses that base directory instead of `~/.config`.
 
@@ -1143,6 +1171,7 @@ Use `--config <dir>` to point `hab` at a different config directory.
 - `HAB_URL`: Home Assistant URL
 - `HAB_TOKEN`: Home Assistant long-lived access token
 - `HAB_REFRESH_TOKEN`: OAuth refresh token
+- `HAB_CONTEXT`: context to use for this command (overrides the current context; `--context` overrides it)
 - `HAB_SKIP_UPDATE_CHECK`: disable automatic update checks
 - `HAB_ESPHOME_URL`: ESPHome Device Builder URL
 - `HAB_ESPHOME_TOKEN`: Bearer token for ESPHome

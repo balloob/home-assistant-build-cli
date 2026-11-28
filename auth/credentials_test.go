@@ -324,13 +324,6 @@ func TestSaveAndLoadCredentials_RoundTrip(t *testing.T) {
 	}
 }
 
-func clearAuthEnv(t *testing.T) {
-	t.Helper()
-	for _, name := range []string{"HAB_URL", "HAB_TOKEN", "HAB_REFRESH_TOKEN", SupervisorTokenEnv} {
-		t.Setenv(name, "")
-	}
-}
-
 func TestSaveCredentials_URLReadableTokensNot(t *testing.T) {
 	tmpDir := t.TempDir()
 	creds := &Credentials{URL: "http://my-ha.local:8123", AccessToken: "secret-access-token"}

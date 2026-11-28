@@ -6,14 +6,14 @@ import (
 	"github.com/home-assistant/hab/config"
 	"github.com/home-assistant/hab/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var esphomeContextCmd = &cobra.Command{
 	Use:     "context",
 	Aliases: []string{"device"},
 	Short:   "Manage saved ESPHome device context",
-	Long:    `Save, inspect, or clear the default ESPHome configuration used by follow-up commands.`,
+	Long: `Save, inspect, or clear the default ESPHome configuration used by follow-up commands.
+The saved configuration belongs to the selected Home Assistant context.`,
 }
 
 var esphomeContextUseCmd = &cobra.Command{
@@ -23,7 +23,11 @@ var esphomeContextUseCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		textMode := getTextMode()
 		ctx := &config.ESPHomeContext{Configuration: args[0]}
-		if err := config.SaveESPHomeContext(viper.GetString("config"), ctx); err != nil {
+		dir, err := getAuthManager().ContextDir()
+		if err != nil {
+			return err
+		}
+		if err := config.SaveESPHomeContext(dir, ctx); err != nil {
 			return err
 		}
 		output.PrintSuccess(map[string]any{"configuration": ctx.Configuration}, textMode, fmt.Sprintf("ESPHome context set to %s.", ctx.Configuration))
@@ -37,7 +41,11 @@ var esphomeContextShowCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		textMode := getTextMode()
-		ctx, err := config.LoadESPHomeContext(viper.GetString("config"))
+		dir, err := getAuthManager().ContextDir()
+		if err != nil {
+			return err
+		}
+		ctx, err := config.LoadESPHomeContext(dir)
 		if err != nil {
 			return err
 		}
@@ -56,7 +64,11 @@ var esphomeContextClearCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		textMode := getTextMode()
-		if err := config.ClearESPHomeContext(viper.GetString("config")); err != nil {
+		dir, err := getAuthManager().ContextDir()
+		if err != nil {
+			return err
+		}
+		if err := config.ClearESPHomeContext(dir); err != nil {
 			return err
 		}
 		output.PrintSuccess(nil, textMode, "ESPHome context cleared.")
