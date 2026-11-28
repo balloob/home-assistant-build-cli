@@ -127,7 +127,11 @@ show the resulting map with unrelated scopes preserved. Only ID changes need
 entity collision or relationship searches. Alias order is preserved; on Home
 Assistant versions that use the first alias as the primary name, it matters.
 
-Disabling removes an entity from active use. Enabling may require a reload or
+Disabling removes an entity from active use and from the state machine.
+`entity get` on a disabled entity still succeeds: it returns `state: null`, the
+registry entry (with `disabled_by`), and a warning. `entity list` omits entities
+with no state unless `--include-disabled` is passed; those rows have
+`state: null` and every row gains `disabled_by`. Enabling may require a reload or
 restart; the result includes Home Assistant's activation warnings. An entity
 whose device or integration is disabled may remain unavailable. Verification
 checks registry fields, not whether the entity is running or visible in a dashboard.

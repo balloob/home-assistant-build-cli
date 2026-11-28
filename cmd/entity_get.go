@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/home-assistant/hab/client"
@@ -85,7 +87,9 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	}()
 	wg.Wait()
 
-	if stateErr != nil {
+	// A disabled entity has a registry entry but no state; only a 404 may
+	// fall through to the registry so auth/network errors still surface.
+	if stateErr != nil && (!isNotFoundError(stateErr) || registryErr != nil) {
 		return stateErr
 	}
 	if registryErr != nil {
@@ -135,6 +139,16 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 	}
 	result["registry"] = registry
 
+	if state == nil {
+		result["entity_id"] = entityID
+		result["state"] = nil
+		note := statelessEntityNote(entityID, registry)
+		noteWarning(note)
+		if textMode {
+			fmt.Println(note)
+		}
+	}
+
 	if deviceResult != nil {
 		result["device"] = deviceResult
 	}
@@ -144,6 +158,20 @@ func runEntityGet(cmd *cobra.Command, args []string) error {
 
 	output.PrintOutputWithContext(result, textMode, "", output.EnvelopeContext{Operation: "get", ResourceType: "entity"})
 	return nil
+}
+
+// isNotFoundError reports whether err is a NOT_FOUND API error.
+func isNotFoundError(err error) bool {
+	var apiErr *client.APIError
+	return errors.As(err, &apiErr) && apiErr.Code == client.ErrCodeNotFound
+}
+
+// statelessEntityNote explains why a registered entity has no state.
+func statelessEntityNote(entityID string, registry map[string]interface{}) string {
+	if by, ok := registry["disabled_by"].(string); ok && by != "" {
+		return fmt.Sprintf("%s is disabled (disabled_by: %s) and has no state.", entityID, by)
+	}
+	return fmt.Sprintf("%s is in the entity registry but has no state.", entityID)
 }
 
 // findDevice fetches the full device registry and returns the matching device.
