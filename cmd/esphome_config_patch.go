@@ -18,7 +18,7 @@ var esphomeConfigPatchCmd = &cobra.Command{
 	Use:   "config-patch [configuration]",
 	Short: "Patch an ESPHome YAML configuration safely",
 	Long: `Read the current ESPHome YAML, apply a structured patch, write the updated
-configuration back to the dashboard, and optionally validate the result with
+configuration back to the Device Builder, and optionally validate the result with
 automatic rollback on failure.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runESPHomeConfigPatch,
@@ -64,7 +64,7 @@ func runESPHomeConfigPatch(cmd *cobra.Command, args []string) error {
 
 	written := updated != original
 	if written {
-		if err := esClient.WriteConfig(configuration, updated); err != nil {
+		if err := esClient.WriteConfigIfUnchanged(configuration, updated, original); err != nil {
 			return err
 		}
 	}

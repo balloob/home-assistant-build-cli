@@ -7,7 +7,7 @@ import (
 
 var esphomeInfoCmd = &cobra.Command{
 	Use:   "info [configuration]",
-	Short: "Show ESPHome dashboard metadata for a configuration",
+	Short: "Show ESPHome build and platform metadata for a configuration",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configuration, err := resolveESPHomeConfiguration(args, 0)

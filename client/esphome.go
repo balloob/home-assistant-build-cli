@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,12 +13,11 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
 
-// ESPHomeClient communicates with the ESPHome Dashboard API.
-// The dashboard may be accessed directly or via the HA Supervisor ingress proxy.
+// ESPHomeClient communicates with the ESPHome Device Builder API.
+// The Device Builder may be accessed directly or via the HA Supervisor ingress proxy.
 type ESPHomeClient struct {
 	BaseURL        string
 	Token          string // HA bearer token (used for ingress proxy auth)
@@ -28,9 +26,12 @@ type ESPHomeClient struct {
 	VerifySSL      bool
 	client         *resty.Client
 	clientOnce     sync.Once
+	// checked is set once /ws answered, so REST-only calls know the server is
+	// the ESPHome Device Builder.
+	checked bool
 }
 
-// ESPHomeDevice represents a configured device from the ESPHome dashboard.
+// ESPHomeDevice represents a configured device on the ESPHome Device Builder.
 type ESPHomeDevice struct {
 	Name               string   `json:"name"`
 	FriendlyName       string   `json:"friendly_name"`
@@ -38,11 +39,11 @@ type ESPHomeDevice struct {
 	LoadedIntegrations []string `json:"loaded_integrations"`
 	DeployedVersion    string   `json:"deployed_version"`
 	CurrentVersion     string   `json:"current_version"`
-	Path               string   `json:"path"`
 	Comment            *string  `json:"comment"`
 	Address            string   `json:"address"`
 	WebPort            *int     `json:"web_port"`
 	TargetPlatform     string   `json:"target_platform"`
+	State              string   `json:"state"` // online, offline or unknown
 }
 
 // ESPHomeImportableDevice represents a discovered but not yet imported device.
@@ -56,7 +57,7 @@ type ESPHomeImportableDevice struct {
 	Ignored          bool   `json:"ignored"`
 }
 
-// ESPHomeDeviceList is the response from GET /devices.
+// ESPHomeDeviceList is the response from devices/list.
 type ESPHomeDeviceList struct {
 	Configured []ESPHomeDevice           `json:"configured"`
 	Importable []ESPHomeImportableDevice `json:"importable"`
@@ -68,18 +69,16 @@ type ESPHomeBoard struct {
 	Name string `json:"name"`
 }
 
-// ESPHomeSerialPort represents a serial port entry from dashboard discovery.
+// ESPHomeSerialPort represents a serial port attached to the ESPHome Device Builder.
 type ESPHomeSerialPort struct {
 	Port string `json:"port"`
 	Desc string `json:"desc"`
 }
 
-// ESPHomeCreateRequest contains the payload for the dashboard wizard endpoint.
+// ESPHomeCreateRequest contains the payload for devices/create.
 type ESPHomeCreateRequest struct {
-	Type        string
 	Name        string
-	Platform    string
-	Board       string
+	Board       string // board catalog ID, see GetBoards
 	SSID        string
 	PSK         string
 	FileContent []byte
@@ -88,9 +87,10 @@ type ESPHomeCreateRequest struct {
 // ESPHomeCreateResponse is returned after a config is created successfully.
 type ESPHomeCreateResponse struct {
 	Configuration string `json:"configuration"`
+	Warning       string `json:"warning,omitempty"`
 }
 
-// ESPHomeImportRequest contains the payload for the dashboard import endpoint.
+// ESPHomeImportRequest contains the payload for devices/import.
 type ESPHomeImportRequest struct {
 	Name             string
 	FriendlyName     string
@@ -102,17 +102,18 @@ type ESPHomeImportRequest struct {
 // ESPHomeImportResponse is returned after an import succeeds.
 type ESPHomeImportResponse struct {
 	Configuration string `json:"configuration"`
+	Warning       string `json:"warning,omitempty"`
 }
 
-// ESPHomeStreamEvent represents a line or exit event from a streaming WebSocket command.
+// ESPHomeStreamEvent represents a line or exit event from a streaming command.
 type ESPHomeStreamEvent struct {
 	Event string `json:"event"` // "line" or "exit"
 	Data  string `json:"data,omitempty"`
 	Code  *int   `json:"code,omitempty"`
 }
 
-// NewESPHomeClient creates a new ESPHome Dashboard client.
-// baseURL should be the full ingress URL or direct dashboard URL.
+// NewESPHomeClient creates a new ESPHome Device Builder client.
+// baseURL should be the full ingress URL or direct Device Builder URL.
 // token is the HA bearer token (used when proxying through ingress).
 func NewESPHomeClient(baseURL, token string) *ESPHomeClient {
 	return &ESPHomeClient{
@@ -155,138 +156,9 @@ func (c *ESPHomeClient) getClient() *resty.Client {
 	return c.client
 }
 
-// doGet performs a GET request, checks for a 200 status, and JSON-unmarshals
-// the response body into dest. operation names the action for error messages.
-func (c *ESPHomeClient) doGet(path, operation string, dest any) error {
-	resp, err := c.getClient().R().Get(path)
-	if err != nil {
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to %s: %s", operation, err)}
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return &APIError{
-			Code:    ErrCodeAPIError,
-			Message: fmt.Sprintf("ESPHome dashboard returned status %d: %s", resp.StatusCode(), string(resp.Body())),
-		}
-	}
-	if err := json.Unmarshal(resp.Body(), dest); err != nil {
-		return &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse %s response: %s", operation, err)}
-	}
-	return nil
-}
-
-// doJSONPost performs a JSON POST request and optionally decodes the response.
-func (c *ESPHomeClient) doJSONPost(path, operation string, body any, dest any) error {
-	resp, err := c.getClient().R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(body).
-		Post(path)
-	if err != nil {
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to %s: %s", operation, err)}
-	}
-
-	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
-		return parseESPHomeDashboardError(resp.StatusCode(), string(resp.Body()), operation)
-	}
-
-	if dest == nil || len(resp.Body()) == 0 {
-		return nil
-	}
-
-	if err := json.Unmarshal(resp.Body(), dest); err != nil {
-		return &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse %s response: %s", operation, err)}
-	}
-
-	return nil
-}
-
-// GetDevices returns the list of configured and importable ESPHome devices.
-func (c *ESPHomeClient) GetDevices() (*ESPHomeDeviceList, error) {
-	var result ESPHomeDeviceList
-	if err := c.doGet("/devices", "list devices", &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
-// GetPing returns online/offline status for all devices.
-// Map keys are configuration filenames, values are true (online), false (offline), or nil (unknown).
-func (c *ESPHomeClient) GetPing() (map[string]*bool, error) {
-	var result map[string]*bool
-	if err := c.doGet("/ping", "ping devices", &result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-// GetBoards returns the board catalog for a platform.
-func (c *ESPHomeClient) GetBoards(platform string) ([]ESPHomeBoard, error) {
-	var result []struct {
-		Items map[string]string `json:"items"`
-	}
-	if err := c.doGet("/boards/"+strings.ToLower(platform), "get boards", &result); err != nil {
-		return nil, err
-	}
-
-	boards := make([]ESPHomeBoard, 0)
-	for _, group := range result {
-		for id, name := range group.Items {
-			boards = append(boards, ESPHomeBoard{ID: id, Name: name})
-		}
-	}
-
-	slices.SortFunc(boards, func(a, b ESPHomeBoard) int {
-		if cmp := strings.Compare(a.Name, b.Name); cmp != 0 {
-			return cmp
-		}
-		return strings.Compare(a.ID, b.ID)
-	})
-
-	return boards, nil
-}
-
-// GetVersion returns the ESPHome version string.
-func (c *ESPHomeClient) GetVersion() (string, error) {
-	var result struct {
-		Version string `json:"version"`
-	}
-	if err := c.doGet("/version", "get version", &result); err != nil {
-		return "", err
-	}
-	return result.Version, nil
-}
-
-// GetSerialPorts lists available serial ports from the ESPHome dashboard.
-func (c *ESPHomeClient) GetSerialPorts() ([]ESPHomeSerialPort, error) {
-	var result []ESPHomeSerialPort
-	if err := c.doGet("/serial-ports", "list serial ports", &result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-// GetInfo returns dashboard storage metadata for a configuration.
+// GetInfo returns build and platform metadata for a configuration, combining
+// its resolved config with the device list.
 func (c *ESPHomeClient) GetInfo(configuration string) (map[string]any, error) {
-	resp, err := c.getClient().R().
-		SetQueryParam("configuration", configuration).
-		Get("/info")
-	if err != nil {
-		return nil, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to get info: %s", err)}
-	}
-	if resp.StatusCode() == http.StatusNotFound {
-		return c.getInfoFallback(configuration)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, parseESPHomeDashboardError(resp.StatusCode(), string(resp.Body()), "get info")
-	}
-
-	var result map[string]any
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return nil, &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("failed to parse info response: %s", err)}
-	}
-	return result, nil
-}
-
-func (c *ESPHomeClient) getInfoFallback(configuration string) (map[string]any, error) {
 	parsed, err := c.GetJSONConfig(configuration)
 	if err != nil {
 		return nil, err
@@ -403,9 +275,6 @@ func mergeESPHomeDeviceInfo(info map[string]any, device ESPHomeDevice) {
 	if device.Address != "" {
 		info["address"] = device.Address
 	}
-	if device.Path != "" {
-		info["path"] = device.Path
-	}
 	if device.WebPort != nil {
 		info["web_port"] = *device.WebPort
 	}
@@ -496,56 +365,16 @@ func normalizeESPHomeCorePlatform(target string) string {
 	}
 }
 
-// CreateConfig creates a new ESPHome configuration via the dashboard wizard.
-func (c *ESPHomeClient) CreateConfig(req ESPHomeCreateRequest) (*ESPHomeCreateResponse, error) {
-	body := map[string]any{
-		"type": req.Type,
-		"name": req.Name,
-	}
-	if req.Platform != "" {
-		body["platform"] = req.Platform
-	}
-	if req.Board != "" {
-		body["board"] = req.Board
-	}
-	if req.SSID != "" {
-		body["ssid"] = req.SSID
-	}
-	if req.PSK != "" {
-		body["psk"] = req.PSK
-	}
-	if len(req.FileContent) > 0 {
-		body["file_content"] = base64.StdEncoding.EncodeToString(req.FileContent)
-	}
-
-	var result ESPHomeCreateResponse
-	if err := c.doJSONPost("/wizard", "create config", body, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
-// ImportConfig imports a package-backed ESPHome device configuration.
-func (c *ESPHomeClient) ImportConfig(req ESPHomeImportRequest) (*ESPHomeImportResponse, error) {
-	body := map[string]any{
-		"name":               req.Name,
-		"project_name":       req.ProjectName,
-		"package_import_url": req.PackageImportURL,
-		"encryption":         req.Encryption,
-	}
-	if req.FriendlyName != "" {
-		body["friendly_name"] = req.FriendlyName
-	}
-
-	var result ESPHomeImportResponse
-	if err := c.doJSONPost("/import", "import config", body, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
-// GetJSONConfig validates a configuration and returns the parsed JSON structure.
+// GetJSONConfig validates a configuration and returns the fully resolved config.
+// The Device Builder serves this only over REST (/json-config); its /ws API has
+// no resolved-config command.
 func (c *ESPHomeClient) GetJSONConfig(configuration string) (map[string]any, error) {
+	if !c.checked {
+		// The legacy dashboard also serves /json-config; refuse it here too.
+		if _, err := c.call("ping", nil, nil); err != nil {
+			return nil, err
+		}
+	}
 	resp, err := c.getClient().R().
 		SetQueryParam("configuration", configuration).
 		Get("/json-config")
@@ -556,10 +385,10 @@ func (c *ESPHomeClient) GetJSONConfig(configuration string) (map[string]any, err
 		return nil, &APIError{Code: ErrCodeNotFound, Message: fmt.Sprintf("configuration %q not found", configuration)}
 	}
 	if resp.StatusCode() == http.StatusUnprocessableEntity {
-		return nil, parseESPHomeValidationError(configuration, string(resp.Body()))
+		return nil, parseESPHomeValidationError(configuration, c.validationOutput(configuration, espHomeHTTPErrorMessage(string(resp.Body()))))
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, parseESPHomeDashboardError(resp.StatusCode(), string(resp.Body()), "validate config")
+		return nil, parseESPHomeHTTPError(resp.StatusCode(), string(resp.Body()), "validate config")
 	}
 
 	var result map[string]any
@@ -569,44 +398,31 @@ func (c *ESPHomeClient) GetJSONConfig(configuration string) (map[string]any, err
 	return result, nil
 }
 
-// ReadConfig reads the YAML configuration for a device.
-func (c *ESPHomeClient) ReadConfig(configuration string) (string, error) {
-	resp, err := c.getClient().R().
-		SetQueryParam("configuration", configuration).
-		Get("/edit")
-	if err != nil {
-		return "", &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to read config: %s", err)}
+// espHomeColor matches the color codes in `esphome config` output, both as
+// escape bytes and as the literal \033 text that dashboard mode prints.
+var espHomeColor = regexp.MustCompile(`(\x1b|\\033)\[[0-9;]*m`)
+
+// validationOutput returns the `esphome config` output for a configuration.
+// The /json-config 422 body is generic, so the error details come from the
+// devices/validate stream, which removes secrets. It returns fallback when the
+// stream gives no output.
+func (c *ESPHomeClient) validationOutput(configuration, fallback string) string {
+	var output strings.Builder
+	if _, err := c.StreamCommand("validate", configuration, "", func(event ESPHomeStreamEvent) {
+		if event.Event == "line" {
+			output.WriteString(event.Data)
+		}
+	}); err != nil || strings.TrimSpace(output.String()) == "" {
+		return fallback
 	}
-	if resp.StatusCode() == http.StatusNotFound {
-		return "", &APIError{Code: ErrCodeNotFound, Message: fmt.Sprintf("configuration %q not found", configuration)}
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return "", &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("ESPHome dashboard returned status %d", resp.StatusCode())}
-	}
-	return string(resp.Body()), nil
+	return espHomeColor.ReplaceAllString(output.String(), "")
 }
 
-// WriteConfig writes YAML configuration for a device.
-func (c *ESPHomeClient) WriteConfig(configuration, content string) error {
-	resp, err := c.getClient().R().
-		SetQueryParam("configuration", configuration).
-		SetHeader("Content-Type", "application/yaml").
-		SetBody(content).
-		Post("/edit")
-	if err != nil {
-		return &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to write config: %s", err)}
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return &APIError{Code: ErrCodeAPIError, Message: fmt.Sprintf("ESPHome dashboard returned status %d: %s", resp.StatusCode(), string(resp.Body()))}
-	}
-	return nil
-}
-
-func parseESPHomeDashboardError(statusCode int, body string, operation string) error {
+func parseESPHomeHTTPError(statusCode int, body string, operation string) error {
 	body = strings.TrimSpace(body)
-	message := espHomeDashboardErrorMessage(body)
+	message := espHomeHTTPErrorMessage(body)
 	if message == "" {
-		message = fmt.Sprintf("ESPHome dashboard returned status %d", statusCode)
+		message = fmt.Sprintf("ESPHome Device Builder returned status %d", statusCode)
 	}
 
 	code := ErrCodeAPIError
@@ -628,7 +444,7 @@ func parseESPHomeDashboardError(statusCode int, body string, operation string) e
 	return &APIError{Code: code, Message: message, Details: details}
 }
 
-func espHomeDashboardErrorMessage(body string) string {
+func espHomeHTTPErrorMessage(body string) string {
 	if body == "" {
 		return ""
 	}
@@ -756,88 +572,6 @@ func extractESPHomeLineColumn(raw string) (int, int, bool) {
 	return 0, 0, false
 }
 
-// StreamCommand opens a WebSocket to the ESPHome dashboard and runs a streaming
-// command (compile, logs, validate, upload, run). It sends the spawn message,
-// then calls the callback for each event received until the process exits.
-// The callback receives ESPHomeStreamEvent with event "line" (output) or "exit" (done).
-// Returns the exit code of the subprocess, or an error if the connection fails.
-func (c *ESPHomeClient) StreamCommand(path string, spawnMsg map[string]any, callback func(ESPHomeStreamEvent)) (int, error) {
-	wsURL, err := c.buildWSURL(path)
-	if err != nil {
-		return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to build WebSocket URL: %s", err)}
-	}
-
-	log.WithField("url", wsURL).Debug("ESPHome WebSocket connecting")
-
-	dialer := websocket.Dialer{
-		HandshakeTimeout: 10 * time.Second,
-	}
-	dialer.TLSClientConfig = tlsConfig(c.VerifySSL)
-
-	headers := http.Header{}
-	if c.Token != "" {
-		headers.Set("Authorization", "Bearer "+c.Token)
-	}
-	if c.IngressSession != "" {
-		headers.Set("Cookie", "ingress_session="+c.IngressSession)
-	}
-
-	conn, resp, err := dialer.Dial(wsURL, headers)
-	if err != nil {
-		if resp != nil {
-			return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("ESPHome WebSocket connection failed (%d): %s", resp.StatusCode, err)}
-		}
-		return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("ESPHome WebSocket connection failed: %s", err)}
-	}
-	defer conn.Close()
-
-	// Send the spawn message
-	if spawnMsg["type"] == nil {
-		spawnMsg["type"] = "spawn"
-	}
-
-	log.WithField("msg", spawnMsg).Debug("Sending spawn message")
-
-	if err := conn.WriteJSON(spawnMsg); err != nil {
-		return -1, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("failed to send spawn message: %s", err)}
-	}
-
-	// Read events until exit
-	exitCode := -1
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				break
-			}
-			// Connection closed by server after exit event is normal
-			if exitCode >= 0 {
-				break
-			}
-			return exitCode, &APIError{Code: ErrCodeConnectionError, Message: fmt.Sprintf("WebSocket read error: %s", err)}
-		}
-
-		var event ESPHomeStreamEvent
-		if err := json.Unmarshal(message, &event); err != nil {
-			log.WithField("raw", string(message)).Debug("Unparseable ESPHome WS message")
-			continue
-		}
-
-		callback(event)
-
-		if event.Event == "exit" {
-			if event.Code != nil {
-				exitCode = *event.Code
-			} else {
-				exitCode = 0
-			}
-			break
-		}
-	}
-
-	return exitCode, nil
-}
-
 // buildWSURL converts the REST base URL to a WebSocket URL and appends the path.
 func (c *ESPHomeClient) buildWSURL(path string) (string, error) {
 	parsed, err := url.Parse(c.BaseURL)
@@ -945,7 +679,7 @@ func DiscoverESPHomeIngress(baseURL, token string) (*ESPHomeIngressInfo, error) 
 		}, nil
 	}
 
-	return nil, &APIError{Code: ErrCodeNotFound, Message: "ESPHome addon not found; set HAB_ESPHOME_URL to the ESPHome dashboard URL"}
+	return nil, &APIError{Code: ErrCodeNotFound, Message: "ESPHome app not found; set HAB_ESPHOME_URL to the ESPHome Device Builder URL"}
 }
 
 // GetESPHomeClient creates a fully configured ESPHomeClient by resolving the URL.

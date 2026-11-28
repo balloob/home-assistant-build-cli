@@ -140,26 +140,6 @@ func ExtractCreateDetails(content string) map[string]any {
 	return result
 }
 
-// NormalizeWizardPlatform maps hab platform values to ESPHome wizard platform values.
-func NormalizeWizardPlatform(platform string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(platform)) {
-	case "esp32":
-		return "ESP32", nil
-	case "esp8266":
-		return "ESP8266", nil
-	case "rp2040":
-		return "RP2040", nil
-	case "bk72xx":
-		return "BK72XX", nil
-	case "ln882x":
-		return "LN882X", nil
-	case "rtl87xx":
-		return "RTL87XX", nil
-	default:
-		return "", fmt.Errorf("unsupported ESPHome platform %q", platform)
-	}
-}
-
 func parsePatchAssignments(values []string) ([]patchAssignment, error) {
 	assignments := make([]patchAssignment, 0, len(values))
 	for _, raw := range values {

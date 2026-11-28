@@ -38,10 +38,7 @@ func runESPHomeValidate(cmd *cobra.Command, args []string) error {
 	}
 
 	if !esphomeValidateStructured {
-		return streamToOutput(esClient, "/validate", map[string]any{
-			"type":          "spawn",
-			"configuration": configuration,
-		}, textMode)
+		return streamToOutput(esClient, "validate", configuration, "", textMode)
 	}
 
 	parsed, err := esClient.GetJSONConfig(configuration)

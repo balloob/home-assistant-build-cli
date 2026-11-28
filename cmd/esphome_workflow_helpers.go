@@ -44,13 +44,9 @@ func withESPHomeRollbackError(err, rollbackErr error) error {
 	return fmt.Errorf("%w (rollback failed: %v)", err, rollbackErr)
 }
 
-func normalizeESPHomeWizardPlatform(platform string) (string, error) {
-	return esphomeconfig.NormalizeWizardPlatform(platform)
-}
-
-func runESPHomeWorkflowStream(esClient client.ESPHomeAPI, wsPath string, spawnMsg map[string]any, textMode bool) ([]client.ESPHomeStreamEvent, error) {
+func runESPHomeWorkflowStream(esClient client.ESPHomeAPI, operation, configuration, port string, textMode bool) ([]client.ESPHomeStreamEvent, error) {
 	events := make([]client.ESPHomeStreamEvent, 0)
-	exitCode, err := esClient.StreamCommand(wsPath, spawnMsg, func(event client.ESPHomeStreamEvent) {
+	exitCode, err := esClient.StreamCommand(operation, configuration, port, func(event client.ESPHomeStreamEvent) {
 		event.Data = decodeESPHomeAnsi(event.Data)
 		events = append(events, event)
 		if textMode && event.Event == "line" {

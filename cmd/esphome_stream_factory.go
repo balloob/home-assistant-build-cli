@@ -14,13 +14,11 @@ import (
 // ESPHomeStreamConfig holds all configuration needed to generate an ESPHome
 // streaming subcommand.
 type ESPHomeStreamConfig struct {
-	Use     string // cobra command Use field, e.g. "build <configuration>"
-	Short   string // one-line description
-	Long    string // detailed description
-	WSPath  string // WebSocket endpoint path, e.g. "/compile"
-	HasPort bool   // whether to add --port flag
-	// ExtraFields are additional key-value pairs merged into the spawn message.
-	ExtraFields map[string]any
+	Use       string // cobra command Use field, e.g. "build <configuration>"
+	Short     string // one-line description
+	Long      string // detailed description
+	Operation string // client.StreamCommand operation, e.g. "build"
+	HasPort   bool   // whether to add --port flag
 }
 
 // RegisterESPHomeStream generates and registers a streaming subcommand on
@@ -45,20 +43,7 @@ func RegisterESPHomeStream(cfg ESPHomeStreamConfig) {
 				return err
 			}
 
-			spawnMsg := map[string]any{
-				"type":          "spawn",
-				"configuration": configuration,
-			}
-
-			if cfg.HasPort {
-				spawnMsg["port"] = port
-			}
-
-			for k, v := range cfg.ExtraFields {
-				spawnMsg[k] = v
-			}
-
-			return streamToOutput(esClient, cfg.WSPath, spawnMsg, textMode)
+			return streamToOutput(esClient, cfg.Operation, configuration, port, textMode)
 		},
 	}
 
@@ -77,8 +62,7 @@ func init() {
 
 The configuration argument is the YAML filename (e.g. "living-room.yaml").
 Output is streamed in real-time as the build progresses.`,
-		WSPath:      "/compile",
-		ExtraFields: map[string]any{"only_generate": false},
+		Operation: "build",
 	})
 
 	RegisterESPHomeStream(ESPHomeStreamConfig{
@@ -92,8 +76,8 @@ or a serial port path like "/dev/ttyUSB0".
 
 The firmware must have been compiled first using 'esphome build'.
 Output is streamed in real-time.`,
-		WSPath:  "/upload",
-		HasPort: true,
+		Operation: "upload",
+		HasPort:   true,
 	})
 
 	RegisterESPHomeStream(ESPHomeStreamConfig{
@@ -107,8 +91,8 @@ or a serial port path like "/dev/ttyUSB0".
 
 This is equivalent to running 'esphome build' followed by 'esphome upload'.
 Output is streamed in real-time.`,
-		WSPath:  "/run",
-		HasPort: true,
+		Operation: "run",
+		HasPort:   true,
 	})
 
 	RegisterESPHomeStream(ESPHomeStreamConfig{
@@ -121,7 +105,7 @@ Use --port to specify the connection method: "OTA" for network (default),
 or a serial port path like "/dev/ttyUSB0".
 
 Logs are streamed in real-time until interrupted (Ctrl+C).`,
-		WSPath:  "/logs",
-		HasPort: true,
+		Operation: "logs",
+		HasPort:   true,
 	})
 }

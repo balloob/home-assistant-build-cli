@@ -447,7 +447,7 @@ var topicRegistry = []topicDef{
 				"hab esphome validate <configuration>",
 			},
 			Prerequisites: []string{
-				"A reachable ESPHome dashboard via HAB_ESPHOME_URL or ingress discovery.",
+				"A reachable ESPHome Device Builder via HAB_ESPHOME_URL or ingress discovery.",
 				"A selected configuration argument or saved context.",
 			},
 			DiscoverySteps: []string{
@@ -457,6 +457,7 @@ var topicRegistry = []topicDef{
 			MutationPatterns: []string{
 				"Validate before build/upload or run commands.",
 				"Prefer config-patch workflows for targeted YAML changes.",
+				"config-patch and update refuse to write when the file changed since it was read; re-read and reapply.",
 			},
 			VerificationCommands: []string{
 				"hab esphome info <configuration> --json",

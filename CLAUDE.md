@@ -61,7 +61,7 @@ When running all tests via `./test/run_integration_test.sh`, empty-hass is start
 
 - **cmd/**: Cobra command definitions organized by feature (auth, entity, automation, etc.)
 - **auth/**: Authentication handling - OAuth flow, token refresh, credential storage
-- **client/**: API clients (RestClient for HTTP, output formatting), WebSocket client, ESPHome dashboard client
+- **client/**: API clients (RestClient for HTTP, output formatting), WebSocket client, ESPHome Device Builder client
 - **config/**: Configuration paths and settings (uses viper), ESPHome device context persistence
 - **input/**: Input parsing for YAML/JSON data, structured patch helpers
 - **internal/esphomecatalog/**: ESPHome community device catalog client and parser
@@ -84,8 +84,7 @@ When running all tests via `./test/run_integration_test.sh`, empty-hass is start
 
 - REST API via `client.RestClient` (uses resty) for state queries, service calls
 - WebSocket API via `client.WebSocketClient` for registry operations (areas, floors, labels, devices)
-- ESPHome Dashboard REST API via `client.ESPHomeClient` for device management, wizard, import, and config operations
-- ESPHome Dashboard WebSocket API via `client.ESPHomeClient.StreamCommand` for streaming operations (build, validate, upload, logs)
+- ESPHome Device Builder `/ws` API via `client.ESPHomeClient` for device management, import, config operations, and streaming operations (build, validate, upload, logs); its REST `/json-config` endpoint returns the resolved config
 
 ### Learning Domain Interactions
 
