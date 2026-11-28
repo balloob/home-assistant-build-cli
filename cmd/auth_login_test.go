@@ -110,6 +110,9 @@ func TestAuthContextListFlagsUnreadableContext(t *testing.T) {
 	os.Stdout = file
 	err = runAuthContextList(authContextListCmd, nil)
 	os.Stdout = stdout
+	if closeErr := file.Close(); closeErr != nil {
+		t.Fatal(closeErr)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
