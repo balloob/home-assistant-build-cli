@@ -907,8 +907,8 @@ run_management_tests() {
                 pass "integration update --$preview with a full ID stays offline"
             else fail "offline update preview: $result"; fi
             result=$(HAB_URL=http://127.0.0.1:1 HAB_TOKEN=preview-test-token "$HAB" --config "$test_dir/offline-config" --json integration delete "$entry" "--$preview" || true)
-            if echo "$result" | jq -e '.success and .data.mode == "plan" and (.metadata.transports_used | length) == 0' >/dev/null; then
-                pass "integration delete --$preview with a full ID stays offline"
+            if echo "$result" | jq -e '.success and .data.mode == "plan" and .data.impact.status == "not_determined" and (.metadata.transports_used - ["websocket"]) == []' >/dev/null; then
+                pass "integration delete --$preview degrades when the server is unreachable"
             else fail "offline delete preview: $result"; fi
         done
     done
@@ -938,6 +938,12 @@ run_management_tests() {
             else fail "options start: $result"; fi
             result=$(run_hab integration subentry list "$entry")
             if echo "$result" | jq -e '.success and (.data | type) == "array"' >/dev/null; then pass "subentry list"; else fail "subentry list: $result"; fi
+            result=$(run_hab integration delete "$entry" --plan)
+            if echo "$result" | jq -e --arg entry "$entry" '.success and .data.impact.status == "determined" and .data.impact.entry_id == $entry and .data.impact.domain == "min_max" and (.data.impact.entities | length) > 0 and .data.impact.dependent_integrations == []' >/dev/null; then pass "integration delete --plan reports impact"; else fail "integration delete --plan impact: $result"; fi
+            result=$("$HAB" --config "$HAB_TEST_CONFIG_DIR" --text integration delete "$entry" --plan || true)
+            if echo "$result" | grep -q '^Impact: determined' && echo "$result" | grep -q '^  domain: min_max' && echo "$result" | grep -q '^  entities ([1-9]'; then pass "integration delete --plan shows impact in text mode"; else fail "integration delete --plan text impact: $result"; fi
+            result=$(run_hab integration get "$entry")
+            if echo "$result" | jq -e '.success and (.data.dependent_integrations | type) == "array"' >/dev/null; then pass "integration get lists dependents"; else fail "integration get dependents: $result"; fi
             result=$(run_hab integration delete "$entry" --force)
             if echo "$result" | jq -e '.success' >/dev/null; then pass "integration delete"; else fail "integration delete: $result"; fi
         else fail "integration flow step: $result"; fi

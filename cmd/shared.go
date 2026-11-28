@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 
@@ -339,6 +340,7 @@ type MutationPlan struct {
 	DerivedIDs           map[string]any `json:"derived_ids,omitempty"`
 	Steps                []string       `json:"steps"`
 	Risks                []string       `json:"risks,omitempty"`
+	Impact               map[string]any `json:"impact,omitempty"`
 	RequiresConfirmation bool           `json:"requires_confirmation"`
 	VerificationCommands []string       `json:"verification_commands,omitempty"`
 	ChangeDetection      string         `json:"change_detection"`
@@ -376,11 +378,41 @@ func printMutationPlan(plan MutationPlan, textMode bool, resourceType string) {
 	plan.Inputs = redact.Map(plan.Inputs)
 	plan.Target = redact.Map(plan.Target)
 	plan.DerivedIDs = redact.Map(plan.DerivedIDs)
-	output.PrintOutputWithContext(plan, textMode, "Plan only. No changes were applied.", output.EnvelopeContext{
+	message := "Plan only. No changes were applied."
+	if textMode && plan.Impact != nil {
+		message += planImpactText(plan)
+	}
+	output.PrintOutputWithContext(plan, textMode, message, output.EnvelopeContext{
 		Operation:            "plan",
 		ResourceType:         resourceType,
 		VerificationCommands: plan.VerificationCommands,
 	})
+}
+
+// planImpactText renders a plan's risks and impact, which text mode otherwise hides.
+func planImpactText(plan MutationPlan) string {
+	var b strings.Builder
+	for _, risk := range plan.Risks {
+		b.WriteString("\nRisk: " + risk)
+	}
+	b.WriteString(fmt.Sprintf("\nImpact: %v", plan.Impact["status"]))
+	keys := make([]string, 0, len(plan.Impact))
+	for key := range plan.Impact {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	for _, key := range keys {
+		switch value := plan.Impact[key].(type) {
+		case nil:
+		case []string:
+			b.WriteString(fmt.Sprintf("\n  %s (%d): %s", key, len(value), strings.Join(value, ", ")))
+		default:
+			if key != "status" {
+				b.WriteString(fmt.Sprintf("\n  %s: %v", key, value))
+			}
+		}
+	}
+	return b.String()
 }
 
 // ensureDomainPrefix ensures an entity ID has the given domain prefix.
